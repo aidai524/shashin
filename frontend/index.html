@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="theme-color" content="#06060f" />
+        <meta name="description" content="使用 Google Gemini AI 生成精美图片 - Cosmic Studio" />
+        <title>Gemini Cosmic Studio - AI 图片生成器</title>
+        <link rel="stylesheet" href="style.css" />
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✨</text></svg>" />
+    </head>
+    <body>
+        <!-- 宇宙背景层 -->
+        <div class="cosmic-bg" aria-hidden="true"></div>
+        <div class="grid-overlay" aria-hidden="true"></div>
+
+        <div class="container">
+            <header>
+                <div class="header-controls">
+                    <button class="theme-switch-btn" id="themeSwitchBtn" onclick="toggleTheme()" aria-label="Toggle theme">🌗 Auto</button>
+                    <button class="lang-switch-btn" id="langSwitchBtn" onclick="switchLanguage()" aria-label="Switch language">EN</button>
+                </div>
+                <h1>✨ <span data-i18n="site.title">Cosmic Studio</span></h1>
+                <p class="subtitle" data-i18n="site.subtitle">Powered by Google Gemini AI · Create Stunning Images</p>
+            </header>
+
+            <main>
+                <!-- 配置区域 -->
+                <section class="config-section">
+                    <div class="config-toggle" onclick="toggleConfig()" role="button" tabindex="0" aria-expanded="false">
+                        <span>⚙️ <span data-i18n="config.title">API Configuration</span></span>
+                        <span class="toggle-icon" id="configToggleIcon">▼</span>
+                    </div>
+                    <div class="config-content" id="configContent">
+                        <div class="form-group">
+                            <label for="apiEndpoint" data-i18n="config.endpoint">Proxy Endpoint</label>
+                            <input
+                                type="text"
+                                id="apiEndpoint"
+                                data-i18n-placeholder="config.endpoint.placeholder"
+                                placeholder="https://gemini-proxy.xxx.workers.dev"
+                                autocomplete="url"
+                            />
+                        </div>
+                        <div class="form-group">
+                            <label for="apiKey" data-i18n="config.apikey">API Key</label>
+                            <input
+                                type="password"
+                                id="apiKey"
+                                data-i18n-placeholder="config.apikey.placeholder"
+                                placeholder="Enter your Gemini API Key"
+                                autocomplete="current-password"
+                            />
+                        </div>
+                        <button class="btn btn-secondary" onclick="saveConfig()">
+                            💾 <span data-i18n="config.save">Save Configuration</span>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- 生成区域 -->
+                <section class="generate-section">
+                    <div class="form-group">
+                        <label for="prompt" data-i18n="prompt.label">Prompt</label>
+                        <textarea
+                            id="prompt"
+                            rows="4"
+                            data-i18n-placeholder="prompt.placeholder"
+                            placeholder="Describe the image you want to create...&#10;&#10;Example: A majestic phoenix rising from cosmic flames, surrounded by swirling galaxies and stardust, digital art, cinematic lighting"
+                        ></textarea>
+                    </div>
+
+                    <!-- 参考图片上传 -->
+                    <div class="form-group">
+                        <div class="form-label-text">
+                            <span data-i18n="reference.label">Reference Images</span>
+                            <span style="color: var(--text-muted); font-weight: 400;" data-i18n="reference.optional">(optional, for style/face reference)</span>
+                        </div>
+                        <div class="reference-upload-area" id="referenceUploadArea">
+                            <input
+                                type="file"
+                                id="referenceImages"
+                                multiple
+                                accept="image/*"
+                                onchange="handleReferenceImages(event)"
+                                class="file-input-hidden"
+                            />
+                            <label
+                                for="referenceImages"
+                                class="upload-placeholder"
+                                id="uploadPlaceholder"
+                                role="button"
+                                tabindex="0"
+                            >
+                                <span class="upload-icon">📸</span>
+                                <span data-i18n="reference.upload">Click to upload reference images (max 5)</span>
+                            </label>
+                            <div class="reference-preview" id="referencePreview"></div>
+                        </div>
+                        <p class="form-hint" data-i18n="reference.hint">
+                            Upload character photos to preserve facial features in generated images
+                        </p>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="model" data-i18n="model.label">Model</label>
+                            <select id="model" onchange="updateResolutionOptions()" data-i18n-options="model">
+                                <option value="gemini-3-pro-image-preview">
+                                    Gemini 3 Pro Image (Recommended, 4K)
+                                </option>
+                                <option value="gemini-2.5-flash-image">
+                                    Gemini 2.5 Flash (Fast)
+                                </option>
+                                <option value="gemini-2.0-flash-exp-image-generation">
+                                    Gemini 2.0 Flash Exp
+                                </option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="imageCount" data-i18n="quantity.label">Quantity</label>
+                            <select id="imageCount" data-i18n-options="quantity">
+                                <option value="1">1 Image</option>
+                                <option value="2">2 Images</option>
+                                <option value="4">4 Images</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="aspectRatio" data-i18n="aspectratio.label">Aspect Ratio</label>
+                            <select id="aspectRatio" data-i18n-options="aspectratio">
+                                <option value="1:1">1:1 (Square)</option>
+                                <option value="16:9">16:9 (Landscape Wide)</option>
+                                <option value="9:16">9:16 (Portrait / Mobile)</option>
+                                <option value="4:3">4:3 (Standard Landscape)</option>
+                                <option value="3:4">3:4 (Standard Portrait)</option>
+                                <option value="3:2">3:2 (Photo Landscape)</option>
+                                <option value="2:3">2:3 (Photo Portrait)</option>
+                                <option value="21:9">21:9 (Ultrawide)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="imageSize" data-i18n="resolution.label">Resolution</label>
+                            <select id="imageSize" data-i18n-options="resolution">
+                                <option value="1K">1K (Standard)</option>
+                                <option value="2K">2K (High Definition)</option>
+                                <option value="4K">4K (Ultra HD)</option>
+                            </select>
+                            <p class="form-hint" id="resolutionHint" data-i18n="resolution.hint.supported">
+                                Gemini 3 Pro supports 1K/2K/4K resolution
+                            </p>
+                        </div>
+                    </div>
+
+                    <button
+                        class="btn btn-primary"
+                        id="generateBtn"
+                        onclick="generateImage()"
+                    >
+                        <span class="btn-text">✨ <span data-i18n="generate.button">Generate Image</span></span>
+                        <span class="btn-loading" style="display: none">
+                            <span class="spinner"></span>
+                            <span data-i18n="generate.loading">Creating Magic...</span>
+                        </span>
+                    </button>
+                </section>
+
+                <!-- 当前生成结果 -->
+                <section
+                    class="result-section"
+                    id="resultSection"
+                    style="display: none"
+                >
+                    <h2 data-i18n="result.title">🎨 Generated Results</h2>
+                    <div class="result-images" id="resultImages"></div>
+                </section>
+
+                <!-- 历史记录 -->
+                <section class="history-section">
+                    <div class="history-header">
+                        <h2>📚 <span data-i18n="history.title">History</span></h2>
+                        <button class="btn btn-danger btn-small" onclick="clearHistory()">
+                            🗑️ <span data-i18n="history.clear">Clear All</span>
+                        </button>
+                    </div>
+                    <div class="history-grid" id="historyGrid">
+                        <p class="empty-tip" data-i18n="history.empty">No history yet. Start creating!</p>
+                    </div>
+                </section>
+            </main>
+
+            <footer>
+                <p data-i18n="footer.text">Built with 💫 using Google Gemini & Cloudflare Workers</p>
+            </footer>
+        </div>
+
+        <!-- 加载动画遮罩 -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-particles" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div class="loading-content">
+                <div class="loading-spinner-large"></div>
+                <p class="loading-text" data-i18n="loading.title">Creating your masterpiece...</p>
+                <p class="loading-hint" data-i18n="loading.hint">This usually takes 10-30 seconds</p>
+            </div>
+        </div>
+
+        <!-- 图片预览弹窗 -->
+        <div class="modal" id="imageModal" onclick="closeModal()" role="dialog" aria-modal="true">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeModal()" aria-label="Close">&times;</span>
+                <img id="modalImage" src="" alt="Preview image" />
+                <div class="modal-actions">
+                    <button class="btn btn-primary" onclick="downloadImage()">
+                        📥 <span data-i18n="modal.download">Download Image</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 历史详情弹窗 -->
+        <div class="modal" id="historyModal" onclick="closeHistoryModal()" role="dialog" aria-modal="true">
+            <div class="modal-content modal-large" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeHistoryModal()" aria-label="Close">&times;</span>
+                <div class="history-detail" id="historyDetail"></div>
+            </div>
+        </div>
+
+        <script src="app.js"></script>
+    </body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "name": "gemini-proxy",
+  "version": "1.0.0",
+  "description": "Cloudflare Workers proxy for Google Gemini API",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:frontend": "wrangler pages deploy frontend --project-name=gemini-image-generator",
+    "tail": "wrangler tail",
+    "serve": "npx serve frontend -l 8080",
+    "frontend": "npx serve frontend -l 8080"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "gemini",
+    "proxy",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^4.54.0"
+  }
+}
