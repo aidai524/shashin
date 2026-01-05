@@ -197,14 +197,12 @@ const i18n = {
 // 当前语言（默认中文）
 let currentLang = localStorage.getItem('gemini_lang') || 'zh';
 
-// 当前主题（默认跟随系统）
-let currentTheme = localStorage.getItem('gemini_theme') || 'auto';
+// 当前主题（默认深色）
+let currentTheme = localStorage.getItem('gemini_theme') || 'dark';
 
 // 切换主题
 function toggleTheme() {
-  const themes = ['dark', 'light', 'auto'];
-  const currentIndex = themes.indexOf(currentTheme);
-  currentTheme = themes[(currentIndex + 1) % themes.length];
+  currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
   localStorage.setItem('gemini_theme', currentTheme);
   applyTheme();
 }
@@ -214,34 +212,21 @@ function applyTheme() {
   const html = document.documentElement;
   const themeBtn = document.getElementById('themeSwitchBtn');
   
-  let effectiveTheme = currentTheme;
-  if (currentTheme === 'auto') {
-    // 跟随系统偏好
-    effectiveTheme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-  }
-  
-  html.setAttribute('data-theme', effectiveTheme);
+  html.setAttribute('data-theme', currentTheme);
   
   // 更新按钮图标和文字
   if (themeBtn) {
-    const icons = { dark: '🌙', light: '☀️', auto: '🌗' };
-    const labels = { dark: 'Dark', light: 'Light', auto: 'Auto' };
-    themeBtn.textContent = `${icons[currentTheme]} ${labels[currentTheme]}`;
+    const icon = currentTheme === 'dark' ? '🌙' : '☀️';
+    const label = currentTheme === 'dark' ? 'Dark' : 'Light';
+    themeBtn.textContent = `${icon} ${label}`;
   }
   
   // 更新 meta theme-color
   const metaTheme = document.querySelector('meta[name="theme-color"]');
   if (metaTheme) {
-    metaTheme.content = effectiveTheme === 'light' ? '#f5f5fa' : '#06060f';
+    metaTheme.content = currentTheme === 'light' ? '#f5f5fa' : '#06060f';
   }
 }
-
-// 监听系统主题变化
-window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
-  if (currentTheme === 'auto') {
-    applyTheme();
-  }
-});
 
 // 获取翻译文本
 function t(key, params = {}) {

@@ -1042,14 +1042,14 @@ textarea {
   width: auto;
 }
 
-/* 加载动画遮罩 */
+/* =========================================
+   加载动画 - 宇宙画布主题
+   ========================================= */
+
 .loading-overlay {
   display: none;
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: var(--loading-bg);
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
@@ -1057,104 +1057,321 @@ textarea {
   justify-content: center;
   align-items: center;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .loading-overlay.show {
   display: flex;
-  animation: fadeIn var(--duration-fast) ease;
+  animation: loadingFadeIn 0.5s var(--ease-out-expo);
 }
 
+@keyframes loadingFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 背景脉冲光晕 */
+.loading-pulse-bg {
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--accent-primary-glow) 0%, transparent 70%);
+  animation: pulseBg 3s ease-in-out infinite;
+  opacity: 0.4;
+}
+
+@keyframes pulseBg {
+  0%, 100% { transform: scale(0.8); opacity: 0.3; }
+  50% { transform: scale(1.2); opacity: 0.5; }
+}
+
+/* 轨道粒子系统 */
+.loading-orbits {
+  position: absolute;
+  width: 280px;
+  height: 280px;
+}
+
+.orbit {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px dashed var(--border-subtle);
+  animation: orbitSpin linear infinite;
+}
+
+.orbit span {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: var(--accent-primary);
+  border-radius: 50%;
+  box-shadow: 0 0 12px var(--accent-primary), 0 0 24px var(--accent-primary-glow);
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
+}
+
+.orbit-1 {
+  animation-duration: 8s;
+}
+
+.orbit-1 span:nth-child(1) { left: 0; }
+.orbit-1 span:nth-child(2) { left: 50%; top: 0; }
+.orbit-1 span:nth-child(3) { left: 100%; }
+
+.orbit-2 {
+  inset: 30px;
+  animation-duration: 6s;
+  animation-direction: reverse;
+  border-color: rgba(255, 123, 123, 0.2);
+}
+
+.orbit-2 span {
+  width: 5px;
+  height: 5px;
+  background: var(--accent-secondary);
+  box-shadow: 0 0 10px var(--accent-secondary), 0 0 20px var(--accent-secondary-glow);
+}
+
+.orbit-2 span:nth-child(1) { left: 0; top: 50%; }
+.orbit-2 span:nth-child(2) { left: 100%; top: 50%; }
+
+.orbit-3 {
+  inset: 60px;
+  animation-duration: 4s;
+  border-style: dotted;
+}
+
+.orbit-3 span {
+  width: 4px;
+  height: 4px;
+}
+
+.orbit-3 span:nth-child(1) { left: 0; }
+.orbit-3 span:nth-child(2) { left: 100%; }
+.orbit-3 span:nth-child(3) { top: 0; left: 50%; }
+.orbit-3 span:nth-child(4) { top: 100%; left: 50%; transform: translate(-50%, -50%); }
+
+@keyframes orbitSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* 中心画框动画 */
+.loading-canvas {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin-bottom: 40px;
+}
+
+.canvas-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--border-subtle);
+  animation: canvasFloat 3s ease-in-out infinite;
+}
+
+@keyframes canvasFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(1deg); }
+}
+
+.canvas-inner {
+  position: absolute;
+  inset: 8px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(0, 229, 192, 0.1), rgba(255, 123, 123, 0.1));
+}
+
+.canvas-wave {
+  position: absolute;
+  width: 200%;
+  height: 200%;
+  top: -50%;
+  left: -50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent,
+    var(--accent-primary) 30%,
+    transparent 40%,
+    transparent 60%,
+    var(--accent-secondary) 70%,
+    transparent
+  );
+  animation: canvasWave 3s linear infinite;
+  opacity: 0.6;
+}
+
+.canvas-wave.wave-2 {
+  animation-delay: -1s;
+  animation-duration: 4s;
+  opacity: 0.4;
+}
+
+.canvas-wave.wave-3 {
+  animation-delay: -2s;
+  animation-duration: 5s;
+  opacity: 0.3;
+}
+
+@keyframes canvasWave {
+  to { transform: rotate(360deg); }
+}
+
+/* 画框四角装饰 */
+.canvas-corners span {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--accent-primary);
+}
+
+.canvas-corners span:nth-child(1) {
+  top: -2px; left: -2px;
+  border-right: none; border-bottom: none;
+  border-top-left-radius: 6px;
+}
+
+.canvas-corners span:nth-child(2) {
+  top: -2px; right: -2px;
+  border-left: none; border-bottom: none;
+  border-top-right-radius: 6px;
+}
+
+.canvas-corners span:nth-child(3) {
+  bottom: -2px; left: -2px;
+  border-right: none; border-top: none;
+  border-bottom-left-radius: 6px;
+}
+
+.canvas-corners span:nth-child(4) {
+  bottom: -2px; right: -2px;
+  border-left: none; border-top: none;
+  border-bottom-right-radius: 6px;
+}
+
+.canvas-corners span {
+  animation: cornerPulse 2s ease-in-out infinite;
+}
+
+.canvas-corners span:nth-child(2) { animation-delay: 0.5s; }
+.canvas-corners span:nth-child(3) { animation-delay: 1s; }
+.canvas-corners span:nth-child(4) { animation-delay: 1.5s; }
+
+@keyframes cornerPulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* 画框光晕 */
+.canvas-glow {
+  position: absolute;
+  inset: -20px;
+  border-radius: 24px;
+  background: radial-gradient(
+    ellipse at center,
+    var(--accent-primary-glow) 0%,
+    transparent 70%
+  );
+  animation: glowPulse 2s ease-in-out infinite;
+  z-index: -1;
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.95); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+
+/* 加载文字 */
 .loading-content {
   text-align: center;
-  padding: 40px;
-}
-
-.loading-spinner-large {
-  width: 70px;
-  height: 70px;
-  border: 3px solid var(--border-subtle);
-  border-radius: 50%;
-  border-top-color: var(--accent-primary);
-  border-right-color: var(--accent-secondary);
-  animation: spin 1s linear infinite;
-  margin: 0 auto 28px;
-  box-shadow: 0 0 30px var(--accent-primary-glow);
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+  position: relative;
+  z-index: 10;
 }
 
 .loading-text {
   font-family: var(--font-display);
-  font-size: 1.4rem;
-  font-weight: 600;
-  margin-bottom: 10px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 16px;
   background: var(--accent-gradient);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  animation: textBreath 2s ease-in-out infinite;
+}
+
+@keyframes textBreath {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+
+/* 跳动的点 */
+.loading-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.loading-dots span {
+  width: 8px;
+  height: 8px;
+  background: var(--accent-primary);
+  border-radius: 50%;
+  animation: dotBounce 1.4s ease-in-out infinite;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+}
+
+.loading-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+  background: var(--accent-secondary);
+}
+
+@keyframes dotBounce {
+  0%, 80%, 100% { 
+    transform: translateY(0) scale(1);
+    opacity: 0.5;
+  }
+  40% { 
+    transform: translateY(-12px) scale(1.2);
+    opacity: 1;
+  }
 }
 
 .loading-hint {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: var(--text-muted);
+  animation: hintFade 3s ease-in-out infinite;
 }
 
-/* 加载动画粒子效果 */
-.loading-particles {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
+@keyframes hintFade {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
 }
 
-.loading-particles span {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  background: var(--accent-primary);
-  border-radius: 50%;
-  animation: floatUp 3s infinite ease-out;
+/* Light 主题特殊调整 */
+[data-theme="light"] .loading-pulse-bg {
+  background: radial-gradient(circle, rgba(0, 201, 167, 0.15) 0%, transparent 70%);
 }
 
-.loading-particles span:nth-child(2) {
-  left: 20%;
-  animation-delay: 0.5s;
-  background: var(--accent-secondary);
+[data-theme="light"] .canvas-frame {
+  background: rgba(255, 255, 255, 0.5);
 }
 
-.loading-particles span:nth-child(3) {
-  left: 40%;
-  animation-delay: 1s;
-}
-
-.loading-particles span:nth-child(4) {
-  left: 60%;
-  animation-delay: 1.5s;
-  background: var(--accent-secondary);
-}
-
-.loading-particles span:nth-child(5) {
-  left: 80%;
-  animation-delay: 2s;
-}
-
-@keyframes floatUp {
-  0% {
-    bottom: -10%;
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  90% {
-    opacity: 1;
-  }
-  100% {
-    bottom: 110%;
-    opacity: 0;
-  }
+[data-theme="light"] .canvas-inner {
+  background: linear-gradient(135deg, rgba(0, 201, 167, 0.15), rgba(255, 107, 107, 0.15));
 }
 
 /* 错误提示 */

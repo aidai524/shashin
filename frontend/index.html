@@ -17,7 +17,7 @@
         <div class="container">
             <header>
                 <div class="header-controls">
-                    <button class="theme-switch-btn" id="themeSwitchBtn" onclick="toggleTheme()" aria-label="Toggle theme">🌗 Auto</button>
+                    <button class="theme-switch-btn" id="themeSwitchBtn" onclick="toggleTheme()" aria-label="Toggle theme">🌙 Dark</button>
                     <button class="lang-switch-btn" id="langSwitchBtn" onclick="switchLanguage()" aria-label="Switch language">EN</button>
                 </div>
                 <h1>✨ <span data-i18n="site.title">Cosmic Studio</span></h1>
@@ -198,16 +198,37 @@
 
         <!-- 加载动画遮罩 -->
         <div class="loading-overlay" id="loadingOverlay">
-            <div class="loading-particles" aria-hidden="true">
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
-                <span></span>
+            <!-- 背景脉冲光晕 -->
+            <div class="loading-pulse-bg" aria-hidden="true"></div>
+            
+            <!-- 轨道粒子系统 -->
+            <div class="loading-orbits" aria-hidden="true">
+                <div class="orbit orbit-1"><span></span><span></span><span></span></div>
+                <div class="orbit orbit-2"><span></span><span></span></div>
+                <div class="orbit orbit-3"><span></span><span></span><span></span><span></span></div>
             </div>
+            
+            <!-- 中心画框动画 -->
+            <div class="loading-canvas">
+                <div class="canvas-frame">
+                    <div class="canvas-inner">
+                        <div class="canvas-wave"></div>
+                        <div class="canvas-wave wave-2"></div>
+                        <div class="canvas-wave wave-3"></div>
+                    </div>
+                    <div class="canvas-corners">
+                        <span></span><span></span><span></span><span></span>
+                    </div>
+                </div>
+                <div class="canvas-glow"></div>
+            </div>
+            
+            <!-- 文字内容 -->
             <div class="loading-content">
-                <div class="loading-spinner-large"></div>
                 <p class="loading-text" data-i18n="loading.title">Creating your masterpiece...</p>
+                <div class="loading-dots">
+                    <span></span><span></span><span></span>
+                </div>
                 <p class="loading-hint" data-i18n="loading.hint">This usually takes 10-30 seconds</p>
             </div>
         </div>
