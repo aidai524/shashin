@@ -1,52 +1,62 @@
 // =========================================
-// Gemini Cosmic Studio - Frontend Logic
+// 梦想写真馆 - Frontend Logic
 // =========================================
+
+// 默认后端配置 - 使用已部署的 Cloudflare Worker 代理
+const DEFAULT_API_ENDPOINT = 'https://iapi.sendto.you';
+
+// =========================================
+// 模板数据（从后端 API 加载）
+// =========================================
+let templates = [];
 
 // 多语言系统
 const i18n = {
   en: {
     // Header
-    'site.title': 'Cosmic Studio',
+    'site.title': 'Dream Photo Studio',
     'site.subtitle': 'Powered by Google Gemini AI · Create Stunning Images',
     
-    // Config section
-    'config.title': 'API Configuration',
-    'config.endpoint': 'Proxy Endpoint',
-    'config.endpoint.placeholder': 'https://gemini-proxy.xxx.workers.dev',
-    'config.apikey': 'API Key',
-    'config.apikey.placeholder': 'Enter your Gemini API Key',
-    'config.save': 'Save Configuration',
+    // Template section
+    'template.title': 'Choose Style Template',
+    'template.desc': 'Select your favorite style, AI will generate images in this style',
+    'template.category.all': 'All',
+    'template.category.portrait': 'Portrait',
+    'template.category.creative': 'Creative',
+    'template.category.scene': 'Scene',
+    'template.change': 'Change Template',
+    'template.select': 'Please select a template first',
     
-    // Generate section
-    'prompt.label': 'Prompt',
-    'prompt.placeholder': 'Describe the image you want to create...\n\nExample: A majestic phoenix rising from cosmic flames, surrounded by swirling galaxies and stardust, digital art, cinematic lighting',
-    'reference.label': 'Reference Images',
-    'reference.optional': '(optional, for style/face reference)',
-    'reference.upload': 'Click to upload reference images (max 5)',
-    'reference.hint': 'Upload character photos to preserve facial features in generated images',
-    'model.label': 'Model',
-    'model.gemini3pro': 'Gemini 3 Pro Image (Recommended, 4K)',
-    'model.gemini25flash': 'Gemini 2.5 Flash (Fast)',
-    'model.gemini20flash': 'Gemini 2.0 Flash Exp',
+    // Reference section
+    'reference.title': 'Upload Your Photos',
+    'reference.desc': 'Upload clear photos, AI will preserve your facial features',
+    'reference.upload': 'Click to upload photos (max 5)',
+    'reference.upload.hint': 'Recommend photos from different angles',
+    
+    // Settings section
+    'settings.title': 'Adjust Settings',
+    
+    // Model
+    'model.label': 'Quality',
+    'model.premium': 'Premium',
+    'model.premium.desc': '4K Ultra HD',
+    'model.fast': 'Fast',
+    'model.fast.desc': 'Standard',
+    
+    // Quantity
     'quantity.label': 'Quantity',
-    'quantity.1': '1 Image',
-    'quantity.2': '2 Images',
-    'quantity.4': '4 Images',
+    'quantity.time.1': '~30s',
+    'quantity.time.2': '~60s',
+    'quantity.time.4': '~2min',
+    
+    // Aspect Ratio
     'aspectratio.label': 'Aspect Ratio',
-    'aspectratio.1:1': '1:1 (Square)',
-    'aspectratio.16:9': '16:9 (Landscape Wide)',
-    'aspectratio.9:16': '9:16 (Portrait / Mobile)',
-    'aspectratio.4:3': '4:3 (Standard Landscape)',
-    'aspectratio.3:4': '3:4 (Standard Portrait)',
-    'aspectratio.3:2': '3:2 (Photo Landscape)',
-    'aspectratio.2:3': '2:3 (Photo Portrait)',
-    'aspectratio.21:9': '21:9 (Ultrawide)',
+    
+    // Resolution
     'resolution.label': 'Resolution',
-    'resolution.1k': '1K (Standard)',
-    'resolution.2k': '2K (High Definition)',
-    'resolution.4k': '4K (Ultra HD)',
-    'resolution.hint.supported': 'Gemini 3 Pro supports 1K/2K/4K resolution',
-    'resolution.hint.limited': 'This model only supports 1K resolution',
+    'resolution.hint.supported': 'Premium mode supports 1K/2K/4K resolution',
+    'resolution.hint.limited': 'Fast mode only supports 1K resolution',
+    
     'generate.button': 'Generate Image',
     'generate.loading': 'Creating Magic...',
     
@@ -57,11 +67,11 @@ const i18n = {
     'history.title': 'History',
     'history.clear': 'Clear All',
     'history.empty': 'No history yet. Start creating!',
-    'history.note': '💡 Note: History only saves thumbnail previews. Download full images after generation.',
-    'history.reuse': 'Reuse Prompt',
+    'history.note': '💡 Note: History only saves thumbnail previews.',
+    'history.reuse': 'Reuse',
     'history.delete': 'Delete',
     'history.model': 'Model',
-    'history.refimages': 'Reference Images:',
+    'history.template': 'Template',
     
     // Footer
     'footer.text': 'Built with 💫 using Google Gemini & Cloudflare Workers',
@@ -74,22 +84,18 @@ const i18n = {
     'modal.download': 'Download Image',
     
     // Toast messages
-    'toast.config.saved': 'Configuration saved successfully!',
-    'toast.max.images': 'Maximum {count} reference images allowed',
-    'toast.config.endpoint': 'Please configure proxy endpoint first!',
-    'toast.config.apikey': 'Please configure API Key first!',
-    'toast.prompt.empty': 'Please enter a prompt!',
+    'toast.max.images': 'Maximum {count} images allowed',
     'toast.generate.success': 'Successfully generated {count} image(s)!',
     'toast.generate.failed': 'Generation failed. Please try again.',
-    'toast.prompt.loaded': 'Prompt loaded!',
     'toast.record.deleted': 'Record deleted',
     'toast.history.cleared': 'History cleared',
     'toast.download.started': 'Download started!',
+    'toast.template.selected': 'Template selected: {name}',
     
     // Errors
     'error.parse': 'Response parse error',
     'error.request': 'Request failed',
-    'error.no.images': 'No images generated. Please try a different prompt.',
+    'error.no.images': 'No images generated. Please try again.',
     
     // Confirm dialogs
     'confirm.delete': 'Delete this record?',
@@ -103,44 +109,46 @@ const i18n = {
     'site.title': '梦想写真馆',
     'site.subtitle': '由 Google Gemini AI 驱动 · 创造精美图像',
     
-    // Config section
-    'config.title': 'API 配置',
-    'config.endpoint': '代理地址',
-    'config.endpoint.placeholder': 'https://gemini-proxy.xxx.workers.dev',
-    'config.apikey': 'API 密钥',
-    'config.apikey.placeholder': '输入你的 Gemini API Key',
-    'config.save': '保存配置',
+    // Template section
+    'template.title': '选择风格模板',
+    'template.desc': '点击选择你喜欢的风格，AI 将按此风格生成图片',
+    'template.category.all': '全部',
+    'template.category.portrait': '人像写真',
+    'template.category.creative': '创意艺术',
+    'template.category.scene': '场景合成',
+    'template.change': '更换模板',
+    'template.select': '请先选择一个模板',
     
-    // Generate section
-    'prompt.label': '提示词',
-    'prompt.placeholder': '描述你想创建的图像...\n\n示例：一只雄伟的凤凰从宇宙火焰中升起，周围环绕着旋转的星系和星尘，数字艺术风格，电影级光照',
-    'reference.label': '参考图片',
-    'reference.optional': '（可选，用于风格/面部参考）',
+    // Reference section
+    'reference.title': '上传你的照片',
+    'reference.desc': '上传清晰的人物照片，AI 将保留你的面部特征',
     'reference.upload': '点击上传参考图片（最多5张）',
-    'reference.hint': '上传人物照片以在生成图像中保留面部特征',
-    'model.label': '模型',
-    'model.gemini3pro': 'Gemini 3 Pro Image（推荐，支持4K）',
-    'model.gemini25flash': 'Gemini 2.5 Flash（快速）',
-    'model.gemini20flash': 'Gemini 2.0 Flash Exp',
+    'reference.upload.hint': '建议上传不同角度的清晰照片',
+    
+    // Settings section
+    'settings.title': '调整设置',
+    
+    // Model
+    'model.label': '生成质量',
+    'model.premium': '高级',
+    'model.premium.desc': '4K 高清',
+    'model.fast': '快速',
+    'model.fast.desc': '标准画质',
+    
+    // Quantity
     'quantity.label': '生成数量',
-    'quantity.1': '1 张',
-    'quantity.2': '2 张',
-    'quantity.4': '4 张',
+    'quantity.time.1': '~30秒',
+    'quantity.time.2': '~60秒',
+    'quantity.time.4': '~2分钟',
+    
+    // Aspect Ratio
     'aspectratio.label': '宽高比',
-    'aspectratio.1:1': '1:1（正方形）',
-    'aspectratio.16:9': '16:9（横屏宽幅）',
-    'aspectratio.9:16': '9:16（竖屏/手机）',
-    'aspectratio.4:3': '4:3（标准横屏）',
-    'aspectratio.3:4': '3:4（标准竖屏）',
-    'aspectratio.3:2': '3:2（照片横屏）',
-    'aspectratio.2:3': '2:3（照片竖屏）',
-    'aspectratio.21:9': '21:9（超宽屏）',
-    'resolution.label': '分辨率',
-    'resolution.1k': '1K（标准）',
-    'resolution.2k': '2K（高清）',
-    'resolution.4k': '4K（超高清）',
-    'resolution.hint.supported': 'Gemini 3 Pro 支持 1K/2K/4K 分辨率',
-    'resolution.hint.limited': '此模型仅支持 1K 分辨率',
+    
+    // Resolution
+    'resolution.label': '画质',
+    'resolution.hint.supported': '高级模式支持 1K/2K/4K 分辨率',
+    'resolution.hint.limited': '快速模式仅支持 1K 分辨率',
+    
     'generate.button': '生成图片',
     'generate.loading': '创作中...',
     
@@ -151,11 +159,11 @@ const i18n = {
     'history.title': '历史记录',
     'history.clear': '清空',
     'history.empty': '暂无历史记录，开始创作吧！',
-    'history.note': '💡 提示：历史记录仅保存缩略图预览，生成后请及时下载完整图片。',
-    'history.reuse': '复用提示词',
+    'history.note': '💡 提示：历史记录仅保存缩略图预览。',
+    'history.reuse': '再次生成',
     'history.delete': '删除',
     'history.model': '模型',
-    'history.refimages': '参考图片：',
+    'history.template': '模板',
     
     // Footer
     'footer.text': '基于 Google Gemini 和 Cloudflare Workers 构建 💫',
@@ -168,22 +176,18 @@ const i18n = {
     'modal.download': '下载图片',
     
     // Toast messages
-    'toast.config.saved': '配置保存成功！',
-    'toast.max.images': '最多只能上传 {count} 张参考图片',
-    'toast.config.endpoint': '请先配置代理地址！',
-    'toast.config.apikey': '请先配置 API 密钥！',
-    'toast.prompt.empty': '请输入提示词！',
+    'toast.max.images': '最多只能上传 {count} 张图片',
     'toast.generate.success': '成功生成 {count} 张图片！',
     'toast.generate.failed': '生成失败，请重试。',
-    'toast.prompt.loaded': '提示词已加载！',
     'toast.record.deleted': '记录已删除',
     'toast.history.cleared': '历史已清空',
     'toast.download.started': '开始下载！',
+    'toast.template.selected': '已选择模板：{name}',
     
     // Errors
     'error.parse': '响应解析失败',
     'error.request': '请求失败',
-    'error.no.images': '未生成图片，请尝试其他提示词。',
+    'error.no.images': '未生成图片，请重试。',
     
     // Confirm dialogs
     'confirm.delete': '确定删除这条记录？',
@@ -200,6 +204,14 @@ let currentLang = localStorage.getItem('gemini_lang') || 'zh';
 // 当前主题（默认深色）
 let currentTheme = localStorage.getItem('gemini_theme') || 'dark';
 
+// 当前选择状态
+let selectedTemplate = null;
+let selectedModel = 'gemini-3-pro-image-preview';
+let selectedAspectRatio = '1:1';
+let selectedQuantity = 1;
+let selectedResolution = '4K';
+let selectedCategory = 'all';
+
 // 切换主题
 function toggleTheme() {
   currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
@@ -214,14 +226,12 @@ function applyTheme() {
   
   html.setAttribute('data-theme', currentTheme);
   
-  // 更新按钮图标和文字
   if (themeBtn) {
     const icon = currentTheme === 'dark' ? '🌙' : '☀️';
     const label = currentTheme === 'dark' ? 'Dark' : 'Light';
     themeBtn.textContent = `${icon} ${label}`;
   }
   
-  // 更新 meta theme-color
   const metaTheme = document.querySelector('meta[name="theme-color"]');
   if (metaTheme) {
     metaTheme.content = currentTheme === 'light' ? '#f5f5fa' : '#06060f';
@@ -231,7 +241,6 @@ function applyTheme() {
 // 获取翻译文本
 function t(key, params = {}) {
   let text = i18n[currentLang]?.[key] || i18n['en'][key] || key;
-  // 替换参数
   Object.keys(params).forEach(param => {
     text = text.replace(`{${param}}`, params[param]);
   });
@@ -247,110 +256,230 @@ function switchLanguage() {
 
 // 应用语言到界面
 function applyLanguage() {
-  // 更新所有带有 data-i18n 属性的元素
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     el.textContent = t(key);
   });
   
-  // 更新所有带有 data-i18n-placeholder 属性的元素
   document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
     const key = el.getAttribute('data-i18n-placeholder');
     el.placeholder = t(key);
   });
   
-  // 更新 select 选项 - Model
-  const modelSelect = document.getElementById('model');
-  if (modelSelect) {
-    modelSelect.options[0].textContent = t('model.gemini3pro');
-    modelSelect.options[1].textContent = t('model.gemini25flash');
-    modelSelect.options[2].textContent = t('model.gemini20flash');
-  }
-  
-  // 更新 select 选项 - Quantity
-  const quantitySelect = document.getElementById('imageCount');
-  if (quantitySelect) {
-    quantitySelect.options[0].textContent = t('quantity.1');
-    quantitySelect.options[1].textContent = t('quantity.2');
-    quantitySelect.options[2].textContent = t('quantity.4');
-  }
-  
-  // 更新 select 选项 - Aspect Ratio
-  const aspectSelect = document.getElementById('aspectRatio');
-  if (aspectSelect) {
-    aspectSelect.options[0].textContent = t('aspectratio.1:1');
-    aspectSelect.options[1].textContent = t('aspectratio.16:9');
-    aspectSelect.options[2].textContent = t('aspectratio.9:16');
-    aspectSelect.options[3].textContent = t('aspectratio.4:3');
-    aspectSelect.options[4].textContent = t('aspectratio.3:4');
-    aspectSelect.options[5].textContent = t('aspectratio.3:2');
-    aspectSelect.options[6].textContent = t('aspectratio.2:3');
-    aspectSelect.options[7].textContent = t('aspectratio.21:9');
-  }
-  
-  // 更新 select 选项 - Resolution
-  const resolutionSelect = document.getElementById('imageSize');
-  if (resolutionSelect) {
-    resolutionSelect.options[0].textContent = t('resolution.1k');
-    resolutionSelect.options[1].textContent = t('resolution.2k');
-    resolutionSelect.options[2].textContent = t('resolution.4k');
-  }
-  
-  // 更新语言切换按钮
   const langBtn = document.getElementById('langSwitchBtn');
   if (langBtn) {
     langBtn.textContent = t('lang.switch');
   }
   
-  // 更新页面标题
   document.title = currentLang === 'zh' 
-    ? 'Gemini 梦想写真馆 - AI 图片生成器' 
-    : 'Gemini Cosmic Studio - AI Image Generator';
+    ? '梦想写真馆 - AI 图片生成器' 
+    : 'Dream Photo Studio - AI Image Generator';
   
-  // 更新分辨率提示
+  updateQuantityLabels();
   updateResolutionOptions();
-  
-  // 重新加载历史记录以更新文本
+  renderTemplates();
   loadHistory();
+}
+
+// 更新数量按钮标签
+function updateQuantityLabels() {
+  const times = {
+    1: t('quantity.time.1'),
+    2: t('quantity.time.2'),
+    4: t('quantity.time.4')
+  };
+  
+  document.querySelectorAll('.quantity-btn').forEach(btn => {
+    const count = btn.dataset.count;
+    const timeEl = btn.querySelector('.quantity-time');
+    if (timeEl && times[count]) {
+      timeEl.textContent = times[count];
+    }
+  });
 }
 
 // 全局状态
 let currentModalImage = null;
-let referenceImages = []; // 存储参考图片的 base64 数据
-let lastGeneratedImages = []; // 临时存储最近生成的完整图片
+let referenceImages = [];
+let lastGeneratedImages = [];
 
 // 初始化
-document.addEventListener("DOMContentLoaded", () => {
-  loadConfig();
-  // 检查并清理过大的历史记录
+document.addEventListener("DOMContentLoaded", async () => {
   cleanupOldHistory();
   loadHistory();
-  // 初始化分辨率选项
+  initSelectors();
+  await loadTemplatesFromAPI();
+  initTemplateSystem();
   updateResolutionOptions();
-  // 初始化无障碍支持
   initAccessibility();
-  // 添加入场动画完成后的交互增强
   enhanceInteractions();
-  // 应用主题设置
   applyTheme();
-  // 应用语言设置
   applyLanguage();
 });
 
-// 初始化无障碍支持
-function initAccessibility() {
-  // 配置面板键盘支持
-  const configToggle = document.querySelector('.config-toggle');
-  if (configToggle) {
-    configToggle.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        toggleConfig();
+// 从后端 API 加载模板
+async function loadTemplatesFromAPI() {
+  try {
+    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/templates`);
+    if (response.ok) {
+      templates = await response.json();
+      console.log(`✅ 已加载 ${templates.length} 个模板`);
+    } else {
+      console.error('Failed to load templates:', response.status);
+      // 使用默认空模板
+      templates = [];
+    }
+  } catch (error) {
+    console.error('Error loading templates:', error);
+    templates = [];
+  }
+}
+
+// 初始化模板系统
+function initTemplateSystem() {
+  // 渲染模板
+  renderTemplates();
+  
+  // 分类切换
+  const categoryContainer = document.getElementById('templateCategories');
+  if (categoryContainer) {
+    categoryContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('.category-btn');
+      if (btn) {
+        categoryContainer.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedCategory = btn.dataset.category;
+        renderTemplates();
       }
     });
   }
+}
 
-  // 上传区域键盘支持
+// 渲染模板网格
+function renderTemplates() {
+  const grid = document.getElementById('templateGrid');
+  if (!grid) return;
+  
+  const filteredTemplates = selectedCategory === 'all' 
+    ? templates 
+    : templates.filter(t => t.category === selectedCategory);
+  
+  grid.innerHTML = filteredTemplates.map(template => `
+    <div class="template-card ${selectedTemplate?.id === template.id ? 'selected' : ''}" 
+         data-template-id="${template.id}"
+         onclick="selectTemplate('${template.id}')">
+      <div class="template-thumbnail">
+        <img src="${template.thumbnail}" alt="${template.name[currentLang]}" loading="lazy" />
+        <div class="template-overlay">
+          <span class="template-select-icon">✓</span>
+        </div>
+      </div>
+      <div class="template-info">
+        <h3>${template.name[currentLang]}</h3>
+        <p>${template.description[currentLang]}</p>
+      </div>
+    </div>
+  `).join('');
+}
+
+// 选择模板
+function selectTemplate(templateId) {
+  const template = templates.find(t => t.id === templateId);
+  if (!template) return;
+  
+  selectedTemplate = template;
+  
+  // 更新UI
+  document.querySelectorAll('.template-card').forEach(card => {
+    card.classList.toggle('selected', card.dataset.templateId === templateId);
+  });
+  
+  // 显示已选模板详情
+  const selectedSection = document.getElementById('selectedTemplate');
+  const selectedImg = document.getElementById('selectedTemplateImg');
+  const selectedName = document.getElementById('selectedTemplateName');
+  const selectedDesc = document.getElementById('selectedTemplateDesc');
+  
+  if (selectedSection && selectedImg && selectedName && selectedDesc) {
+    selectedImg.src = template.thumbnail;
+    selectedName.textContent = template.name[currentLang];
+    selectedDesc.textContent = template.description[currentLang];
+    selectedSection.style.display = 'flex';
+  }
+  
+  showToast(t('toast.template.selected', { name: template.name[currentLang] }), 'info');
+}
+
+// 清除模板选择
+function clearTemplateSelection() {
+  selectedTemplate = null;
+  document.querySelectorAll('.template-card').forEach(card => {
+    card.classList.remove('selected');
+  });
+  const selectedSection = document.getElementById('selectedTemplate');
+  if (selectedSection) {
+    selectedSection.style.display = 'none';
+  }
+}
+
+// 初始化所有选择器
+function initSelectors() {
+  // 宽高比选择器
+  const aspectGrid = document.getElementById('aspectRatioGrid');
+  if (aspectGrid) {
+    aspectGrid.addEventListener('click', (e) => {
+      const btn = e.target.closest('.aspect-btn');
+      if (btn) {
+        aspectGrid.querySelectorAll('.aspect-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedAspectRatio = btn.dataset.ratio;
+      }
+    });
+  }
+  
+  // 模型选择器
+  const modelToggle = document.getElementById('modelToggle');
+  if (modelToggle) {
+    modelToggle.addEventListener('click', (e) => {
+      const btn = e.target.closest('.model-btn');
+      if (btn) {
+        modelToggle.querySelectorAll('.model-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedModel = btn.dataset.model;
+        updateResolutionOptions();
+      }
+    });
+  }
+  
+  // 数量选择器
+  const quantitySelector = document.getElementById('quantitySelector');
+  if (quantitySelector) {
+    quantitySelector.addEventListener('click', (e) => {
+      const btn = e.target.closest('.quantity-btn');
+      if (btn) {
+        quantitySelector.querySelectorAll('.quantity-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedQuantity = parseInt(btn.dataset.count);
+      }
+    });
+  }
+  
+  // 分辨率选择器
+  const resolutionSelector = document.getElementById('resolutionSelector');
+  if (resolutionSelector) {
+    resolutionSelector.addEventListener('click', (e) => {
+      const btn = e.target.closest('.resolution-btn');
+      if (btn && !btn.disabled) {
+        resolutionSelector.querySelectorAll('.resolution-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedResolution = btn.dataset.size;
+      }
+    });
+  }
+}
+
+// 初始化无障碍支持
+function initAccessibility() {
   const uploadPlaceholder = document.getElementById('uploadPlaceholder');
   if (uploadPlaceholder) {
     uploadPlaceholder.addEventListener('keydown', (e) => {
@@ -364,7 +493,6 @@ function initAccessibility() {
 
 // 增强交互效果
 function enhanceInteractions() {
-  // 为表单元素添加聚焦动画
   const inputs = document.querySelectorAll('input, textarea, select');
   inputs.forEach(input => {
     input.addEventListener('focus', () => {
@@ -375,7 +503,6 @@ function enhanceInteractions() {
     });
   });
 
-  // 拖拽上传支持
   const uploadArea = document.getElementById('referenceUploadArea');
   if (uploadArea) {
     uploadArea.addEventListener('dragover', (e) => {
@@ -428,7 +555,6 @@ function handleDroppedFiles(files) {
 
 // 简易 Toast 提示
 function showToast(message, type = 'info') {
-  // 创建 toast 元素
   const toast = document.createElement('div');
   toast.style.cssText = `
     position: fixed;
@@ -449,13 +575,11 @@ function showToast(message, type = 'info') {
   toast.textContent = message;
   document.body.appendChild(toast);
 
-  // 触发动画
   requestAnimationFrame(() => {
     toast.style.opacity = '1';
     toast.style.transform = 'translateX(-50%) translateY(0)';
   });
 
-  // 自动移除
   setTimeout(() => {
     toast.style.opacity = '0';
     toast.style.transform = 'translateX(-50%) translateY(20px)';
@@ -463,12 +587,11 @@ function showToast(message, type = 'info') {
   }, 3000);
 }
 
-// 清理旧格式的历史记录（包含完整图片的）
+// 清理旧格式的历史记录
 function cleanupOldHistory() {
   try {
     const historyStr = localStorage.getItem("gemini_history");
     if (historyStr && historyStr.length > 1000000) {
-      // 超过1MB，清空
       localStorage.removeItem("gemini_history");
       console.log("Cleaned up oversized history");
     }
@@ -477,41 +600,10 @@ function cleanupOldHistory() {
   }
 }
 
-// 配置相关
-function toggleConfig() {
-  const content = document.getElementById("configContent");
-  const icon = document.getElementById("configToggleIcon");
-  const toggle = document.querySelector('.config-toggle');
-  
-  const isOpen = content.classList.toggle("show");
-  icon.classList.toggle("open");
-  
-  // 更新 ARIA 属性
-  toggle?.setAttribute('aria-expanded', isOpen);
-}
-
-function saveConfig() {
-  const endpoint = document.getElementById("apiEndpoint").value.trim();
-  const apiKey = document.getElementById("apiKey").value.trim();
-
-  localStorage.setItem("gemini_endpoint", endpoint);
-  localStorage.setItem("gemini_api_key", apiKey);
-
-  showToast(t('toast.config.saved'), "info");
-}
-
-function loadConfig() {
-  const endpoint = localStorage.getItem("gemini_endpoint") || "";
-  const apiKey = localStorage.getItem("gemini_api_key") || "";
-
-  document.getElementById("apiEndpoint").value = endpoint;
-  document.getElementById("apiKey").value = apiKey;
-}
-
+// 获取配置
 function getConfig() {
   return {
-    endpoint: localStorage.getItem("gemini_endpoint") || "",
-    apiKey: localStorage.getItem("gemini_api_key") || "",
+    endpoint: DEFAULT_API_ENDPOINT,
   };
 }
 
@@ -538,7 +630,6 @@ function handleReferenceImages(event) {
     reader.readAsDataURL(file);
   });
 
-  // 清空 input 以便重复选择同一文件
   event.target.value = "";
 }
 
@@ -565,7 +656,6 @@ function renderReferencePreview() {
     )
     .join("");
 
-  // 添加"添加更多"按钮
   if (referenceImages.length < 5) {
     html += `
       <label for="referenceImages" class="add-more-btn" aria-label="Add more images">+</label>
@@ -582,23 +672,24 @@ function removeReferenceImage(index) {
 
 // 根据模型更新分辨率选项
 function updateResolutionOptions() {
-  const model = document.getElementById("model").value;
-  const imageSizeSelect = document.getElementById("imageSize");
+  const resolutionSelector = document.getElementById("resolutionSelector");
   const resolutionHint = document.getElementById("resolutionHint");
+  const resolutionGroup = document.getElementById("resolutionGroup");
 
-  if (model === "gemini-3-pro-image-preview") {
-    // Gemini 3 Pro 支持所有分辨率
-    imageSizeSelect.disabled = false;
-    resolutionHint.textContent = t('resolution.hint.supported');
-    resolutionHint.classList.add('success');
-    resolutionHint.classList.remove('warning');
+  if (selectedModel === "gemini-3-pro-image-preview") {
+    if (resolutionGroup) resolutionGroup.style.display = 'block';
+    resolutionSelector?.querySelectorAll('.resolution-btn').forEach(btn => {
+      btn.disabled = false;
+      btn.classList.remove('disabled');
+    });
+    if (resolutionHint) {
+      resolutionHint.textContent = t('resolution.hint.supported');
+      resolutionHint.classList.add('success');
+      resolutionHint.classList.remove('warning');
+    }
   } else {
-    // 其他模型只支持 1K
-    imageSizeSelect.value = "1K";
-    imageSizeSelect.disabled = true;
-    resolutionHint.textContent = t('resolution.hint.limited');
-    resolutionHint.classList.remove('success');
-    resolutionHint.classList.add('warning');
+    if (resolutionGroup) resolutionGroup.style.display = 'none';
+    selectedResolution = "1K";
   }
 }
 
@@ -616,26 +707,11 @@ function hideLoading() {
 // 图片生成
 async function generateImage() {
   const config = getConfig();
-  const prompt = document.getElementById("prompt").value.trim();
-  const model = document.getElementById("model").value;
-  const imageCount = parseInt(document.getElementById("imageCount").value);
-  const aspectRatio = document.getElementById("aspectRatio").value;
-  const imageSize = document.getElementById("imageSize").value;
 
-  // 验证
-  if (!config.endpoint) {
-    showToast(t('toast.config.endpoint'), "warning");
-    toggleConfig();
-    return;
-  }
-  if (!config.apiKey) {
-    showToast(t('toast.config.apikey'), "warning");
-    toggleConfig();
-    return;
-  }
-  if (!prompt) {
-    showToast(t('toast.prompt.empty'), "warning");
-    document.getElementById("prompt").focus();
+  // 验证模板选择
+  if (!selectedTemplate) {
+    showToast(t('template.select'), "warning");
+    document.getElementById('templateGrid')?.scrollIntoView({ behavior: 'smooth' });
     return;
   }
 
@@ -643,7 +719,6 @@ async function generateImage() {
   const btnText = btn.querySelector(".btn-text");
   const btnLoading = btn.querySelector(".btn-loading");
 
-  // 显示加载状态
   btn.disabled = true;
   btnText.style.display = "none";
   btnLoading.style.display = "inline-flex";
@@ -652,21 +727,17 @@ async function generateImage() {
   try {
     const images = await generateWithGemini(
       config,
-      prompt,
-      model,
-      imageCount,
+      selectedTemplate.prompt,
+      selectedModel,
+      selectedQuantity,
       referenceImages,
-      aspectRatio,
-      imageSize,
+      selectedAspectRatio,
+      selectedResolution,
     );
 
     if (images.length > 0) {
-      // 显示结果
       displayResults(images);
-
-      // 保存到历史记录
-      saveToHistory(prompt, model, images, referenceImages);
-      
+      saveToHistory(selectedTemplate, selectedModel, images, referenceImages);
       showToast(t('toast.generate.success', { count: images.length }), "info");
     }
   } catch (error) {
@@ -695,18 +766,14 @@ async function generateWithGemini(
   const url = `${endpoint}/v1beta/models/${model}:generateContent`;
 
   const images = [];
-
-  // 构建请求内容
   const parts = [];
 
-  // 如果有参考图片，添加到请求中
+  // 如果有参考图片，添加锁脸提示
   if (refImages && refImages.length > 0) {
-    // 添加说明文字
     parts.push({
-      text: `Please reference the facial features from the following character images and generate an image that matches the requirements. Maintain consistent facial characteristics.\n\nUser request: ${prompt}`,
+      text: `Please reference the facial features from the following character images and generate an image that matches the requirements. Maintain consistent facial characteristics, face shape, and key features.\n\nStyle requirement: ${prompt}`,
     });
 
-    // 添加参考图片
     refImages.forEach((img) => {
       parts.push({
         inline_data: {
@@ -719,18 +786,14 @@ async function generateWithGemini(
     parts.push({ text: prompt });
   }
 
-  // 构建 generationConfig
   const generationConfig = {
     responseModalities: ["TEXT", "IMAGE"],
   };
 
-  // 添加 imageConfig（宽高比和分辨率）
-  // 注意：imageSize (2K/4K) 仅 gemini-3-pro-image-preview 支持
   const imageConfig = {
     aspectRatio: aspectRatio || "1:1",
   };
 
-  // 只有 Gemini 3 Pro 支持 imageSize 参数
   if (model === "gemini-3-pro-image-preview" && imageSize) {
     imageConfig.imageSize = imageSize;
   }
@@ -738,24 +801,18 @@ async function generateWithGemini(
   generationConfig.imageConfig = imageConfig;
 
   const requestBody = {
-    contents: [
-      {
-        parts: parts,
-      },
-    ],
+    contents: [{ parts: parts }],
     generationConfig: generationConfig,
   };
 
-  // 详细日志
   console.log("=== Gemini Image Generation Request ===");
   console.log("URL:", url);
   console.log("Model:", model);
+  console.log("Template:", selectedTemplate?.id);
   console.log("Aspect Ratio:", aspectRatio);
   console.log("Image Size:", imageSize);
   console.log("Reference Images:", refImages?.length || 0);
-  console.log("Request Body:", JSON.stringify(requestBody, null, 2));
 
-  // Gemini 每次只能生成一张，需要多次请求
   for (let i = 0; i < imageCount; i++) {
     console.log(`--- Request ${i + 1}/${imageCount} ---`);
 
@@ -763,7 +820,6 @@ async function generateWithGemini(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-goog-api-key": config.apiKey,
       },
       body: JSON.stringify(requestBody),
     });
@@ -786,7 +842,6 @@ async function generateWithGemini(
       throw new Error(data.error?.message || `${t('error.request')}: ${response.status}`);
     }
 
-    // 解析 Gemini 返回的图片
     if (data.candidates) {
       for (const candidate of data.candidates) {
         if (candidate.content?.parts) {
@@ -835,7 +890,6 @@ function displayResults(images) {
     container.appendChild(div);
   });
 
-  // 滚动到结果区域
   setTimeout(() => {
     section.scrollIntoView({ behavior: "smooth", block: "start" });
   }, 100);
@@ -851,17 +905,15 @@ function showError(message) {
 }
 
 // 历史记录相关
-function saveToHistory(prompt, model, images, refImages) {
+function saveToHistory(template, model, images, refImages) {
   const history = getHistory();
-
-  // 保存完整图片到临时变量，用于当前会话查看
   lastGeneratedImages = images;
 
-  // 异步压缩图片后保存
   compressImagesAsync(images).then((thumbnails) => {
     const record = {
       id: Date.now(),
-      prompt: prompt,
+      templateId: template.id,
+      templateName: template.name,
       model: model,
       thumbnails: thumbnails,
       imageCount: images.length,
@@ -871,12 +923,10 @@ function saveToHistory(prompt, model, images, refImages) {
 
     history.unshift(record);
 
-    // 最多保存 20 条记录
     while (history.length > 20) {
       history.pop();
     }
 
-    // 尝试保存
     saveHistoryToStorage(history);
     loadHistory();
   });
@@ -888,14 +938,9 @@ async function compressImagesAsync(images) {
 
   for (const img of images) {
     try {
-      const compressed = await compressImageAsync(
-        img.base64,
-        img.mimeType,
-        150,
-      );
+      const compressed = await compressImageAsync(img.base64, img.mimeType, 150);
       thumbnails.push(compressed);
     } catch (e) {
-      // 压缩失败，使用截断的数据
       thumbnails.push({
         base64: img.base64.substring(0, 2000),
         mimeType: img.mimeType,
@@ -906,7 +951,6 @@ async function compressImagesAsync(images) {
   return thumbnails;
 }
 
-// 使用 Canvas 异步压缩单张图片
 function compressImageAsync(base64, mimeType, maxSize) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -914,7 +958,6 @@ function compressImageAsync(base64, mimeType, maxSize) {
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
 
-      // 计算缩放比例
       let width = img.width;
       let height = img.height;
 
@@ -934,10 +977,7 @@ function compressImageAsync(base64, mimeType, maxSize) {
       canvas.height = height;
       ctx.drawImage(img, 0, 0, width, height);
 
-      // 转为 JPEG 并降低质量
-      const compressedBase64 = canvas
-        .toDataURL("image/jpeg", 0.6)
-        .split(",")[1];
+      const compressedBase64 = canvas.toDataURL("image/jpeg", 0.6).split(",")[1];
       resolve({
         base64: compressedBase64,
         mimeType: "image/jpeg",
@@ -955,12 +995,10 @@ function compressImageAsync(base64, mimeType, maxSize) {
   });
 }
 
-// 保存历史到 localStorage
 function saveHistoryToStorage(history) {
   try {
     localStorage.setItem("gemini_history", JSON.stringify(history));
   } catch (e) {
-    // 存储空间不足，逐步删除旧记录
     while (history.length > 1) {
       history.pop();
       try {
@@ -970,7 +1008,6 @@ function saveHistoryToStorage(history) {
         continue;
       }
     }
-    // 仍然失败，清空
     localStorage.removeItem("gemini_history");
     console.warn("History storage full, cleared");
   }
@@ -993,22 +1030,22 @@ function loadHistory() {
     return;
   }
 
-  // 显示缩略图网格
   container.innerHTML = history
     .map((record, index) => {
-      // 兼容旧格式和新格式
       const thumbnails = record.thumbnails || record.images || [];
       const firstImage = thumbnails[0];
       if (!firstImage) return "";
 
       const imageCount = record.imageCount || thumbnails.length;
       const date = formatTime(record.createdAt);
+      const templateName = record.templateName?.[currentLang] || record.prompt?.substring(0, 20) || 'Unknown';
 
       return `
       <div class="history-thumb" onclick="showHistoryDetail(${record.id})" style="animation: fadeInUp 0.4s ease backwards; animation-delay: ${index * 0.03}s">
         <img src="data:${firstImage.mimeType};base64,${firstImage.base64}" alt="History" loading="lazy" />
         ${imageCount > 1 ? `<span class="thumb-count">${imageCount}</span>` : ""}
         <span class="thumb-date">${date}</span>
+        <span class="thumb-template">${templateName}</span>
       </div>
     `;
     })
@@ -1023,52 +1060,30 @@ function showHistoryDetail(id) {
   const modal = document.getElementById("historyModal");
   const detail = document.getElementById("historyDetail");
 
-  // 使用缩略图显示（历史记录只保存了缩略图）
   const thumbnails = record.thumbnails || record.images || [];
   const imagesHtml = thumbnails
-    .map(
-      (img, i) => `
-    <img
-      src="data:${img.mimeType};base64,${img.base64}"
-      alt="Generated image ${i + 1}"
-      style="cursor: default;"
-    />
-  `,
-    )
+    .map((img, i) => `
+    <img src="data:${img.mimeType};base64,${img.base64}" alt="Generated image ${i + 1}" style="cursor: default;" />
+  `)
     .join("");
 
-  const refImagesHtml =
-    record.referenceImages && record.referenceImages.length > 0
-      ? `
-    <div style="margin-bottom: 16px;">
-      <h4 style="margin-bottom: 8px; color: var(--text-secondary);">${t('history.refimages')}</h4>
-      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        ${record.referenceImages
-          .map(
-            (img) => `
-          <img src="data:${img.mimeType};base64,${img.base64}"
-               style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-subtle);" />
-        `,
-          )
-          .join("")}
-      </div>
-    </div>
-  `
-      : "";
+  const templateName = record.templateName?.[currentLang] || record.prompt?.substring(0, 50) || 'Unknown';
+  const modelName = record.model === 'gemini-3-pro-image-preview' 
+    ? (currentLang === 'zh' ? '高级' : 'Premium')
+    : (currentLang === 'zh' ? '快速' : 'Fast');
 
   detail.innerHTML = `
-    <div class="history-detail-prompt">${escapeHtml(record.prompt)}</div>
+    <div class="history-detail-prompt">${t('history.template')}: ${templateName}</div>
     <div class="history-detail-meta">
-      <span>${t('history.model')}: ${record.model}</span>
+      <span>${t('history.model')}: ${modelName}</span>
       <span>${formatTimeDetailed(record.createdAt)}</span>
     </div>
-    ${refImagesHtml}
     <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 14px;">
       ${t('history.note')}
     </p>
     <div class="history-detail-images">${imagesHtml}</div>
     <div class="history-detail-actions">
-      <button class="btn btn-secondary btn-small" onclick="reusePrompt(${record.id})">📝 ${t('history.reuse')}</button>
+      <button class="btn btn-secondary btn-small" onclick="reuseTemplate('${record.templateId}')">🔄 ${t('history.reuse')}</button>
       <button class="btn btn-danger btn-small" onclick="deleteHistoryItem(${record.id})">🗑️ ${t('history.delete')}</button>
     </div>
   `;
@@ -1082,15 +1097,12 @@ function closeHistoryModal() {
   document.body.style.overflow = '';
 }
 
-function reusePrompt(id) {
-  const history = getHistory();
-  const record = history.find((h) => h.id === id);
-  if (record) {
-    document.getElementById("prompt").value = record.prompt;
+function reuseTemplate(templateId) {
+  const template = templates.find(t => t.id === templateId);
+  if (template) {
+    selectTemplate(templateId);
     closeHistoryModal();
-    document.getElementById("prompt").scrollIntoView({ behavior: "smooth" });
-    document.getElementById("prompt").focus();
-    showToast(t('toast.prompt.loaded'), "info");
+    document.getElementById('templateGrid')?.scrollIntoView({ behavior: 'smooth' });
   }
 }
 
@@ -1113,19 +1125,9 @@ function clearHistory() {
 }
 
 // 弹窗相关
-function openModal(base64, mimeType, historyId, imageIndex) {
+function openModal(base64, mimeType) {
   const modal = document.getElementById("imageModal");
   const modalImg = document.getElementById("modalImage");
-
-  // 如果是从历史记录点击，需要获取完整的 base64
-  if (historyId !== undefined && imageIndex !== undefined) {
-    const history = getHistory();
-    const record = history.find((h) => h.id === historyId);
-    if (record && record.images[imageIndex]) {
-      base64 = record.images[imageIndex].base64;
-      mimeType = record.images[imageIndex].mimeType;
-    }
-  }
 
   currentModalImage = { base64, mimeType };
   modalImg.src = `data:${mimeType};base64,${base64}`;
@@ -1145,7 +1147,7 @@ function downloadImage() {
 
   const link = document.createElement("a");
   link.href = `data:${currentModalImage.mimeType};base64,${currentModalImage.base64}`;
-  link.download = `cosmic-studio-${Date.now()}.png`;
+  link.download = `dream-photo-${Date.now()}.png`;
   link.click();
   
   showToast(t('toast.download.started'), "info");
@@ -1164,14 +1166,12 @@ function formatTime(isoString) {
   const diff = now - date;
 
   if (currentLang === 'zh') {
-    // 中文时间格式
     if (diff < 60000) return "刚刚";
     if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
     if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
     if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`;
     return `${date.getMonth() + 1}/${date.getDate()}`;
   } else {
-    // 英文时间格式
     if (diff < 60000) return "Just now";
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
     if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
@@ -1194,16 +1194,11 @@ function formatTimeDetailed(isoString) {
 
 // 键盘事件
 document.addEventListener("keydown", (e) => {
-  // ESC 关闭弹窗
   if (e.key === "Escape") {
     closeModal();
     closeHistoryModal();
   }
-  // Ctrl/Cmd + Enter 生成图片
   if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-    const prompt = document.getElementById("prompt");
-    if (document.activeElement === prompt) {
-      generateImage();
-    }
+    generateImage();
   }
 });

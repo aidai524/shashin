@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>模板管理后台 - Dream Photo Admin</title>
+  <link rel="preconnect" href="https://fonts.loli.net" crossorigin>
+  <link href="https://fonts.loli.net/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-tertiary: #1a1a24;
+      --text-primary: #f5f5f7;
+      --text-secondary: #a1a1aa;
+      --text-muted: #71717a;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --border: #27272a;
+      --radius: 12px;
+      --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* Header */
+    .header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header h1 {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 1.5rem;
+      background: linear-gradient(135deg, var(--accent), #a855f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    /* Login Form */
+    .login-container {
+      max-width: 400px;
+      margin: 100px auto;
+      padding: 2rem;
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    .login-container h2 {
+      text-align: center;
+      margin-bottom: 2rem;
+      font-family: 'Bricolage Grotesque', sans-serif;
+    }
+
+    /* Main Content */
+    .main-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .toolbar-left {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--border);
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .btn-sm {
+      padding: 0.5rem 1rem;
+      font-size: 0.85rem;
+    }
+
+    /* Form */
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 1rem;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .form-group textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    /* Templates Grid */
+    .templates-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .template-card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    .template-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+
+    .template-card-header {
+      position: relative;
+    }
+
+    .template-thumbnail {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      background: var(--bg-tertiary);
+    }
+
+    .template-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .badge-active {
+      background: var(--success);
+      color: white;
+    }
+
+    .badge-inactive {
+      background: var(--text-muted);
+      color: white;
+    }
+
+    .template-card-body {
+      padding: 1.25rem;
+    }
+
+    .template-card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .template-category {
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      background: var(--bg-tertiary);
+      border-radius: 4px;
+      color: var(--text-muted);
+    }
+
+    .template-description {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .template-prompt {
+      background: var(--bg-tertiary);
+      padding: 0.75rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      max-height: 60px;
+      overflow-y: auto;
+      margin-bottom: 1rem;
+    }
+
+    .template-card-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .template-card-actions .btn {
+      flex: 1;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 2rem;
+      overflow-y: auto;
+      z-index: 1000;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%;
+      max-width: 600px;
+      margin-top: 50px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-header h3 {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      font-size: 1.25rem;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0.5rem;
+      line-height: 1;
+    }
+
+    .modal-close:hover {
+      color: var(--text-primary);
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 1rem;
+      padding: 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Toast */
+    .toast-container {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .toast {
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      color: white;
+      font-weight: 500;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .toast-success {
+      background: var(--success);
+    }
+
+    .toast-error {
+      background: var(--danger);
+    }
+
+    .toast-info {
+      background: var(--accent);
+    }
+
+    /* Stats */
+    .stats-bar {
+      display: flex;
+      gap: 2rem;
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      font-family: 'Bricolage Grotesque', sans-serif;
+      color: var(--accent);
+    }
+
+    .stat-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-muted);
+    }
+
+    .loading::after {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-left: 0.5rem;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Hidden */
+    .hidden {
+      display: none !important;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header {
+        padding: 1rem;
+      }
+
+      .main-content {
+        padding: 1rem;
+      }
+
+      .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .templates-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-bar {
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Login Section -->
+  <div id="loginSection" class="login-container">
+    <h2>🔐 管理员登录</h2>
+    <form id="loginForm">
+      <div class="form-group">
+        <label>管理员密钥</label>
+        <input type="password" id="adminKey" placeholder="输入管理员密钥" required>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width: 100%;">
+        登录
+      </button>
+    </form>
+  </div>
+
+  <!-- Admin Dashboard -->
+  <div id="adminDashboard" class="hidden">
+    <header class="header">
+      <h1>🎨 Dream Photo 模板管理</h1>
+      <div class="header-actions">
+        <a href="index.html" class="btn btn-secondary btn-sm">← 返回主站</a>
+        <button id="logoutBtn" class="btn btn-secondary btn-sm">退出登录</button>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <!-- Stats -->
+      <div class="stats-bar">
+        <div class="stat-item">
+          <div class="stat-value" id="totalTemplates">0</div>
+          <div class="stat-label">总模板数</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="activeTemplates">0</div>
+          <div class="stat-label">已启用</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="portraitCount">0</div>
+          <div class="stat-label">人像类</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="creativeCount">0</div>
+          <div class="stat-label">创意类</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="sceneCount">0</div>
+          <div class="stat-label">场景类</div>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button id="addTemplateBtn" class="btn btn-primary">
+            ➕ 添加模板
+          </button>
+          <button id="refreshBtn" class="btn btn-secondary">
+            🔄 刷新
+          </button>
+        </div>
+      </div>
+
+      <!-- Templates Grid -->
+      <div id="templatesGrid" class="templates-grid">
+        <div class="loading">加载中</div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="editModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modalTitle">添加模板</h3>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="templateForm">
+          <input type="hidden" id="templateId">
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>模板 ID *</label>
+              <input type="text" id="tplId" placeholder="例如: summer-beach" required>
+            </div>
+            <div class="form-group">
+              <label>分类</label>
+              <select id="tplCategory">
+                <option value="portrait">人像 (portrait)</option>
+                <option value="creative">创意 (creative)</option>
+                <option value="scene">场景 (scene)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>名称（中文）*</label>
+              <input type="text" id="tplNameZh" placeholder="夏日海滩" required>
+            </div>
+            <div class="form-group">
+              <label>名称（英文）</label>
+              <input type="text" id="tplNameEn" placeholder="Summer Beach">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>描述（中文）</label>
+              <input type="text" id="tplDescZh" placeholder="阳光沙滩的夏日风格">
+            </div>
+            <div class="form-group">
+              <label>描述（英文）</label>
+              <input type="text" id="tplDescEn" placeholder="Sunny beach summer style">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>缩略图 URL</label>
+            <input type="url" id="tplThumbnail" placeholder="https://example.com/image.jpg">
+          </div>
+
+          <div class="form-group">
+            <label>提示词 (Prompt) *</label>
+            <textarea id="tplPrompt" placeholder="Portrait on a sunny beach, golden sand, blue ocean waves..." required></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>排序 (Order)</label>
+              <input type="number" id="tplOrder" value="99" min="1">
+            </div>
+            <div class="form-group">
+              <label>状态</label>
+              <select id="tplActive">
+                <option value="true">启用</option>
+                <option value="false">禁用</option>
+              </select>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveTemplate()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script>
+    const API_ENDPOINT = 'https://iapi.sendto.you';
+    let adminKey = '';
+    let templates = [];
+
+    // Toast notification
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    // Login
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      adminKey = document.getElementById('adminKey').value;
+      
+      // Verify admin key by trying to fetch templates
+      try {
+        const response = await fetch(`${API_ENDPOINT}/api/templates`);
+        if (response.ok) {
+          localStorage.setItem('adminKey', adminKey);
+          document.getElementById('loginSection').classList.add('hidden');
+          document.getElementById('adminDashboard').classList.remove('hidden');
+          loadTemplates();
+        } else {
+          showToast('验证失败，请重试', 'error');
+        }
+      } catch (error) {
+        showToast('连接失败: ' + error.message, 'error');
+      }
+    });
+
+    // Auto-login if key exists
+    const savedKey = localStorage.getItem('adminKey');
+    if (savedKey) {
+      adminKey = savedKey;
+      document.getElementById('loginSection').classList.add('hidden');
+      document.getElementById('adminDashboard').classList.remove('hidden');
+      loadTemplates();
+    }
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('adminKey');
+      location.reload();
+    });
+
+    // Load templates
+    async function loadTemplates() {
+      const grid = document.getElementById('templatesGrid');
+      grid.innerHTML = '<div class="loading">加载中</div>';
+
+      try {
+        const response = await fetch(`${API_ENDPOINT}/api/templates`);
+        if (!response.ok) throw new Error('Failed to load templates');
+        
+        templates = await response.json();
+        updateStats();
+        renderTemplates();
+      } catch (error) {
+        grid.innerHTML = `<div class="loading" style="color: var(--danger);">加载失败: ${error.message}</div>`;
+        showToast('加载模板失败', 'error');
+      }
+    }
+
+    // Update stats
+    function updateStats() {
+      document.getElementById('totalTemplates').textContent = templates.length;
+      document.getElementById('activeTemplates').textContent = templates.filter(t => t.active !== false).length;
+      document.getElementById('portraitCount').textContent = templates.filter(t => t.category === 'portrait').length;
+      document.getElementById('creativeCount').textContent = templates.filter(t => t.category === 'creative').length;
+      document.getElementById('sceneCount').textContent = templates.filter(t => t.category === 'scene').length;
+    }
+
+    // Render templates
+    function renderTemplates() {
+      const grid = document.getElementById('templatesGrid');
+      
+      if (templates.length === 0) {
+        grid.innerHTML = '<div class="loading" style="animation: none;">暂无模板</div>';
+        return;
+      }
+
+      grid.innerHTML = templates.map(t => `
+        <div class="template-card" data-id="${t.id}">
+          <div class="template-card-header">
+            <img src="${t.thumbnail || 'https://via.placeholder.com/400x180?text=No+Image'}" 
+                 alt="${t.name?.zh || t.id}" 
+                 class="template-thumbnail"
+                 onerror="this.src='https://via.placeholder.com/400x180?text=Error'">
+            <span class="template-badge ${t.active !== false ? 'badge-active' : 'badge-inactive'}">
+              ${t.active !== false ? '启用' : '禁用'}
+            </span>
+          </div>
+          <div class="template-card-body">
+            <div class="template-card-title">
+              <span>${t.name?.zh || t.id}</span>
+              <span class="template-category">${t.category || 'unknown'}</span>
+            </div>
+            <div class="template-description">${t.description?.zh || t.description?.en || '无描述'}</div>
+            <div class="template-prompt">${t.prompt}</div>
+            <div class="template-card-actions">
+              <button class="btn btn-secondary btn-sm" onclick="editTemplate('${t.id}')">
+                ✏️ 编辑
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="deleteTemplate('${t.id}')">
+                🗑️ 删除
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Add template button
+    document.getElementById('addTemplateBtn').addEventListener('click', () => {
+      openModal();
+    });
+
+    // Refresh button
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+      loadTemplates();
+      showToast('已刷新', 'success');
+    });
+
+    // Open modal
+    function openModal(template = null) {
+      const modal = document.getElementById('editModal');
+      const title = document.getElementById('modalTitle');
+      
+      if (template) {
+        title.textContent = '编辑模板';
+        document.getElementById('templateId').value = template.id;
+        document.getElementById('tplId').value = template.id;
+        document.getElementById('tplId').disabled = true;
+        document.getElementById('tplCategory').value = template.category || 'creative';
+        document.getElementById('tplNameZh').value = template.name?.zh || '';
+        document.getElementById('tplNameEn').value = template.name?.en || '';
+        document.getElementById('tplDescZh').value = template.description?.zh || '';
+        document.getElementById('tplDescEn').value = template.description?.en || '';
+        document.getElementById('tplThumbnail').value = template.thumbnail || '';
+        document.getElementById('tplPrompt').value = template.prompt || '';
+        document.getElementById('tplOrder').value = template.order || 99;
+        document.getElementById('tplActive').value = template.active !== false ? 'true' : 'false';
+      } else {
+        title.textContent = '添加模板';
+        document.getElementById('templateForm').reset();
+        document.getElementById('templateId').value = '';
+        document.getElementById('tplId').disabled = false;
+        document.getElementById('tplOrder').value = templates.length + 1;
+      }
+      
+      modal.classList.add('active');
+    }
+
+    // Close modal
+    function closeModal() {
+      document.getElementById('editModal').classList.remove('active');
+    }
+
+    // Edit template
+    function editTemplate(id) {
+      const template = templates.find(t => t.id === id);
+      if (template) {
+        openModal(template);
+      }
+    }
+
+    // Save template
+    async function saveTemplate() {
+      const existingId = document.getElementById('templateId').value;
+      const isEdit = !!existingId;
+      
+      const data = {
+        id: document.getElementById('tplId').value.trim(),
+        category: document.getElementById('tplCategory').value,
+        name: {
+          zh: document.getElementById('tplNameZh').value.trim(),
+          en: document.getElementById('tplNameEn').value.trim()
+        },
+        description: {
+          zh: document.getElementById('tplDescZh').value.trim(),
+          en: document.getElementById('tplDescEn').value.trim()
+        },
+        thumbnail: document.getElementById('tplThumbnail').value.trim(),
+        prompt: document.getElementById('tplPrompt').value.trim(),
+        order: parseInt(document.getElementById('tplOrder').value) || 99,
+        active: document.getElementById('tplActive').value === 'true'
+      };
+
+      if (!data.id || !data.name.zh || !data.prompt) {
+        showToast('请填写必填字段', 'error');
+        return;
+      }
+
+      try {
+        const url = isEdit 
+          ? `${API_ENDPOINT}/api/templates/${existingId}`
+          : `${API_ENDPOINT}/api/templates`;
+        
+        const response = await fetch(url, {
+          method: isEdit ? 'PUT' : 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-key': adminKey
+          },
+          body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Save failed');
+        }
+
+        closeModal();
+        loadTemplates();
+        showToast(isEdit ? '模板已更新' : '模板已创建', 'success');
+      } catch (error) {
+        showToast('保存失败: ' + error.message, 'error');
+      }
+    }
+
+    // Delete template
+    async function deleteTemplate(id) {
+      if (!confirm(`确定要删除模板 "${id}" 吗？此操作不可撤销。`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_ENDPOINT}/api/templates/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'x-admin-key': adminKey
+          }
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Delete failed');
+        }
+
+        loadTemplates();
+        showToast('模板已删除', 'success');
+      } catch (error) {
+        showToast('删除失败: ' + error.message, 'error');
+      }
+    }
+
+    // Close modal on outside click
+    document.getElementById('editModal').addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-overlay')) {
+        closeModal();
+      }
+    });
+
+    // Keyboard shortcut
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+    });
+  </script>
+</body>
+</html>
+

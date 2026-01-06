@@ -6,3 +6,8 @@ compatibility_flags = ["nodejs_compat"]
 # 强制部署到美国地区，避免地区限制问题
 [placement]
 mode = "smart"
+
+# KV 存储绑定
+[[kv_namespaces]]
+binding = "TEMPLATES_KV"
+id = "8e3e6c03ce7c4cee9df74663b8a4cce7"
