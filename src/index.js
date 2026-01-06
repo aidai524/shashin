@@ -840,6 +840,11 @@ async function initTemplates(env) {
 // Gemini API 代理
 // =========================================
 
+// 延迟函数
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 async function handleGeminiProxy(request, env, url) {
     let apiKey = request.headers.get("x-goog-api-key");
     if (!apiKey) {
@@ -871,12 +876,39 @@ async function handleGeminiProxy(request, env, url) {
   const colo = request.cf?.colo || "unknown";
   const country = request.cf?.country || "unknown";
 
+  // 重试配置
+  const MAX_RETRIES = 3;
+  const RETRY_DELAYS = [2000, 4000, 8000]; // 指数退避：2秒、4秒、8秒
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     try {
       let response = await fetch(targetUrl.toString(), {
         method: request.method,
         headers: headers,
         body: body,
       });
+
+      // 检查是否是 overloaded 错误（需要重试）
+      if (response.status === 503 || response.status === 429) {
+        const responseText = await response.text();
+        if (responseText.includes("overloaded") || responseText.includes("RESOURCE_EXHAUSTED")) {
+          if (attempt < MAX_RETRIES) {
+            console.log(`Model overloaded, retry ${attempt + 1}/${MAX_RETRIES} after ${RETRY_DELAYS[attempt]}ms`);
+            await delay(RETRY_DELAYS[attempt]);
+            continue;
+          }
+          // 所有重试都失败了
+          return jsonResponse({
+            error: "Model overloaded",
+            message: "模型当前负载过高，请稍后重试",
+            retried: MAX_RETRIES,
+          }, 503);
+        }
+        return new Response(responseText, {
+          status: response.status,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
 
       if (response.status === 400 || response.status === 403) {
         const responseText = await response.text();
@@ -932,12 +964,19 @@ async function handleGeminiProxy(request, env, url) {
         headers: responseHeaders,
       });
     } catch (error) {
+      // 网络错误也尝试重试
+      if (attempt < MAX_RETRIES) {
+        console.log(`Network error, retry ${attempt + 1}/${MAX_RETRIES} after ${RETRY_DELAYS[attempt]}ms`);
+        await delay(RETRY_DELAYS[attempt]);
+        continue;
+      }
     return jsonResponse({
           error: "Proxy request failed",
           message: error.message,
           datacenter: colo,
           country: country,
     }, 500);
+    }
   }
 }
 
