@@ -164,7 +164,7 @@ function errorResponse(message, status = 400) {
 function isAdmin(request, env) {
   const adminKey = request.headers.get("x-admin-key");
   return adminKey && adminKey === env.ADMIN_KEY;
-}
+    }
 
 // =========================================
 // 密码加密（使用 Web Crypto API）
@@ -859,7 +859,7 @@ async function handleGeminiProxy(request, env, url) {
 
     if (!apiKey) {
     return errorResponse("API key is required", 401);
-  }
+    }
 
     const targetUrl = new URL(url.pathname + url.search, GEMINI_API_BASE);
     targetUrl.searchParams.set("key", apiKey);
@@ -936,7 +936,7 @@ async function handleGeminiProxy(request, env, url) {
               message: `Google API 检测到请求来自不支持的地区。当前数据中心: ${colo} (${country})`,
               suggestion: "请尝试使用 VPN 或等待 Cloudflare 路由到其他数据中心",
             }, 403);
-          }
+            }
             return new Response(retryText, {
               status: response.status,
             headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -1225,7 +1225,7 @@ async function addCharacterPhoto(request, env, user, characterId) {
   } catch (e) {
     console.error('Add photo error:', e);
     return errorResponse('上传照片失败: ' + e.message, 500);
-  }
+    }
 }
 
 // 删除角色的照片
