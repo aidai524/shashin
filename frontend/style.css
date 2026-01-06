@@ -1787,6 +1787,19 @@ section::before {
   padding-bottom: 0;
 }
 
+.settings-logout {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-subtle);
+  border-bottom: none !important;
+}
+
+.settings-logout .btn {
+  width: 100%;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
 .settings-section h3 {
   font-size: 1rem;
   font-weight: 600;
