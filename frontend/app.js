@@ -1243,6 +1243,11 @@ function saveToHistory(template, model, images, refImages) {
       templateName: template.name,
       model: model,
       thumbnails: thumbnails,
+      // 保存原图用于下载
+      originalImages: images.map(img => ({
+        base64: img.base64,
+        mimeType: img.mimeType
+      })),
       imageCount: images.length,
       hasRefImages: refImages && refImages.length > 0,
       createdAt: new Date().toISOString(),
@@ -1250,7 +1255,8 @@ function saveToHistory(template, model, images, refImages) {
 
     history.unshift(record);
 
-    while (history.length > 20) {
+    // 限制历史记录数量以控制存储大小
+    while (history.length > 10) {
       history.pop();
     }
 
@@ -1259,17 +1265,18 @@ function saveToHistory(template, model, images, refImages) {
   });
 }
 
-// 异步压缩图片
+// 异步压缩图片 - 生成高质量缩略图 (720P)
 async function compressImagesAsync(images) {
   const thumbnails = [];
 
   for (const img of images) {
     try {
-      const compressed = await compressImageAsync(img.base64, img.mimeType, 150);
+      // 720P 分辨率缩略图，用于历史记录预览
+      const compressed = await compressImageAsync(img.base64, img.mimeType, 720, 0.85);
       thumbnails.push(compressed);
     } catch (e) {
       thumbnails.push({
-        base64: img.base64.substring(0, 2000),
+        base64: img.base64.substring(0, 5000),
         mimeType: img.mimeType,
       });
     }
@@ -1278,7 +1285,7 @@ async function compressImagesAsync(images) {
   return thumbnails;
 }
 
-function compressImageAsync(base64, mimeType, maxSize) {
+function compressImageAsync(base64, mimeType, maxSize, quality = 0.85) {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
@@ -1288,6 +1295,7 @@ function compressImageAsync(base64, mimeType, maxSize) {
       let width = img.width;
       let height = img.height;
 
+      // 按最长边缩放到 maxSize（720P）
       if (width > height) {
         if (width > maxSize) {
           height = Math.round((height * maxSize) / width);
@@ -1304,7 +1312,8 @@ function compressImageAsync(base64, mimeType, maxSize) {
       canvas.height = height;
       ctx.drawImage(img, 0, 0, width, height);
 
-      const compressedBase64 = canvas.toDataURL("image/jpeg", 0.6).split(",")[1];
+      // 使用较高质量压缩
+      const compressedBase64 = canvas.toDataURL("image/jpeg", quality).split(",")[1];
       resolve({
         base64: compressedBase64,
         mimeType: "image/jpeg",
@@ -1313,7 +1322,7 @@ function compressImageAsync(base64, mimeType, maxSize) {
 
     img.onerror = () => {
       resolve({
-        base64: base64.substring(0, 2000),
+        base64: base64.substring(0, 5000),
         mimeType: mimeType,
       });
     };
@@ -1387,11 +1396,21 @@ function showHistoryDetail(id) {
   const modal = document.getElementById("historyModal");
   const detail = document.getElementById("historyDetail");
 
+  // 优先使用原图，否则使用缩略图
+  const originalImages = record.originalImages || [];
   const thumbnails = record.thumbnails || record.images || [];
-  const imagesHtml = thumbnails
+  const displayImages = originalImages.length > 0 ? originalImages : thumbnails;
+  const hasOriginal = originalImages.length > 0;
+  
+  const imagesHtml = displayImages
     .map((img, i) => `
-    <img src="data:${img.mimeType};base64,${img.base64}" alt="Generated image ${i + 1}" style="cursor: default;" />
-  `)
+      <div class="history-image-item">
+        <img src="data:${img.mimeType};base64,${img.base64}" alt="Generated image ${i + 1}" onclick="previewHistoryImage(${record.id}, ${i})" />
+        <button class="history-download-btn" onclick="downloadHistoryImage(${record.id}, ${i})" title="${t('modal.download')}">
+          <i class="ph ph-download-simple"></i>
+        </button>
+      </div>
+    `)
     .join("");
 
   const templateName = record.templateName?.[currentLang] || record.prompt?.substring(0, 50) || 'Unknown';
@@ -1399,18 +1418,21 @@ function showHistoryDetail(id) {
     ? (currentLang === 'zh' ? '高级' : 'Premium')
     : (currentLang === 'zh' ? '快速' : 'Fast');
 
+  const qualityNote = hasOriginal 
+    ? (currentLang === 'zh' ? '✓ 已保存原图，点击可预览或下载' : '✓ Original images saved, click to preview or download')
+    : (currentLang === 'zh' ? '📷 仅保留720P预览图' : '📷 720P preview only');
+
   detail.innerHTML = `
     <div class="history-detail-prompt">${t('history.template')}: ${templateName}</div>
     <div class="history-detail-meta">
-      <span>${t('history.model')}: ${modelName}</span>
-      <span>${formatTimeDetailed(record.createdAt)}</span>
+      <span><i class="ph ph-star"></i> ${t('history.model')}: ${modelName}</span>
+      <span><i class="ph ph-clock"></i> ${formatTimeDetailed(record.createdAt)}</span>
     </div>
-    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 14px;">
-      ${t('history.note')}
-    </p>
+    <p class="history-quality-note">${qualityNote}</p>
     <div class="history-detail-images">${imagesHtml}</div>
     <div class="history-detail-actions">
-      <button class="btn btn-secondary btn-small" onclick="reuseTemplate('${record.templateId}')">🔄 ${t('history.reuse')}</button>
+      ${hasOriginal ? `<button class="btn btn-primary btn-small" onclick="downloadAllHistoryImages(${record.id})"><i class="ph ph-download-simple"></i> ${currentLang === 'zh' ? '下载全部' : 'Download All'}</button>` : ''}
+      <button class="btn btn-secondary btn-small" onclick="reuseTemplate('${record.templateId}')"><i class="ph ph-arrow-counter-clockwise"></i> ${t('history.reuse')}</button>
       <button class="btn btn-danger btn-small" onclick="deleteHistoryItem(${record.id})"><i class="ph ph-trash"></i> ${t('history.delete')}</button>
     </div>
   `;
@@ -1422,6 +1444,57 @@ function showHistoryDetail(id) {
 function closeHistoryModal() {
   document.getElementById("historyModal").classList.remove("show");
   document.body.style.overflow = '';
+}
+
+// 下载历史图片
+function downloadHistoryImage(recordId, imageIndex) {
+  const history = getHistory();
+  const record = history.find(h => h.id === recordId);
+  if (!record) return;
+  
+  const images = record.originalImages || record.thumbnails || record.images || [];
+  const img = images[imageIndex];
+  if (!img) return;
+  
+  const link = document.createElement('a');
+  link.href = `data:${img.mimeType};base64,${img.base64}`;
+  link.download = `dream-photo-${recordId}-${imageIndex + 1}.png`;
+  link.click();
+  
+  showToast(t('toast.download.started'), 'info');
+}
+
+// 下载全部历史图片
+function downloadAllHistoryImages(recordId) {
+  const history = getHistory();
+  const record = history.find(h => h.id === recordId);
+  if (!record) return;
+  
+  const images = record.originalImages || record.thumbnails || record.images || [];
+  
+  images.forEach((img, index) => {
+    setTimeout(() => {
+      const link = document.createElement('a');
+      link.href = `data:${img.mimeType};base64,${img.base64}`;
+      link.download = `dream-photo-${recordId}-${index + 1}.png`;
+      link.click();
+    }, index * 300); // 延迟下载以避免浏览器阻止
+  });
+  
+  showToast(currentLang === 'zh' ? `正在下载 ${images.length} 张图片...` : `Downloading ${images.length} images...`, 'info');
+}
+
+// 预览历史图片（打开大图弹窗）
+function previewHistoryImage(recordId, imageIndex) {
+  const history = getHistory();
+  const record = history.find(h => h.id === recordId);
+  if (!record) return;
+  
+  const images = record.originalImages || record.thumbnails || record.images || [];
+  const img = images[imageIndex];
+  if (!img) return;
+  
+  openModal(img.base64, img.mimeType);
 }
 
 function reuseTemplate(templateId) {
