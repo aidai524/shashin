@@ -284,14 +284,14 @@ header h1 i {
 
 .theme-switch-btn,
 .lang-switch-btn {
-  width: 40px;
-  height: 40px;
-  background: var(--bg-elevated);
+  width: 36px;
+  height: 36px;
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-  font-weight: 500;
+  border-radius: var(--radius-full);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
   transition: all var(--duration-normal) var(--ease-out);
   display: flex;
@@ -300,14 +300,16 @@ header h1 i {
 }
 
 .theme-switch-btn i {
-  font-size: 1.125rem;
+  font-size: 1rem;
 }
 
 .theme-switch-btn:hover,
 .lang-switch-btn:hover {
-  background: var(--bg-hover);
-  border-color: var(--border-focus);
-  color: var(--text-primary);
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
 }
 
 /* =========================================
@@ -321,34 +323,43 @@ header h1 i {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  background: var(--bg-elevated);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
   color: var(--text-primary);
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
   transition: all var(--duration-normal) var(--ease-out);
-  height: 40px;
+  height: 36px;
 }
 
 .user-btn:hover {
-  background: var(--bg-hover);
+  background: var(--primary);
   border-color: var(--primary);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.user-btn:hover .user-avatar-small {
+  background: white;
+  color: var(--primary);
 }
 
 .user-avatar-small {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   background: var(--gradient-primary);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: 0.7rem;
+  font-weight: 700;
   color: white;
+  transition: all var(--duration-normal) var(--ease-out);
 }
 
 .user-dropdown {
@@ -1668,23 +1679,30 @@ section {
 
 .auth-form input {
   width: 100%;
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-surface);
+  padding: var(--space-4);
+  background: var(--bg-base);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   color: var(--text-primary);
   font-size: 0.95rem;
-  transition: all var(--duration-fast);
+  font-family: var(--font-body);
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.auth-form input:hover {
+  border-color: rgba(139, 92, 246, 0.3);
 }
 
 .auth-form input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+  background: var(--bg-muted);
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1), 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .auth-form input::placeholder {
   color: var(--text-muted);
+  font-weight: 400;
 }
 
 .auth-footer {
@@ -1754,17 +1772,25 @@ section {
 
 .settings-section input {
   width: 100%;
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-surface);
+  padding: var(--space-4);
+  background: var(--bg-base);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   color: var(--text-primary);
   font-size: 0.9rem;
+  font-family: var(--font-body);
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.settings-section input:hover {
+  border-color: rgba(139, 92, 246, 0.3);
 }
 
 .settings-section input:focus {
   outline: none;
   border-color: var(--primary);
+  background: var(--bg-muted);
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1), 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .plan-info {
@@ -1929,7 +1955,49 @@ section {
   font-family: var(--font-display);
   font-size: 1.25rem;
   text-align: center;
+  margin-bottom: var(--space-6);
+}
+
+/* 编辑角色表单样式 */
+.edit-character-content .form-group {
   margin-bottom: var(--space-5);
+}
+
+.edit-character-content .form-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-2);
+  letter-spacing: 0.01em;
+}
+
+.edit-character-content .form-group input[type="text"] {
+  width: 100%;
+  padding: var(--space-4);
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-family: var(--font-body);
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.edit-character-content .form-group input[type="text"]:hover {
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.edit-character-content .form-group input[type="text"]:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: var(--bg-muted);
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1), 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.edit-character-content .form-group input[type="text"]::placeholder {
+  color: var(--text-muted);
+  font-weight: 400;
 }
 
 .character-photos-section {
@@ -2000,19 +2068,26 @@ section {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  background: var(--bg-surface);
-  border: 1px dashed var(--border-default);
-  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-5);
+  background: var(--bg-base);
+  border: 2px dashed var(--border-default);
+  border-radius: var(--radius-lg);
   color: var(--text-secondary);
   cursor: pointer;
   font-size: 0.85rem;
-  transition: all var(--duration-fast);
+  font-weight: 500;
+  transition: all var(--duration-normal) var(--ease-out);
 }
 
 .photo-upload-btn:hover {
   border-color: var(--primary);
+  border-style: solid;
   color: var(--primary);
+  background: rgba(139, 92, 246, 0.05);
+}
+
+.photo-upload-btn i {
+  font-size: 1.125rem;
 }
 
 .photo-limit-text {
@@ -2027,6 +2102,10 @@ section {
   margin-top: var(--space-6);
   padding-top: var(--space-5);
   border-top: 1px solid var(--border-muted);
+}
+
+.form-actions .btn {
+  min-width: 100px;
 }
 
 /* =========================================
