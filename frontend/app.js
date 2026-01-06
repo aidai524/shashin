@@ -903,6 +903,9 @@ function cleanupOldHistory() {
   } catch (e) {
     localStorage.removeItem("gemini_history");
   }
+  
+  // 清理 IndexedDB 中孤立的原图
+  cleanupOrphanedImages();
 }
 
 // 获取配置
@@ -1231,23 +1234,125 @@ function showError(message) {
   container.innerHTML = `<div class="error-message">❌ ${message}</div>`;
 }
 
+// ===== IndexedDB 存储原图 =====
+const DB_NAME = 'DreamPhotoHistory';
+const DB_VERSION = 1;
+const STORE_NAME = 'originalImages';
+
+function openImageDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+    request.onupgradeneeded = (event) => {
+      const db = event.target.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: 'recordId' });
+      }
+    };
+  });
+}
+
+async function saveOriginalImages(recordId, images) {
+  try {
+    const db = await openImageDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    store.put({ recordId, images });
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch (e) {
+    console.warn('Failed to save original images to IndexedDB:', e);
+  }
+}
+
+async function getOriginalImages(recordId) {
+  try {
+    const db = await openImageDB();
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.get(recordId);
+    return new Promise((resolve, reject) => {
+      request.onsuccess = () => {
+        db.close();
+        resolve(request.result?.images || null);
+      };
+      request.onerror = () => {
+        db.close();
+        reject(request.error);
+      };
+    });
+  } catch (e) {
+    console.warn('Failed to get original images from IndexedDB:', e);
+    return null;
+  }
+}
+
+async function deleteOriginalImages(recordId) {
+  try {
+    const db = await openImageDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    store.delete(recordId);
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch (e) {
+    console.warn('Failed to delete original images from IndexedDB:', e);
+  }
+}
+
+async function cleanupOrphanedImages() {
+  try {
+  const history = getHistory();
+    const validIds = new Set(history.map(h => h.id));
+    const db = await openImageDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const request = store.getAllKeys();
+    request.onsuccess = () => {
+      const keys = request.result;
+      keys.forEach(key => {
+        if (!validIds.has(key)) {
+          store.delete(key);
+        }
+      });
+    };
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch (e) {
+    console.warn('Failed to cleanup orphaned images:', e);
+  }
+}
+
 // 历史记录相关
 function saveToHistory(template, model, images, refImages) {
   const history = getHistory();
   lastGeneratedImages = images;
+  const recordId = Date.now();
 
+  // 先保存原图到 IndexedDB
+  saveOriginalImages(recordId, images.map(img => ({
+    base64: img.base64,
+    mimeType: img.mimeType
+  })));
+
+  // 再压缩缩略图保存到 localStorage
   compressImagesAsync(images).then((thumbnails) => {
     const record = {
-      id: Date.now(),
+      id: recordId,
       templateId: template.id,
       templateName: template.name,
       model: model,
       thumbnails: thumbnails,
-      // 保存原图用于下载
-      originalImages: images.map(img => ({
-        base64: img.base64,
-        mimeType: img.mimeType
-      })),
       imageCount: images.length,
       hasRefImages: refImages && refImages.length > 0,
       createdAt: new Date().toISOString(),
@@ -1255,9 +1360,11 @@ function saveToHistory(template, model, images, refImages) {
 
     history.unshift(record);
 
-    // 限制历史记录数量以控制存储大小
-    while (history.length > 10) {
-      history.pop();
+    // 限制历史记录数量
+    while (history.length > 20) {
+      const removed = history.pop();
+      // 同时删除 IndexedDB 中的原图
+      if (removed) deleteOriginalImages(removed.id);
     }
 
     saveHistoryToStorage(history);
@@ -1388,7 +1495,7 @@ function loadHistory() {
     .join("");
 }
 
-function showHistoryDetail(id) {
+async function showHistoryDetail(id) {
   const history = getHistory();
   const record = history.find((h) => h.id === id);
   if (!record) return;
@@ -1396,11 +1503,13 @@ function showHistoryDetail(id) {
   const modal = document.getElementById("historyModal");
   const detail = document.getElementById("historyDetail");
 
-  // 优先使用原图，否则使用缩略图
-  const originalImages = record.originalImages || [];
+  // 先显示缩略图，然后异步加载原图
   const thumbnails = record.thumbnails || record.images || [];
-  const displayImages = originalImages.length > 0 ? originalImages : thumbnails;
-  const hasOriginal = originalImages.length > 0;
+  
+  // 尝试从 IndexedDB 获取原图
+  const originalImages = await getOriginalImages(record.id);
+  const displayImages = originalImages && originalImages.length > 0 ? originalImages : thumbnails;
+  const hasOriginal = originalImages && originalImages.length > 0;
   
   const imagesHtml = displayImages
     .map((img, i) => `
@@ -1420,7 +1529,7 @@ function showHistoryDetail(id) {
 
   const qualityNote = hasOriginal 
     ? (currentLang === 'zh' ? '✓ 已保存原图，点击可预览或下载' : '✓ Original images saved, click to preview or download')
-    : (currentLang === 'zh' ? '📷 仅保留720P预览图' : '📷 720P preview only');
+    : (currentLang === 'zh' ? '📷 720P预览图（可下载）' : '📷 720P preview (downloadable)');
 
   detail.innerHTML = `
     <div class="history-detail-prompt">${t('history.template')}: ${templateName}</div>
@@ -1431,7 +1540,7 @@ function showHistoryDetail(id) {
     <p class="history-quality-note">${qualityNote}</p>
     <div class="history-detail-images">${imagesHtml}</div>
     <div class="history-detail-actions">
-      ${hasOriginal ? `<button class="btn btn-primary btn-small" onclick="downloadAllHistoryImages(${record.id})"><i class="ph ph-download-simple"></i> ${currentLang === 'zh' ? '下载全部' : 'Download All'}</button>` : ''}
+      <button class="btn btn-primary btn-small" onclick="downloadAllHistoryImages(${record.id})"><i class="ph ph-download-simple"></i> ${currentLang === 'zh' ? '下载全部' : 'Download All'}</button>
       <button class="btn btn-secondary btn-small" onclick="reuseTemplate('${record.templateId}')"><i class="ph ph-arrow-counter-clockwise"></i> ${t('history.reuse')}</button>
       <button class="btn btn-danger btn-small" onclick="deleteHistoryItem(${record.id})"><i class="ph ph-trash"></i> ${t('history.delete')}</button>
     </div>
@@ -1447,12 +1556,14 @@ function closeHistoryModal() {
 }
 
 // 下载历史图片
-function downloadHistoryImage(recordId, imageIndex) {
+async function downloadHistoryImage(recordId, imageIndex) {
   const history = getHistory();
   const record = history.find(h => h.id === recordId);
   if (!record) return;
   
-  const images = record.originalImages || record.thumbnails || record.images || [];
+  // 优先使用 IndexedDB 中的原图
+  const originalImages = await getOriginalImages(recordId);
+  const images = originalImages || record.thumbnails || record.images || [];
   const img = images[imageIndex];
   if (!img) return;
   
@@ -1465,12 +1576,14 @@ function downloadHistoryImage(recordId, imageIndex) {
 }
 
 // 下载全部历史图片
-function downloadAllHistoryImages(recordId) {
+async function downloadAllHistoryImages(recordId) {
   const history = getHistory();
   const record = history.find(h => h.id === recordId);
   if (!record) return;
   
-  const images = record.originalImages || record.thumbnails || record.images || [];
+  // 优先使用 IndexedDB 中的原图
+  const originalImages = await getOriginalImages(recordId);
+  const images = originalImages || record.thumbnails || record.images || [];
   
   images.forEach((img, index) => {
     setTimeout(() => {
@@ -1485,12 +1598,14 @@ function downloadAllHistoryImages(recordId) {
 }
 
 // 预览历史图片（打开大图弹窗）
-function previewHistoryImage(recordId, imageIndex) {
+async function previewHistoryImage(recordId, imageIndex) {
   const history = getHistory();
   const record = history.find(h => h.id === recordId);
   if (!record) return;
   
-  const images = record.originalImages || record.thumbnails || record.images || [];
+  // 优先使用 IndexedDB 中的原图
+  const originalImages = await getOriginalImages(recordId);
+  const images = originalImages || record.thumbnails || record.images || [];
   const img = images[imageIndex];
   if (!img) return;
   
@@ -1511,13 +1626,21 @@ function deleteHistoryItem(id) {
 
   const history = getHistory().filter((item) => item.id !== id);
   localStorage.setItem("gemini_history", JSON.stringify(history));
+  // 同时删除 IndexedDB 中的原图
+  deleteOriginalImages(id);
   closeHistoryModal();
   loadHistory();
   showToast(t('toast.record.deleted'), "info");
 }
 
-function clearHistory() {
+async function clearHistory() {
   if (!confirm(t('confirm.clear'))) return;
+
+  // 先获取所有历史记录的 ID，然后删除对应的原图
+  const history = getHistory();
+  for (const record of history) {
+    await deleteOriginalImages(record.id);
+  }
 
   localStorage.removeItem("gemini_history");
   loadHistory();
