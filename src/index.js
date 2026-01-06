@@ -1,5 +1,5 @@
 /**
- * Gemini API Proxy + Template Management API
+ * Gemini API Proxy + Template Management API + User Authentication
  * Cloudflare Workers
  */
 
@@ -10,6 +10,13 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, x-goog-api-key, x-admin-key",
+};
+
+// 用户权限等级
+const USER_PLANS = {
+  FREE: { name: '免费版', maxCharacters: 1, maxPhotosPerCharacter: 3 },
+  PERSONAL: { name: '个人版', maxCharacters: 1, maxPhotosPerCharacter: 5 },
+  FAMILY: { name: '家庭版', maxCharacters: 5, maxPhotosPerCharacter: 10 }
 };
 
 // 默认模板数据（初始化用）
@@ -136,7 +143,10 @@ const defaultTemplates = [
   }
 ];
 
-// 辅助函数：JSON 响应
+// =========================================
+// 辅助函数
+// =========================================
+
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -147,15 +157,456 @@ function jsonResponse(data, status = 200) {
   });
 }
 
-// 辅助函数：错误响应
 function errorResponse(message, status = 400) {
   return jsonResponse({ error: message }, status);
 }
 
-// 验证管理员密钥
 function isAdmin(request, env) {
   const adminKey = request.headers.get("x-admin-key");
   return adminKey && adminKey === env.ADMIN_KEY;
+}
+
+// =========================================
+// 密码加密（使用 Web Crypto API）
+// =========================================
+
+async function hashPassword(password) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function verifyPassword(password, hash) {
+  const passwordHash = await hashPassword(password);
+  return passwordHash === hash;
+}
+
+// =========================================
+// JWT 实现（使用 Web Crypto API）
+// =========================================
+
+function base64UrlEncode(str) {
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function base64UrlDecode(str) {
+  str = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (str.length % 4) str += '=';
+  return atob(str);
+}
+
+async function createJWT(payload, secret, expiresIn = 7 * 24 * 60 * 60) {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const now = Math.floor(Date.now() / 1000);
+  const tokenPayload = {
+    ...payload,
+    iat: now,
+    exp: now + expiresIn
+  };
+
+  const headerB64 = base64UrlEncode(JSON.stringify(header));
+  const payloadB64 = base64UrlEncode(JSON.stringify(tokenPayload));
+  const message = `${headerB64}.${payloadB64}`;
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
+  const signatureB64 = base64UrlEncode(String.fromCharCode(...new Uint8Array(signature)));
+
+  return `${message}.${signatureB64}`;
+}
+
+async function verifyJWT(token, secret) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+
+    const [headerB64, payloadB64, signatureB64] = parts;
+    const message = `${headerB64}.${payloadB64}`;
+
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['verify']
+    );
+
+    const signatureArray = Uint8Array.from(base64UrlDecode(signatureB64), c => c.charCodeAt(0));
+    const isValid = await crypto.subtle.verify('HMAC', key, signatureArray, encoder.encode(message));
+
+    if (!isValid) return null;
+
+    const payload = JSON.parse(base64UrlDecode(payloadB64));
+    
+    // 检查过期时间
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+      return null;
+    }
+
+    return payload;
+  } catch (e) {
+    console.error('JWT verification error:', e);
+    return null;
+  }
+}
+
+// 从请求中获取用户
+async function getUserFromRequest(request, env) {
+  const authHeader = request.headers.get('Authorization');
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+
+  const token = authHeader.substring(7);
+  const payload = await verifyJWT(token, env.JWT_SECRET);
+  
+  if (!payload || !payload.userId) {
+    return null;
+  }
+
+  // 从 KV 获取用户信息
+  const userData = await env.USERS_KV.get(`user:${payload.userId}`);
+  if (!userData) {
+    return null;
+  }
+
+  return JSON.parse(userData);
+}
+
+// =========================================
+// 用户认证 API
+// =========================================
+
+async function handleAuthAPI(request, env, pathname) {
+  const method = request.method;
+
+  // POST /api/auth/register - 注册
+  if (pathname === '/api/auth/register' && method === 'POST') {
+    return await registerUser(request, env);
+  }
+
+  // POST /api/auth/login - 登录
+  if (pathname === '/api/auth/login' && method === 'POST') {
+    return await loginUser(request, env);
+  }
+
+  // GET /api/auth/me - 获取当前用户信息
+  if (pathname === '/api/auth/me' && method === 'GET') {
+    return await getCurrentUser(request, env);
+  }
+
+  // PUT /api/auth/me - 更新用户信息
+  if (pathname === '/api/auth/me' && method === 'PUT') {
+    return await updateCurrentUser(request, env);
+  }
+
+  // POST /api/auth/change-password - 修改密码
+  if (pathname === '/api/auth/change-password' && method === 'POST') {
+    return await changePassword(request, env);
+  }
+
+  return errorResponse('Not found', 404);
+}
+
+// 注册用户
+async function registerUser(request, env) {
+  try {
+    const body = await request.json();
+    const { email, password, nickname } = body;
+
+    // 验证必填字段
+    if (!email || !password) {
+      return errorResponse('邮箱和密码为必填项');
+    }
+
+    // 验证邮箱格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return errorResponse('邮箱格式不正确');
+    }
+
+    // 验证密码长度
+    if (password.length < 6) {
+      return errorResponse('密码长度至少6位');
+    }
+
+    // 检查邮箱是否已注册
+    const existingUser = await env.USERS_KV.get(`email:${email.toLowerCase()}`);
+    if (existingUser) {
+      return errorResponse('该邮箱已被注册');
+    }
+
+    // 生成用户 ID
+    const userId = crypto.randomUUID();
+    const passwordHash = await hashPassword(password);
+
+    // 创建用户数据
+    const user = {
+      id: userId,
+      email: email.toLowerCase(),
+      nickname: nickname || email.split('@')[0],
+      passwordHash,
+      plan: 'FREE',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    // 保存用户数据
+    await env.USERS_KV.put(`user:${userId}`, JSON.stringify(user));
+    await env.USERS_KV.put(`email:${email.toLowerCase()}`, userId);
+
+    // 生成 JWT token
+    const token = await createJWT({ userId: user.id, email: user.email }, env.JWT_SECRET);
+
+    // 返回用户信息（不包含密码）
+    const { passwordHash: _, ...safeUser } = user;
+    return jsonResponse({
+      success: true,
+      message: '注册成功',
+      user: safeUser,
+      token,
+      plan: USER_PLANS[user.plan]
+    }, 201);
+
+  } catch (e) {
+    console.error('Register error:', e);
+    return errorResponse('注册失败: ' + e.message, 500);
+  }
+}
+
+// 用户登录
+async function loginUser(request, env) {
+  try {
+    const body = await request.json();
+    const { email, password } = body;
+
+    if (!email || !password) {
+      return errorResponse('邮箱和密码为必填项');
+    }
+
+    // 查找用户
+    const userId = await env.USERS_KV.get(`email:${email.toLowerCase()}`);
+    if (!userId) {
+      return errorResponse('邮箱或密码错误', 401);
+    }
+
+    const userData = await env.USERS_KV.get(`user:${userId}`);
+    if (!userData) {
+      return errorResponse('用户不存在', 401);
+    }
+
+    const user = JSON.parse(userData);
+
+    // 验证密码
+    const isValid = await verifyPassword(password, user.passwordHash);
+    if (!isValid) {
+      return errorResponse('邮箱或密码错误', 401);
+    }
+
+    // 更新最后登录时间
+    user.lastLoginAt = new Date().toISOString();
+    await env.USERS_KV.put(`user:${userId}`, JSON.stringify(user));
+
+    // 生成 JWT token
+    const token = await createJWT({ userId: user.id, email: user.email }, env.JWT_SECRET);
+
+    // 返回用户信息（不包含密码）
+    const { passwordHash: _, ...safeUser } = user;
+    return jsonResponse({
+      success: true,
+      message: '登录成功',
+      user: safeUser,
+      token,
+      plan: USER_PLANS[user.plan]
+    });
+
+  } catch (e) {
+    console.error('Login error:', e);
+    return errorResponse('登录失败: ' + e.message, 500);
+  }
+}
+
+// 获取当前用户信息
+async function getCurrentUser(request, env) {
+  const user = await getUserFromRequest(request, env);
+  if (!user) {
+    return errorResponse('未登录或登录已过期', 401);
+  }
+
+  const { passwordHash: _, ...safeUser } = user;
+  return jsonResponse({
+    user: safeUser,
+    plan: USER_PLANS[user.plan]
+  });
+}
+
+// 更新用户信息
+async function updateCurrentUser(request, env) {
+  const user = await getUserFromRequest(request, env);
+  if (!user) {
+    return errorResponse('未登录或登录已过期', 401);
+  }
+
+  try {
+    const body = await request.json();
+    const { nickname, avatar } = body;
+
+    // 更新允许修改的字段
+    if (nickname !== undefined) user.nickname = nickname;
+    if (avatar !== undefined) user.avatar = avatar;
+    user.updatedAt = new Date().toISOString();
+
+    await env.USERS_KV.put(`user:${user.id}`, JSON.stringify(user));
+
+    const { passwordHash: _, ...safeUser } = user;
+    return jsonResponse({
+      success: true,
+      message: '更新成功',
+      user: safeUser
+    });
+
+  } catch (e) {
+    console.error('Update user error:', e);
+    return errorResponse('更新失败: ' + e.message, 500);
+  }
+}
+
+// 修改密码
+async function changePassword(request, env) {
+  const user = await getUserFromRequest(request, env);
+  if (!user) {
+    return errorResponse('未登录或登录已过期', 401);
+  }
+
+  try {
+    const body = await request.json();
+    const { oldPassword, newPassword } = body;
+
+    if (!oldPassword || !newPassword) {
+      return errorResponse('请输入旧密码和新密码');
+    }
+
+    if (newPassword.length < 6) {
+      return errorResponse('新密码长度至少6位');
+    }
+
+    // 验证旧密码
+    const isValid = await verifyPassword(oldPassword, user.passwordHash);
+    if (!isValid) {
+      return errorResponse('旧密码不正确', 401);
+    }
+
+    // 更新密码
+    user.passwordHash = await hashPassword(newPassword);
+    user.updatedAt = new Date().toISOString();
+
+    await env.USERS_KV.put(`user:${user.id}`, JSON.stringify(user));
+
+    return jsonResponse({
+      success: true,
+      message: '密码修改成功'
+    });
+
+  } catch (e) {
+    console.error('Change password error:', e);
+    return errorResponse('修改密码失败: ' + e.message, 500);
+  }
+}
+
+// =========================================
+// 用户管理 API（管理员）
+// =========================================
+
+async function handleUsersAdminAPI(request, env, pathname) {
+  if (!isAdmin(request, env)) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  const method = request.method;
+
+  // GET /api/admin/users - 获取所有用户
+  if (pathname === '/api/admin/users' && method === 'GET') {
+    return await listUsers(env);
+  }
+
+  // PUT /api/admin/users/:id/plan - 更新用户权限
+  const planMatch = pathname.match(/^\/api\/admin\/users\/([^\/]+)\/plan$/);
+  if (planMatch && method === 'PUT') {
+    return await updateUserPlan(request, env, planMatch[1]);
+  }
+
+  return errorResponse('Not found', 404);
+}
+
+// 列出所有用户
+async function listUsers(env) {
+  try {
+    const users = [];
+    const list = await env.USERS_KV.list({ prefix: 'user:' });
+    
+    for (const key of list.keys) {
+      const userData = await env.USERS_KV.get(key.name);
+      if (userData) {
+        const user = JSON.parse(userData);
+        const { passwordHash: _, ...safeUser } = user;
+        users.push(safeUser);
+      }
+    }
+
+    return jsonResponse({
+      users,
+      total: users.length
+    });
+  } catch (e) {
+    console.error('List users error:', e);
+    return errorResponse('获取用户列表失败', 500);
+  }
+}
+
+// 更新用户权限
+async function updateUserPlan(request, env, userId) {
+  try {
+    const body = await request.json();
+    const { plan } = body;
+
+    if (!USER_PLANS[plan]) {
+      return errorResponse('无效的权限等级');
+    }
+
+    const userData = await env.USERS_KV.get(`user:${userId}`);
+    if (!userData) {
+      return errorResponse('用户不存在', 404);
+    }
+
+    const user = JSON.parse(userData);
+    user.plan = plan;
+    user.updatedAt = new Date().toISOString();
+
+    await env.USERS_KV.put(`user:${userId}`, JSON.stringify(user));
+
+    const { passwordHash: _, ...safeUser } = user;
+    return jsonResponse({
+      success: true,
+      message: '权限更新成功',
+      user: safeUser,
+      plan: USER_PLANS[plan]
+    });
+
+  } catch (e) {
+    console.error('Update user plan error:', e);
+    return errorResponse('更新权限失败: ' + e.message, 500);
+  }
 }
 
 // =========================================
@@ -218,19 +669,16 @@ async function handleTemplatesAPI(request, env, pathname) {
 // 获取所有模板
 async function getTemplates(env) {
   try {
-    // 尝试从 KV 获取
     if (env.TEMPLATES_KV) {
       const templatesJson = await env.TEMPLATES_KV.get("templates");
       if (templatesJson) {
         const templates = JSON.parse(templatesJson);
-        // 只返回激活的模板，按 order 排序
         const activeTemplates = templates
           .filter(t => t.active !== false)
           .sort((a, b) => (a.order || 0) - (b.order || 0));
         return jsonResponse(activeTemplates);
       }
     }
-    // KV 为空或不可用，返回默认模板
     return jsonResponse(defaultTemplates);
   } catch (e) {
     console.error("Error getting templates:", e);
@@ -251,7 +699,6 @@ async function getTemplate(env, id) {
         }
       }
     }
-    // 从默认模板查找
     const template = defaultTemplates.find(t => t.id === id);
     if (template) {
       return jsonResponse(template);
@@ -279,7 +726,6 @@ async function createTemplate(env, data) {
       }
     }
     
-    // 检查 ID 是否已存在
     if (templates.find(t => t.id === data.id)) {
       return errorResponse("Template ID already exists");
     }
@@ -326,11 +772,10 @@ async function updateTemplate(env, id, data) {
       return errorResponse("Template not found", 404);
     }
     
-    // 更新字段
     const updated = {
       ...templates[index],
       ...data,
-      id: id, // ID 不可更改
+      id: id,
       updatedAt: new Date().toISOString()
     };
     
@@ -396,7 +841,6 @@ async function initTemplates(env) {
 // =========================================
 
 async function handleGeminiProxy(request, env, url) {
-  // 获取 API Key
     let apiKey = request.headers.get("x-goog-api-key");
     if (!apiKey) {
       const authHeader = request.headers.get("Authorization");
@@ -410,18 +854,15 @@ async function handleGeminiProxy(request, env, url) {
 
     if (!apiKey) {
     return errorResponse("API key is required", 401);
-    }
+  }
 
-    // 构建目标 URL
     const targetUrl = new URL(url.pathname + url.search, GEMINI_API_BASE);
     targetUrl.searchParams.set("key", apiKey);
 
-  // 准备请求头
     const headers = new Headers();
   headers.set("Content-Type", request.headers.get("Content-Type") || "application/json");
     headers.set("Accept-Language", "en-US,en;q=0.9");
 
-    // 获取请求体
     let body = null;
     if (request.method !== "GET" && request.method !== "HEAD") {
       body = await request.arrayBuffer();
@@ -437,7 +878,6 @@ async function handleGeminiProxy(request, env, url) {
         body: body,
       });
 
-    // 处理地区限制
       if (response.status === 400 || response.status === 403) {
         const responseText = await response.text();
         if (
@@ -481,7 +921,6 @@ async function handleGeminiProxy(request, env, url) {
         }
       }
 
-    // 返回响应
       const responseHeaders = new Headers(response.headers);
       Object.keys(corsHeaders).forEach((key) => {
         responseHeaders.set(key, corsHeaders[key]);
@@ -503,6 +942,285 @@ async function handleGeminiProxy(request, env, url) {
 }
 
 // =========================================
+// 角色管理 API
+// =========================================
+
+async function handleCharactersAPI(request, env, pathname) {
+  const method = request.method;
+  const user = await getUserFromRequest(request, env);
+  
+  if (!user) {
+    return errorResponse('请先登录', 401);
+  }
+
+  // GET /api/characters - 获取用户的所有角色
+  if (pathname === '/api/characters' && method === 'GET') {
+    return await getUserCharacters(env, user);
+  }
+
+  // GET /api/characters/:id - 获取单个角色详情
+  const getMatch = pathname.match(/^\/api\/characters\/([^\/]+)$/);
+  if (getMatch && method === 'GET') {
+    return await getCharacter(env, user, getMatch[1]);
+  }
+
+  // POST /api/characters - 创建角色
+  if (pathname === '/api/characters' && method === 'POST') {
+    return await createCharacter(request, env, user);
+  }
+
+  // PUT /api/characters/:id - 更新角色
+  const putMatch = pathname.match(/^\/api\/characters\/([^\/]+)$/);
+  if (putMatch && method === 'PUT') {
+    return await updateCharacter(request, env, user, putMatch[1]);
+  }
+
+  // DELETE /api/characters/:id - 删除角色
+  const deleteMatch = pathname.match(/^\/api\/characters\/([^\/]+)$/);
+  if (deleteMatch && method === 'DELETE') {
+    return await deleteCharacter(env, user, deleteMatch[1]);
+  }
+
+  // POST /api/characters/:id/photos - 添加照片
+  const photosMatch = pathname.match(/^\/api\/characters\/([^\/]+)\/photos$/);
+  if (photosMatch && method === 'POST') {
+    return await addCharacterPhoto(request, env, user, photosMatch[1]);
+  }
+
+  // DELETE /api/characters/:id/photos/:photoId - 删除照片
+  const deletePhotoMatch = pathname.match(/^\/api\/characters\/([^\/]+)\/photos\/([^\/]+)$/);
+  if (deletePhotoMatch && method === 'DELETE') {
+    return await deleteCharacterPhoto(env, user, deletePhotoMatch[1], deletePhotoMatch[2]);
+  }
+
+  return errorResponse('Not found', 404);
+}
+
+// 获取用户的所有角色
+async function getUserCharacters(env, user) {
+  try {
+    const charactersJson = await env.CHARACTERS_KV.get(`user:${user.id}:characters`);
+    const characters = charactersJson ? JSON.parse(charactersJson) : [];
+    
+    // 获取用户权限限制
+    const plan = USER_PLANS[user.plan] || USER_PLANS.FREE;
+    
+    return jsonResponse({
+      characters,
+      limits: {
+        maxCharacters: plan.maxCharacters,
+        maxPhotosPerCharacter: plan.maxPhotosPerCharacter,
+        currentCount: characters.length
+      }
+    });
+  } catch (e) {
+    console.error('Get characters error:', e);
+    return errorResponse('获取角色列表失败', 500);
+  }
+}
+
+// 获取单个角色详情
+async function getCharacter(env, user, characterId) {
+  try {
+    const charactersJson = await env.CHARACTERS_KV.get(`user:${user.id}:characters`);
+    const characters = charactersJson ? JSON.parse(charactersJson) : [];
+    
+    const character = characters.find(c => c.id === characterId);
+    if (!character) {
+      return errorResponse('角色不存在', 404);
+    }
+    
+    return jsonResponse(character);
+  } catch (e) {
+    console.error('Get character error:', e);
+    return errorResponse('获取角色失败', 500);
+  }
+}
+
+// 创建角色
+async function createCharacter(request, env, user) {
+  try {
+    const body = await request.json();
+    const { name, description } = body;
+    
+    if (!name) {
+      return errorResponse('角色名称不能为空');
+    }
+    
+    // 获取现有角色
+    const charactersJson = await env.CHARACTERS_KV.get(`user:${user.id}:characters`);
+    const characters = charactersJson ? JSON.parse(charactersJson) : [];
+    
+    // 检查权限限制
+    const plan = USER_PLANS[user.plan] || USER_PLANS.FREE;
+    if (characters.length >= plan.maxCharacters) {
+      return errorResponse(`${plan.name}最多创建 ${plan.maxCharacters} 个角色，请升级套餐`);
+    }
+    
+    // 创建新角色
+    const character = {
+      id: crypto.randomUUID(),
+      name,
+      description: description || '',
+      photos: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    characters.push(character);
+    await env.CHARACTERS_KV.put(`user:${user.id}:characters`, JSON.stringify(characters));
+    
+    return jsonResponse({
+      success: true,
+      message: '角色创建成功',
+      character
+    }, 201);
+  } catch (e) {
+    console.error('Create character error:', e);
+    return errorResponse('创建角色失败: ' + e.message, 500);
+  }
+}
+
+// 更新角色
+async function updateCharacter(request, env, user, characterId) {
+  try {
+    const body = await request.json();
+    const { name, description } = body;
+    
+    const charactersJson = await env.CHARACTERS_KV.get(`user:${user.id}:characters`);
+    const characters = charactersJson ? JSON.parse(charactersJson) : [];
+    
+    const index = characters.findIndex(c => c.id === characterId);
+    if (index === -1) {
+      return errorResponse('角色不存在', 404);
+    }
+    
+    // 更新字段
+    if (name !== undefined) characters[index].name = name;
+    if (description !== undefined) characters[index].description = description;
+    characters[index].updatedAt = new Date().toISOString();
+    
+    await env.CHARACTERS_KV.put(`user:${user.id}:characters`, JSON.stringify(characters));
+    
+    return jsonResponse({
+      success: true,
+      message: '角色更新成功',
+      character: characters[index]
+    });
+  } catch (e) {
+    console.error('Update character error:', e);
+    return errorResponse('更新角色失败: ' + e.message, 500);
+  }
+}
+
+// 删除角色
+async function deleteCharacter(env, user, characterId) {
+  try {
+    const charactersJson = await env.CHARACTERS_KV.get(`user:${user.id}:characters`);
+    const characters = charactersJson ? JSON.parse(charactersJson) : [];
+    
+    const index = characters.findIndex(c => c.id === characterId);
+    if (index === -1) {
+      return errorResponse('角色不存在', 404);
+    }
+    
+    characters.splice(index, 1);
+    await env.CHARACTERS_KV.put(`user:${user.id}:characters`, JSON.stringify(characters));
+    
+    return jsonResponse({
+      success: true,
+      message: '角色已删除'
+    });
+  } catch (e) {
+    console.error('Delete character error:', e);
+    return errorResponse('删除角色失败: ' + e.message, 500);
+  }
+}
+
+// 添加照片到角色
+async function addCharacterPhoto(request, env, user, characterId) {
+  try {
+    const body = await request.json();
+    const { photoData, mimeType, description } = body;
+    
+    if (!photoData) {
+      return errorResponse('照片数据不能为空');
+    }
+    
+    const charactersJson = await env.CHARACTERS_KV.get(`user:${user.id}:characters`);
+    const characters = charactersJson ? JSON.parse(charactersJson) : [];
+    
+    const index = characters.findIndex(c => c.id === characterId);
+    if (index === -1) {
+      return errorResponse('角色不存在', 404);
+    }
+    
+    // 检查照片数量限制
+    const plan = USER_PLANS[user.plan] || USER_PLANS.FREE;
+    if (characters[index].photos.length >= plan.maxPhotosPerCharacter) {
+      return errorResponse(`${plan.name}每个角色最多上传 ${plan.maxPhotosPerCharacter} 张照片`);
+    }
+    
+    // 添加照片
+    const photo = {
+      id: crypto.randomUUID(),
+      data: photoData, // Base64 数据
+      mimeType: mimeType || 'image/jpeg',
+      description: description || '',
+      createdAt: new Date().toISOString()
+    };
+    
+    characters[index].photos.push(photo);
+    characters[index].updatedAt = new Date().toISOString();
+    
+    await env.CHARACTERS_KV.put(`user:${user.id}:characters`, JSON.stringify(characters));
+    
+    // 返回时不包含完整的 base64 数据
+    const photoResponse = { ...photo, data: undefined, hasData: true };
+    
+    return jsonResponse({
+      success: true,
+      message: '照片上传成功',
+      photo: photoResponse
+    }, 201);
+  } catch (e) {
+    console.error('Add photo error:', e);
+    return errorResponse('上传照片失败: ' + e.message, 500);
+  }
+}
+
+// 删除角色的照片
+async function deleteCharacterPhoto(env, user, characterId, photoId) {
+  try {
+    const charactersJson = await env.CHARACTERS_KV.get(`user:${user.id}:characters`);
+    const characters = charactersJson ? JSON.parse(charactersJson) : [];
+    
+    const charIndex = characters.findIndex(c => c.id === characterId);
+    if (charIndex === -1) {
+      return errorResponse('角色不存在', 404);
+    }
+    
+    const photoIndex = characters[charIndex].photos.findIndex(p => p.id === photoId);
+    if (photoIndex === -1) {
+      return errorResponse('照片不存在', 404);
+    }
+    
+    characters[charIndex].photos.splice(photoIndex, 1);
+    characters[charIndex].updatedAt = new Date().toISOString();
+    
+    await env.CHARACTERS_KV.put(`user:${user.id}:characters`, JSON.stringify(characters));
+    
+    return jsonResponse({
+      success: true,
+      message: '照片已删除'
+    });
+  } catch (e) {
+    console.error('Delete photo error:', e);
+    return errorResponse('删除照片失败: ' + e.message, 500);
+  }
+}
+
+// =========================================
 // 主入口
 // =========================================
 
@@ -520,12 +1238,30 @@ export default {
     if (pathname === "/" || pathname === "/health") {
       return jsonResponse({
         status: "ok",
-        message: "Gemini API Proxy + Template API",
+        message: "Gemini API Proxy + Template API + User Auth + Characters",
         endpoints: {
           templates: "/api/templates",
+          auth: "/api/auth/*",
+          characters: "/api/characters/*",
+          admin: "/api/admin/*",
           gemini: "/v1beta/models/{model}:generateContent",
         },
       });
+    }
+
+    // 用户认证 API
+    if (pathname.startsWith("/api/auth/")) {
+      return await handleAuthAPI(request, env, pathname);
+    }
+
+    // 角色管理 API
+    if (pathname.startsWith("/api/characters")) {
+      return await handleCharactersAPI(request, env, pathname);
+    }
+
+    // 用户管理 API（管理员）
+    if (pathname.startsWith("/api/admin/users")) {
+      return await handleUsersAdminAPI(request, env, pathname);
     }
 
     // 模板 API

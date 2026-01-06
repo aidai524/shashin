@@ -11,3 +11,11 @@ mode = "smart"
 [[kv_namespaces]]
 binding = "TEMPLATES_KV"
 id = "8e3e6c03ce7c4cee9df74663b8a4cce7"
+
+[[kv_namespaces]]
+binding = "USERS_KV"
+id = "631bb0f9c32e4202ba7fe0f2bb17cb5a"
+
+[[kv_namespaces]]
+binding = "CHARACTERS_KV"
+id = "ab353bdfd25145fdaa8e2fb375182da9"

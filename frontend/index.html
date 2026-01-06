@@ -19,6 +19,33 @@
                 <div class="header-controls">
                     <button class="theme-switch-btn" id="themeSwitchBtn" onclick="toggleTheme()" aria-label="Toggle theme">🌙 Dark</button>
                     <button class="lang-switch-btn" id="langSwitchBtn" onclick="switchLanguage()" aria-label="Switch language">EN</button>
+                    <!-- 用户账号 -->
+                    <div class="user-menu" id="userMenu">
+                        <button class="user-btn" id="loginBtn" onclick="showAuthModal('login')">
+                            <span class="user-icon">👤</span>
+                            <span data-i18n="auth.login">登录</span>
+                        </button>
+                        <div class="user-dropdown" id="userDropdown" style="display: none;">
+                            <div class="user-info">
+                                <span class="user-avatar" id="userAvatar">👤</span>
+                                <div class="user-details">
+                                    <span class="user-name" id="userName"></span>
+                                    <span class="user-plan" id="userPlanBadge"></span>
+                                </div>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <a href="#" onclick="showCharactersModal(); return false;" class="dropdown-item">
+                                <span>🎭</span> <span data-i18n="user.characters">我的角色</span>
+                            </a>
+                            <a href="#" onclick="showSettingsModal(); return false;" class="dropdown-item">
+                                <span>⚙️</span> <span data-i18n="user.settings">账号设置</span>
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="#" onclick="logout(); return false;" class="dropdown-item text-danger">
+                                <span>🚪</span> <span data-i18n="auth.logout">退出登录</span>
+                            </a>
+                        </div>
+                    </div>
                 </div>
                 <h1>✨ <span data-i18n="site.title">梦想写真馆</span></h1>
                 <p class="subtitle" data-i18n="site.subtitle">由 Google Gemini AI 驱动 · 创造精美图像</p>
@@ -60,36 +87,42 @@
                     </div>
                 </section>
 
-                <!-- 步骤 2: 上传照片 -->
+                <!-- 步骤 2: 选择角色 -->
                 <section class="generate-section">
                     <div class="section-header">
-                        <h2><span class="step-number">2</span> <span data-i18n="reference.title">上传你的照片</span></h2>
-                        <p class="section-desc" data-i18n="reference.desc">上传清晰的人物照片，AI 将保留你的面部特征</p>
+                        <h2><span class="step-number">2</span> <span data-i18n="characters.select.title">选择角色</span></h2>
+                        <p class="section-desc" data-i18n="characters.select.desc">选择一个已创建的角色，AI 将使用其照片进行锁脸生成</p>
                     </div>
                     
-                    <div class="form-group">
-                        <div class="reference-upload-area" id="referenceUploadArea">
-                            <input
-                                type="file"
-                                id="referenceImages"
-                                multiple
-                                accept="image/*"
-                                onchange="handleReferenceImages(event)"
-                                class="file-input-hidden"
-                            />
-                            <label
-                                for="referenceImages"
-                                class="upload-placeholder"
-                                id="uploadPlaceholder"
-                                role="button"
-                                tabindex="0"
-                            >
-                                <span class="upload-icon">📸</span>
-                                <span data-i18n="reference.upload">点击上传参考图片（最多5张）</span>
-                                <span class="upload-hint" data-i18n="reference.upload.hint">建议上传不同角度的清晰照片</span>
-                            </label>
-                            <div class="reference-preview" id="referencePreview"></div>
+                    <!-- 未登录提示 -->
+                    <div class="login-required-notice" id="loginRequiredNotice">
+                        <div class="notice-icon">🔐</div>
+                        <p data-i18n="characters.login.required">请先登录后创建角色</p>
+                        <button class="btn btn-primary" onclick="showAuthModal('login')">
+                            <span data-i18n="auth.login">登录</span>
+                        </button>
+                    </div>
+                    
+                    <!-- 角色选择器（已登录用户可见） -->
+                    <div class="form-group character-select-group" id="characterSelectGroup" style="display: none;">
+                        <div class="character-selector" id="characterSelector">
+                            <!-- 由 JS 动态生成 -->
                         </div>
+                        <p class="form-hint">
+                            <a href="#" onclick="showCharactersModal(); return false;" style="color: var(--accent-primary);">
+                                🎭 <span data-i18n="user.characters">管理我的角色</span>
+                            </a>
+                        </p>
+                    </div>
+                    
+                    <!-- 无角色提示 -->
+                    <div class="no-characters-notice" id="noCharactersNotice" style="display: none;">
+                        <div class="notice-icon">🎭</div>
+                        <p data-i18n="characters.empty.notice">你还没有创建角色</p>
+                        <p class="notice-hint" data-i18n="characters.empty.notice.hint">创建角色并上传照片后，即可使用锁脸功能生成图片</p>
+                        <button class="btn btn-primary" onclick="showAddCharacterForm()">
+                            ➕ <span data-i18n="characters.add">添加角色</span>
+                        </button>
                     </div>
                 </section>
 
@@ -297,6 +330,197 @@
                 <div class="history-detail" id="historyDetail"></div>
             </div>
         </div>
+
+        <!-- 登录/注册弹窗 -->
+        <div class="modal" id="authModal" onclick="closeAuthModal()" role="dialog" aria-modal="true">
+            <div class="modal-content modal-auth" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeAuthModal()" aria-label="Close">&times;</span>
+                
+                <!-- 登录表单 -->
+                <div class="auth-form" id="loginForm">
+                    <div class="auth-header">
+                        <h2>👋 <span data-i18n="auth.login.title">欢迎回来</span></h2>
+                        <p data-i18n="auth.login.subtitle">登录你的账号继续创作</p>
+                    </div>
+                    <form onsubmit="handleLogin(event)">
+                        <div class="form-group">
+                            <label for="loginEmail" data-i18n="auth.email">邮箱</label>
+                            <input type="email" id="loginEmail" required placeholder="your@email.com" />
+                        </div>
+                        <div class="form-group">
+                            <label for="loginPassword" data-i18n="auth.password">密码</label>
+                            <input type="password" id="loginPassword" required placeholder="••••••••" minlength="6" />
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full" id="loginSubmitBtn">
+                            <span data-i18n="auth.login.submit">登录</span>
+                        </button>
+                    </form>
+                    <div class="auth-footer">
+                        <p><span data-i18n="auth.no.account">还没有账号？</span> 
+                            <a href="#" onclick="switchAuthForm('register'); return false;" data-i18n="auth.register.now">立即注册</a>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 注册表单 -->
+                <div class="auth-form" id="registerForm" style="display: none;">
+                    <div class="auth-header">
+                        <h2>🎉 <span data-i18n="auth.register.title">创建账号</span></h2>
+                        <p data-i18n="auth.register.subtitle">加入梦想写真馆，开启 AI 创作之旅</p>
+                    </div>
+                    <form onsubmit="handleRegister(event)">
+                        <div class="form-group">
+                            <label for="registerEmail" data-i18n="auth.email">邮箱</label>
+                            <input type="email" id="registerEmail" required placeholder="your@email.com" />
+                        </div>
+                        <div class="form-group">
+                            <label for="registerNickname" data-i18n="auth.nickname">昵称</label>
+                            <input type="text" id="registerNickname" placeholder="你的昵称" />
+                        </div>
+                        <div class="form-group">
+                            <label for="registerPassword" data-i18n="auth.password">密码</label>
+                            <input type="password" id="registerPassword" required placeholder="至少6位" minlength="6" />
+                        </div>
+                        <div class="form-group">
+                            <label for="registerPasswordConfirm" data-i18n="auth.password.confirm">确认密码</label>
+                            <input type="password" id="registerPasswordConfirm" required placeholder="再次输入密码" minlength="6" />
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full" id="registerSubmitBtn">
+                            <span data-i18n="auth.register.submit">注册</span>
+                        </button>
+                    </form>
+                    <div class="auth-footer">
+                        <p><span data-i18n="auth.have.account">已有账号？</span> 
+                            <a href="#" onclick="switchAuthForm('login'); return false;" data-i18n="auth.login.now">立即登录</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 账号设置弹窗 -->
+        <div class="modal" id="settingsModal" onclick="closeSettingsModal()" role="dialog" aria-modal="true">
+            <div class="modal-content modal-settings" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeSettingsModal()" aria-label="Close">&times;</span>
+                <div class="settings-content">
+                    <h2>⚙️ <span data-i18n="settings.account.title">账号设置</span></h2>
+                    
+                    <div class="settings-section">
+                        <h3 data-i18n="settings.profile">个人信息</h3>
+                        <form id="profileForm" onsubmit="handleUpdateProfile(event)">
+                            <div class="form-group">
+                                <label for="settingsNickname" data-i18n="auth.nickname">昵称</label>
+                                <input type="text" id="settingsNickname" />
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-small">
+                                <span data-i18n="settings.save">保存</span>
+                            </button>
+                        </form>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3 data-i18n="settings.plan">当前套餐</h3>
+                        <div class="plan-info" id="settingsPlanInfo">
+                            <div class="plan-badge" id="settingsPlanBadge">免费版</div>
+                            <p class="plan-limits" id="settingsPlanLimits"></p>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3 data-i18n="settings.password">修改密码</h3>
+                        <form id="passwordForm" onsubmit="handleChangePassword(event)">
+                            <div class="form-group">
+                                <label for="oldPassword" data-i18n="settings.old.password">旧密码</label>
+                                <input type="password" id="oldPassword" required minlength="6" />
+                            </div>
+                            <div class="form-group">
+                                <label for="newPassword" data-i18n="settings.new.password">新密码</label>
+                                <input type="password" id="newPassword" required minlength="6" />
+                            </div>
+                            <button type="submit" class="btn btn-secondary btn-small">
+                                <span data-i18n="settings.change.password">修改密码</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 角色管理弹窗 -->
+        <div class="modal" id="charactersModal" onclick="closeCharactersModal()" role="dialog" aria-modal="true">
+            <div class="modal-content modal-characters" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeCharactersModal()" aria-label="Close">&times;</span>
+                <div class="characters-content">
+                    <div class="characters-header">
+                        <h2>🎭 <span data-i18n="characters.title">我的角色</span></h2>
+                        <p class="characters-limit" id="charactersLimit"></p>
+                    </div>
+                    
+                    <!-- 角色列表 -->
+                    <div class="characters-grid" id="charactersGrid">
+                        <!-- 由 JS 动态生成 -->
+                    </div>
+                    
+                    <!-- 添加角色按钮 -->
+                    <button class="btn btn-primary btn-add-character" id="addCharacterBtn" onclick="showAddCharacterForm()">
+                        ➕ <span data-i18n="characters.add">添加角色</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 编辑角色弹窗 -->
+        <div class="modal" id="editCharacterModal" onclick="closeEditCharacterModal()" role="dialog" aria-modal="true">
+            <div class="modal-content modal-edit-character" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeEditCharacterModal()" aria-label="Close">&times;</span>
+                <div class="edit-character-content">
+                    <h2 id="editCharacterTitle">✏️ <span data-i18n="characters.edit">编辑角色</span></h2>
+                    
+                    <form id="characterForm" onsubmit="handleSaveCharacter(event)">
+                        <input type="hidden" id="characterId" />
+                        <div class="form-group">
+                            <label for="characterName" data-i18n="characters.name">角色名称</label>
+                            <input type="text" id="characterName" required placeholder="例如：我自己、女儿、爸爸..." />
+                        </div>
+                        <div class="form-group">
+                            <label for="characterDesc" data-i18n="characters.description">描述（可选）</label>
+                            <input type="text" id="characterDesc" placeholder="简单描述这个角色" />
+                        </div>
+                        
+                        <!-- 照片管理 -->
+                        <div class="character-photos-section" id="characterPhotosSection" style="display: none;">
+                            <label data-i18n="characters.photos">参考照片</label>
+                            <p class="form-hint" data-i18n="characters.photos.hint">上传不同角度的清晰照片，帮助 AI 更好地锁定面部特征</p>
+                            
+                            <div class="character-photos-grid" id="characterPhotosGrid">
+                                <!-- 由 JS 动态生成 -->
+                            </div>
+                            
+                            <div class="photo-upload-area" id="photoUploadArea">
+                                <input type="file" id="photoUploadInput" accept="image/*" onchange="handlePhotoUpload(event)" class="file-input-hidden" />
+                                <label for="photoUploadInput" class="photo-upload-btn">
+                                    <span>📷</span>
+                                    <span data-i18n="characters.upload.photo">上传照片</span>
+                                </label>
+                                <span class="photo-limit-text" id="photoLimitText"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeEditCharacterModal()">
+                                <span data-i18n="common.cancel">取消</span>
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="saveCharacterBtn">
+                                <span data-i18n="common.save">保存</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast 通知 -->
+        <div class="toast-container" id="toastContainer"></div>
 
         <script src="app.js"></script>
     </body>

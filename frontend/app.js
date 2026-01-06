@@ -103,6 +103,83 @@ const i18n = {
     
     // Language
     'lang.switch': '中文',
+    
+    // Auth
+    'auth.login': 'Login',
+    'auth.logout': 'Logout',
+    'auth.login.title': 'Welcome Back',
+    'auth.login.subtitle': 'Sign in to continue creating',
+    'auth.login.submit': 'Sign In',
+    'auth.register.title': 'Create Account',
+    'auth.register.subtitle': 'Join Dream Photo Studio and start your AI journey',
+    'auth.register.submit': 'Sign Up',
+    'auth.email': 'Email',
+    'auth.password': 'Password',
+    'auth.password.confirm': 'Confirm Password',
+    'auth.nickname': 'Nickname',
+    'auth.no.account': "Don't have an account?",
+    'auth.have.account': 'Already have an account?',
+    'auth.register.now': 'Sign up now',
+    'auth.login.now': 'Sign in now',
+    'auth.login.success': 'Welcome back, {name}!',
+    'auth.register.success': 'Registration successful! Welcome, {name}!',
+    'auth.logout.success': 'Logged out successfully',
+    'auth.password.mismatch': 'Passwords do not match',
+    
+    // User menu
+    'user.characters': 'My Characters',
+    'user.settings': 'Settings',
+    
+    // Settings
+    'settings.account.title': 'Account Settings',
+    'settings.profile': 'Profile',
+    'settings.plan': 'Current Plan',
+    'settings.password': 'Change Password',
+    'settings.save': 'Save',
+    'settings.old.password': 'Current Password',
+    'settings.new.password': 'New Password',
+    'settings.change.password': 'Change Password',
+    'settings.update.success': 'Profile updated',
+    'settings.password.success': 'Password changed',
+    
+    // Plans
+    'plan.free': 'Free',
+    'plan.personal': 'Personal',
+    'plan.family': 'Family',
+    'plan.limits': '{characters} character(s), {photos} photos each',
+    
+    // Characters
+    'characters.title': 'My Characters',
+    'characters.add': 'Add Character',
+    'characters.edit': 'Edit Character',
+    'characters.name': 'Character Name',
+    'characters.description': 'Description (optional)',
+    'characters.photos': 'Reference Photos',
+    'characters.photos.hint': 'Upload clear photos from different angles to help AI better lock facial features',
+    'characters.upload.photo': 'Upload Photo',
+    'characters.empty': 'No characters yet',
+    'characters.empty.hint': 'Create a character and upload photos to use face-lock feature',
+    'characters.limit': '{current}/{max} characters',
+    'characters.photo.limit': '{current}/{max} photos',
+    'characters.created': 'Character created',
+    'characters.updated': 'Character updated',
+    'characters.deleted': 'Character deleted',
+    'characters.photo.uploaded': 'Photo uploaded',
+    'characters.photo.deleted': 'Photo deleted',
+    'characters.select': 'Select Character',
+    'characters.select.title': 'Select Character',
+    'characters.select.desc': 'Select a character with photos for AI face-lock generation',
+    'characters.login.required': 'Please login to create characters',
+    'characters.empty.notice': 'You have no characters yet',
+    'characters.empty.notice.hint': 'Create a character and upload photos to use face-lock feature',
+    'characters.required': 'Please select a character with photos',
+    'characters.no.photos': 'Selected character has no photos, please upload photos first',
+    
+    // Common
+    'common.cancel': 'Cancel',
+    'common.save': 'Save',
+    'common.delete': 'Delete',
+    'common.edit': 'Edit',
   },
   zh: {
     // Header
@@ -195,6 +272,83 @@ const i18n = {
     
     // Language
     'lang.switch': 'EN',
+    
+    // Auth
+    'auth.login': '登录',
+    'auth.logout': '退出登录',
+    'auth.login.title': '欢迎回来',
+    'auth.login.subtitle': '登录你的账号继续创作',
+    'auth.login.submit': '登录',
+    'auth.register.title': '创建账号',
+    'auth.register.subtitle': '加入梦想写真馆，开启 AI 创作之旅',
+    'auth.register.submit': '注册',
+    'auth.email': '邮箱',
+    'auth.password': '密码',
+    'auth.password.confirm': '确认密码',
+    'auth.nickname': '昵称',
+    'auth.no.account': '还没有账号？',
+    'auth.have.account': '已有账号？',
+    'auth.register.now': '立即注册',
+    'auth.login.now': '立即登录',
+    'auth.login.success': '欢迎回来，{name}！',
+    'auth.register.success': '注册成功！欢迎，{name}！',
+    'auth.logout.success': '已退出登录',
+    'auth.password.mismatch': '两次输入的密码不一致',
+    
+    // User menu
+    'user.characters': '我的角色',
+    'user.settings': '账号设置',
+    
+    // Settings
+    'settings.account.title': '账号设置',
+    'settings.profile': '个人信息',
+    'settings.plan': '当前套餐',
+    'settings.password': '修改密码',
+    'settings.save': '保存',
+    'settings.old.password': '旧密码',
+    'settings.new.password': '新密码',
+    'settings.change.password': '修改密码',
+    'settings.update.success': '资料已更新',
+    'settings.password.success': '密码已修改',
+    
+    // Plans
+    'plan.free': '免费版',
+    'plan.personal': '个人版',
+    'plan.family': '家庭版',
+    'plan.limits': '{characters} 个角色，每角色 {photos} 张照片',
+    
+    // Characters
+    'characters.title': '我的角色',
+    'characters.add': '添加角色',
+    'characters.edit': '编辑角色',
+    'characters.name': '角色名称',
+    'characters.description': '描述（可选）',
+    'characters.photos': '参考照片',
+    'characters.photos.hint': '上传不同角度的清晰照片，帮助 AI 更好地锁定面部特征',
+    'characters.upload.photo': '上传照片',
+    'characters.empty': '还没有角色',
+    'characters.empty.hint': '创建角色并上传照片，即可使用锁脸功能',
+    'characters.limit': '已创建 {current}/{max} 个角色',
+    'characters.photo.limit': '{current}/{max} 张照片',
+    'characters.created': '角色创建成功',
+    'characters.updated': '角色更新成功',
+    'characters.deleted': '角色已删除',
+    'characters.photo.uploaded': '照片上传成功',
+    'characters.photo.deleted': '照片已删除',
+    'characters.select': '选择角色',
+    'characters.select.title': '选择角色',
+    'characters.select.desc': '选择一个已创建的角色，AI 将使用其照片进行锁脸生成',
+    'characters.login.required': '请先登录后创建角色',
+    'characters.empty.notice': '你还没有创建角色',
+    'characters.empty.notice.hint': '创建角色并上传照片后，即可使用锁脸功能生成图片',
+    'characters.required': '请先选择一个角色',
+    'characters.no.photos': '所选角色没有照片，请先上传照片',
+    
+    // Common
+    'common.cancel': '取消',
+    'common.save': '保存',
+    'common.delete': '删除',
+    'common.edit': '编辑',
   }
 };
 
@@ -683,9 +837,9 @@ function updateResolutionOptions() {
       btn.classList.remove('disabled');
     });
     if (resolutionHint) {
-      resolutionHint.textContent = t('resolution.hint.supported');
-      resolutionHint.classList.add('success');
-      resolutionHint.classList.remove('warning');
+    resolutionHint.textContent = t('resolution.hint.supported');
+    resolutionHint.classList.add('success');
+    resolutionHint.classList.remove('warning');
     }
   } else {
     if (resolutionGroup) resolutionGroup.style.display = 'none';
@@ -715,6 +869,28 @@ async function generateImage() {
     return;
   }
 
+  // 验证角色选择
+  if (!currentUser) {
+    showToast(t('characters.login.required'), "warning");
+    showAuthModal('login');
+    return;
+  }
+
+  if (!selectedCharacter) {
+    showToast(t('characters.required'), "warning");
+    document.getElementById('characterSelectGroup')?.scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+
+  if (!selectedCharacter.photos?.length) {
+    showToast(t('characters.no.photos'), "warning");
+    editCharacter(selectedCharacter.id);
+    return;
+  }
+
+  // 获取参考图片（角色照片）
+  const genReferenceImages = getGenerationReferenceImages();
+
   const btn = document.getElementById("generateBtn");
   const btnText = btn.querySelector(".btn-text");
   const btnLoading = btn.querySelector(".btn-loading");
@@ -730,14 +906,14 @@ async function generateImage() {
       selectedTemplate.prompt,
       selectedModel,
       selectedQuantity,
-      referenceImages,
+      genReferenceImages,
       selectedAspectRatio,
       selectedResolution,
     );
 
     if (images.length > 0) {
       displayResults(images);
-      saveToHistory(selectedTemplate, selectedModel, images, referenceImages);
+      saveToHistory(selectedTemplate, selectedModel, images, genReferenceImages);
       showToast(t('toast.generate.success', { count: images.length }), "info");
     }
   } catch (error) {
@@ -1197,8 +1373,791 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") {
     closeModal();
     closeHistoryModal();
+    closeAuthModal();
+    closeSettingsModal();
+    closeCharactersModal();
+    closeEditCharacterModal();
   }
   if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
-    generateImage();
+      generateImage();
+    }
+});
+
+// =========================================
+// 用户认证系统
+// =========================================
+
+// 当前用户状态
+let currentUser = null;
+let authToken = localStorage.getItem('auth_token');
+
+// 初始化用户状态
+async function initAuth() {
+  if (authToken) {
+    try {
+      const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        currentUser = data.user;
+        currentUser.planInfo = data.plan;
+        updateUserUI();
+        // 渲染角色选择器
+        renderCharacterSelector();
+      } else {
+        // Token 无效，清除
+        localStorage.removeItem('auth_token');
+        authToken = null;
+      }
+    } catch (e) {
+      console.error('Auth check failed:', e);
+    }
+  }
+  updateUserUI();
+  renderCharacterSelector();
+}
+
+// 更新用户界面
+function updateUserUI() {
+  const loginBtn = document.getElementById('loginBtn');
+  const userDropdown = document.getElementById('userDropdown');
+  const userName = document.getElementById('userName');
+  const userPlanBadge = document.getElementById('userPlanBadge');
+  
+  if (currentUser) {
+    loginBtn.innerHTML = `<span class="user-avatar-small">${currentUser.nickname?.charAt(0) || '👤'}</span>`;
+    loginBtn.onclick = toggleUserDropdown;
+    userName.textContent = currentUser.nickname || currentUser.email;
+    userPlanBadge.textContent = currentUser.planInfo?.name || t('plan.free');
+  } else {
+    loginBtn.innerHTML = `<span class="user-icon">👤</span><span data-i18n="auth.login">${t('auth.login')}</span>`;
+    loginBtn.onclick = () => showAuthModal('login');
+    userDropdown.style.display = 'none';
+  }
+}
+
+// 切换用户下拉菜单
+function toggleUserDropdown(e) {
+  e.stopPropagation();
+  const dropdown = document.getElementById('userDropdown');
+  dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+}
+
+// 点击外部关闭下拉菜单
+document.addEventListener('click', (e) => {
+  const dropdown = document.getElementById('userDropdown');
+  const userMenu = document.getElementById('userMenu');
+  if (dropdown && !userMenu.contains(e.target)) {
+    dropdown.style.display = 'none';
   }
 });
+
+// 显示认证弹窗
+function showAuthModal(type = 'login') {
+  const modal = document.getElementById('authModal');
+  modal.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  switchAuthForm(type);
+}
+
+// 关闭认证弹窗
+function closeAuthModal() {
+  const modal = document.getElementById('authModal');
+  modal.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+// 切换登录/注册表单
+function switchAuthForm(type) {
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  
+  if (type === 'login') {
+    loginForm.style.display = 'block';
+    registerForm.style.display = 'none';
+  } else {
+    loginForm.style.display = 'none';
+    registerForm.style.display = 'block';
+  }
+}
+
+// 处理登录
+async function handleLogin(e) {
+  e.preventDefault();
+  
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+  const submitBtn = document.getElementById('loginSubmitBtn');
+  
+  submitBtn.disabled = true;
+  submitBtn.textContent = '登录中...';
+  
+  try {
+    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      currentUser = data.user;
+      currentUser.planInfo = data.plan;
+      authToken = data.token;
+      localStorage.setItem('auth_token', authToken);
+      
+      closeAuthModal();
+      updateUserUI();
+      renderCharacterSelector();
+      showToast(t('auth.login.success').replace('{name}', currentUser.nickname), 'success');
+    } else {
+      showToast(data.error || '登录失败', 'error');
+    }
+  } catch (e) {
+    showToast('网络错误，请重试', 'error');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = t('auth.login.submit');
+  }
+}
+
+// 处理注册
+async function handleRegister(e) {
+  e.preventDefault();
+  
+  const email = document.getElementById('registerEmail').value;
+  const nickname = document.getElementById('registerNickname').value;
+  const password = document.getElementById('registerPassword').value;
+  const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+  const submitBtn = document.getElementById('registerSubmitBtn');
+  
+  if (password !== passwordConfirm) {
+    showToast(t('auth.password.mismatch'), 'error');
+    return;
+  }
+  
+  submitBtn.disabled = true;
+  submitBtn.textContent = '注册中...';
+  
+  try {
+    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, nickname })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      currentUser = data.user;
+      currentUser.planInfo = data.plan;
+      authToken = data.token;
+      localStorage.setItem('auth_token', authToken);
+      
+      closeAuthModal();
+      updateUserUI();
+      renderCharacterSelector();
+      showToast(t('auth.register.success').replace('{name}', currentUser.nickname), 'success');
+    } else {
+      showToast(data.error || '注册失败', 'error');
+    }
+  } catch (e) {
+    showToast('网络错误，请重试', 'error');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = t('auth.register.submit');
+  }
+}
+
+// 退出登录
+function logout() {
+  currentUser = null;
+  authToken = null;
+  selectedCharacter = null;
+  userCharacters = [];
+  localStorage.removeItem('auth_token');
+  document.getElementById('userDropdown').style.display = 'none';
+  updateUserUI();
+  renderCharacterSelector();
+  showToast(t('auth.logout.success'), 'info');
+}
+
+// 显示设置弹窗
+function showSettingsModal() {
+  if (!currentUser) return;
+  
+  document.getElementById('userDropdown').style.display = 'none';
+  const modal = document.getElementById('settingsModal');
+  modal.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  
+  // 填充当前信息
+  document.getElementById('settingsNickname').value = currentUser.nickname || '';
+  document.getElementById('settingsPlanBadge').textContent = currentUser.planInfo?.name || t('plan.free');
+  document.getElementById('settingsPlanLimits').textContent = 
+    t('plan.limits')
+      .replace('{characters}', currentUser.planInfo?.maxCharacters || 1)
+      .replace('{photos}', currentUser.planInfo?.maxPhotosPerCharacter || 3);
+}
+
+// 关闭设置弹窗
+function closeSettingsModal() {
+  const modal = document.getElementById('settingsModal');
+  modal.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+// 更新个人资料
+async function handleUpdateProfile(e) {
+  e.preventDefault();
+  
+  const nickname = document.getElementById('settingsNickname').value;
+  
+  try {
+    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/auth/me`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({ nickname })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      currentUser = { ...currentUser, ...data.user };
+      updateUserUI();
+      showToast(t('settings.update.success'), 'success');
+    } else {
+      showToast(data.error || '更新失败', 'error');
+    }
+  } catch (e) {
+    showToast('网络错误，请重试', 'error');
+  }
+}
+
+// 修改密码
+async function handleChangePassword(e) {
+  e.preventDefault();
+  
+  const oldPassword = document.getElementById('oldPassword').value;
+  const newPassword = document.getElementById('newPassword').value;
+  
+  try {
+    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/auth/change-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({ oldPassword, newPassword })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      document.getElementById('oldPassword').value = '';
+      document.getElementById('newPassword').value = '';
+      showToast(t('settings.password.success'), 'success');
+    } else {
+      showToast(data.error || '修改失败', 'error');
+    }
+  } catch (e) {
+    showToast('网络错误，请重试', 'error');
+  }
+}
+
+// =========================================
+// 角色管理系统
+// =========================================
+
+let userCharacters = [];
+let characterLimits = { maxCharacters: 1, maxPhotosPerCharacter: 3, currentCount: 0 };
+let currentEditingCharacter = null;
+
+// 显示角色管理弹窗
+async function showCharactersModal() {
+  if (!currentUser) {
+    showAuthModal('login');
+    return;
+  }
+  
+  document.getElementById('userDropdown').style.display = 'none';
+  const modal = document.getElementById('charactersModal');
+  modal.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  
+  await loadCharacters();
+}
+
+// 关闭角色管理弹窗
+function closeCharactersModal() {
+  const modal = document.getElementById('charactersModal');
+  modal.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+// 加载用户的角色
+async function loadCharacters() {
+  const grid = document.getElementById('charactersGrid');
+  const limitText = document.getElementById('charactersLimit');
+  const addBtn = document.getElementById('addCharacterBtn');
+  
+  grid.innerHTML = '<div class="loading-text">加载中...</div>';
+  
+  try {
+    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/characters`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    
+    if (!response.ok) throw new Error('Failed to load');
+    
+    const data = await response.json();
+    userCharacters = data.characters;
+    characterLimits = data.limits;
+    
+    // 更新限制提示
+    limitText.textContent = t('characters.limit')
+      .replace('{current}', characterLimits.currentCount)
+      .replace('{max}', characterLimits.maxCharacters);
+    
+    // 添加按钮状态
+    addBtn.disabled = characterLimits.currentCount >= characterLimits.maxCharacters;
+    
+    renderCharacters();
+  } catch (e) {
+    console.error('Load characters error:', e);
+    grid.innerHTML = '<div class="empty-characters"><p>加载失败，请重试</p></div>';
+  }
+}
+
+// 渲染角色列表
+function renderCharacters() {
+  const grid = document.getElementById('charactersGrid');
+  
+  if (userCharacters.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-characters">
+        <div class="empty-characters-icon">🎭</div>
+        <p>${t('characters.empty')}</p>
+        <p style="font-size: 0.85rem;">${t('characters.empty.hint')}</p>
+      </div>
+    `;
+    return;
+  }
+  
+  grid.innerHTML = userCharacters.map(char => {
+    const firstPhoto = char.photos?.[0];
+    const avatarContent = firstPhoto 
+      ? `<img src="data:${firstPhoto.mimeType};base64,${firstPhoto.data}" alt="${char.name}" />`
+      : '👤';
+    
+    return `
+      <div class="character-card" data-id="${char.id}">
+        <div class="character-avatar">${avatarContent}</div>
+        <div class="character-name">${escapeHtml(char.name)}</div>
+        <div class="character-meta">${char.photos?.length || 0} 张照片</div>
+        <div class="character-actions">
+          <button class="btn-edit-char" onclick="editCharacter('${char.id}')">✏️ ${t('common.edit')}</button>
+          <button class="btn-delete-char" onclick="deleteCharacter('${char.id}')">🗑️</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// 显示添加角色表单
+function showAddCharacterForm() {
+  currentEditingCharacter = null;
+  
+  document.getElementById('editCharacterTitle').innerHTML = `➕ <span>${t('characters.add')}</span>`;
+  document.getElementById('characterId').value = '';
+  document.getElementById('characterName').value = '';
+  document.getElementById('characterDesc').value = '';
+  document.getElementById('characterPhotosSection').style.display = 'none';
+  
+  const modal = document.getElementById('editCharacterModal');
+  modal.classList.add('show');
+}
+
+// 编辑角色
+function editCharacter(characterId) {
+  const character = userCharacters.find(c => c.id === characterId);
+  if (!character) return;
+  
+  currentEditingCharacter = character;
+  
+  document.getElementById('editCharacterTitle').innerHTML = `✏️ <span>${t('characters.edit')}</span>`;
+  document.getElementById('characterId').value = character.id;
+  document.getElementById('characterName').value = character.name;
+  document.getElementById('characterDesc').value = character.description || '';
+  
+  // 显示照片管理区域
+  document.getElementById('characterPhotosSection').style.display = 'block';
+  renderCharacterPhotos();
+  
+  const modal = document.getElementById('editCharacterModal');
+  modal.classList.add('show');
+}
+
+// 渲染角色照片
+function renderCharacterPhotos() {
+  const grid = document.getElementById('characterPhotosGrid');
+  const limitText = document.getElementById('photoLimitText');
+  
+  if (!currentEditingCharacter) {
+    grid.innerHTML = '';
+    return;
+  }
+  
+  const photos = currentEditingCharacter.photos || [];
+  limitText.textContent = t('characters.photo.limit')
+    .replace('{current}', photos.length)
+    .replace('{max}', characterLimits.maxPhotosPerCharacter);
+  
+  if (photos.length === 0) {
+    grid.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">暂无照片</p>';
+    return;
+  }
+  
+  grid.innerHTML = photos.map(photo => `
+    <div class="character-photo-item">
+      <img src="data:${photo.mimeType};base64,${photo.data}" alt="Photo" />
+      <button class="photo-delete-btn" onclick="deleteCharacterPhoto('${photo.id}')" title="删除">✕</button>
+    </div>
+  `).join('');
+}
+
+// 关闭编辑角色弹窗
+function closeEditCharacterModal() {
+  const modal = document.getElementById('editCharacterModal');
+  modal.classList.remove('show');
+  currentEditingCharacter = null;
+}
+
+// 保存角色
+async function handleSaveCharacter(e) {
+  e.preventDefault();
+  
+  const characterId = document.getElementById('characterId').value;
+  const name = document.getElementById('characterName').value.trim();
+  const description = document.getElementById('characterDesc').value.trim();
+  
+  if (!name) {
+    showToast('请输入角色名称', 'error');
+    return;
+  }
+  
+  const saveBtn = document.getElementById('saveCharacterBtn');
+  saveBtn.disabled = true;
+  
+  try {
+    const url = characterId 
+      ? `${DEFAULT_API_ENDPOINT}/api/characters/${characterId}`
+      : `${DEFAULT_API_ENDPOINT}/api/characters`;
+    
+    const response = await fetch(url, {
+      method: characterId ? 'PUT' : 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({ name, description })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      if (characterId) {
+        // 更新本地数据
+        const index = userCharacters.findIndex(c => c.id === characterId);
+        if (index !== -1) {
+          userCharacters[index] = { ...userCharacters[index], ...data.character };
+        }
+        showToast(t('characters.updated'), 'success');
+      } else {
+        // 添加到本地数据
+        userCharacters.push(data.character);
+        characterLimits.currentCount++;
+        showToast(t('characters.created'), 'success');
+        
+        // 如果是新建，切换到编辑模式以添加照片
+        currentEditingCharacter = data.character;
+        document.getElementById('characterId').value = data.character.id;
+        document.getElementById('characterPhotosSection').style.display = 'block';
+        document.getElementById('editCharacterTitle').innerHTML = `✏️ <span>${t('characters.edit')}</span>`;
+        renderCharacterPhotos();
+      }
+      
+      renderCharacters();
+      renderCharacterSelector(); // 刷新生成页面的角色选择器
+      document.getElementById('charactersLimit').textContent = t('characters.limit')
+        .replace('{current}', characterLimits.currentCount)
+        .replace('{max}', characterLimits.maxCharacters);
+      
+      // 只有更新时才关闭弹窗
+      if (characterId) {
+        closeEditCharacterModal();
+      }
+    } else {
+      showToast(data.error || '保存失败', 'error');
+    }
+  } catch (e) {
+    showToast('网络错误，请重试', 'error');
+  } finally {
+    saveBtn.disabled = false;
+  }
+}
+
+// 删除角色
+async function deleteCharacter(characterId) {
+  if (!confirm('确定要删除这个角色吗？相关照片也会被删除。')) return;
+  
+  try {
+    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/characters/${characterId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    
+    if (response.ok) {
+      // 如果删除的是当前选中的角色，清除选择
+      if (selectedCharacter?.id === characterId) {
+        selectedCharacter = null;
+      }
+      userCharacters = userCharacters.filter(c => c.id !== characterId);
+      characterLimits.currentCount--;
+      renderCharacters();
+      renderCharacterSelector(); // 刷新生成页面的角色选择器
+      document.getElementById('charactersLimit').textContent = t('characters.limit')
+        .replace('{current}', characterLimits.currentCount)
+        .replace('{max}', characterLimits.maxCharacters);
+      document.getElementById('addCharacterBtn').disabled = false;
+      showToast(t('characters.deleted'), 'success');
+    } else {
+      const data = await response.json();
+      showToast(data.error || '删除失败', 'error');
+    }
+  } catch (e) {
+    showToast('网络错误，请重试', 'error');
+  }
+}
+
+// 上传照片
+async function handlePhotoUpload(e) {
+  const file = e.target.files[0];
+  if (!file || !currentEditingCharacter) return;
+  
+  // 重置 input
+  e.target.value = '';
+  
+  // 检查限制
+  if (currentEditingCharacter.photos?.length >= characterLimits.maxPhotosPerCharacter) {
+    showToast(`最多上传 ${characterLimits.maxPhotosPerCharacter} 张照片`, 'error');
+    return;
+  }
+  
+  // 读取文件
+  const reader = new FileReader();
+  reader.onload = async (event) => {
+    const base64 = event.target.result.split(',')[1];
+    const mimeType = file.type;
+    
+    try {
+      const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/characters/${currentEditingCharacter.id}/photos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ photoData: base64, mimeType })
+      });
+      
+      if (response.ok) {
+        // 重新加载角色数据
+        const charResponse = await fetch(`${DEFAULT_API_ENDPOINT}/api/characters/${currentEditingCharacter.id}`, {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (charResponse.ok) {
+          const charData = await charResponse.json();
+          currentEditingCharacter = charData;
+          const index = userCharacters.findIndex(c => c.id === charData.id);
+          if (index !== -1) {
+            userCharacters[index] = charData;
+          }
+          // 如果是当前选中的角色，更新选中数据
+          if (selectedCharacter?.id === charData.id) {
+            selectedCharacter = charData;
+          }
+          renderCharacterPhotos();
+          renderCharacters();
+          renderCharacterSelector(); // 刷新生成页面的角色选择器
+        }
+        showToast(t('characters.photo.uploaded'), 'success');
+      } else {
+        const data = await response.json();
+        showToast(data.error || '上传失败', 'error');
+      }
+    } catch (e) {
+      showToast('网络错误，请重试', 'error');
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+// 删除照片
+async function deleteCharacterPhoto(photoId) {
+  if (!currentEditingCharacter) return;
+  
+  try {
+    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/characters/${currentEditingCharacter.id}/photos/${photoId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    
+    if (response.ok) {
+      currentEditingCharacter.photos = currentEditingCharacter.photos.filter(p => p.id !== photoId);
+      const index = userCharacters.findIndex(c => c.id === currentEditingCharacter.id);
+      if (index !== -1) {
+        userCharacters[index] = currentEditingCharacter;
+      }
+      // 如果是当前选中的角色，更新选中数据
+      if (selectedCharacter?.id === currentEditingCharacter.id) {
+        selectedCharacter = currentEditingCharacter;
+      }
+      renderCharacterPhotos();
+      renderCharacters();
+      renderCharacterSelector(); // 刷新生成页面的角色选择器
+      showToast(t('characters.photo.deleted'), 'success');
+    } else {
+      const data = await response.json();
+      showToast(data.error || '删除失败', 'error');
+    }
+  } catch (e) {
+    showToast('网络错误，请重试', 'error');
+  }
+}
+
+// =========================================
+// 角色选择器（生成页面使用）
+// =========================================
+
+let selectedCharacter = null;
+
+// 渲染角色选择器
+async function renderCharacterSelector() {
+  const loginNotice = document.getElementById('loginRequiredNotice');
+  const group = document.getElementById('characterSelectGroup');
+  const noCharNotice = document.getElementById('noCharactersNotice');
+  const selector = document.getElementById('characterSelector');
+  
+  // 未登录状态
+  if (!currentUser || !authToken) {
+    loginNotice.style.display = 'block';
+    group.style.display = 'none';
+    noCharNotice.style.display = 'none';
+    return;
+  }
+  
+  // 已登录，隐藏登录提示
+  loginNotice.style.display = 'none';
+  
+  // 加载角色
+  try {
+    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/characters`, {
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      userCharacters = data.characters;
+      characterLimits = data.limits;
+      
+      // 过滤出有照片的角色
+      const charactersWithPhotos = userCharacters.filter(c => c.photos?.length > 0);
+      
+      if (charactersWithPhotos.length === 0) {
+        // 没有有照片的角色
+        group.style.display = 'none';
+        noCharNotice.style.display = 'block';
+        selectedCharacter = null;
+        return;
+      }
+      
+      // 有角色，显示选择器
+      group.style.display = 'block';
+      noCharNotice.style.display = 'none';
+      
+      // 生成选择器内容
+      let html = '';
+      
+      charactersWithPhotos.forEach(char => {
+        const firstPhoto = char.photos[0];
+        const thumbContent = `<img src="data:${firstPhoto.mimeType};base64,${firstPhoto.data}" alt="${char.name}" />`;
+        
+        html += `
+          <button type="button" class="character-select-btn ${selectedCharacter?.id === char.id ? 'active' : ''}" onclick="selectCharacter('${char.id}')">
+            <span class="char-thumb">${thumbContent}</span>
+            <span>${escapeHtml(char.name)}</span>
+            <span style="font-size: 0.75rem; color: var(--text-muted);">(${char.photos.length}张照片)</span>
+          </button>
+        `;
+      });
+      
+      // 添加没有照片的角色提示
+      const charactersWithoutPhotos = userCharacters.filter(c => !c.photos?.length);
+      if (charactersWithoutPhotos.length > 0) {
+        html += `
+          <div style="width: 100%; margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">
+            💡 还有 ${charactersWithoutPhotos.length} 个角色没有照片，
+            <a href="#" onclick="showCharactersModal(); return false;" style="color: var(--accent-primary);">去上传</a>
+          </div>
+        `;
+      }
+      
+      selector.innerHTML = html;
+      
+      // 如果之前没有选择角色，自动选择第一个
+      if (!selectedCharacter && charactersWithPhotos.length > 0) {
+        selectedCharacter = charactersWithPhotos[0];
+        document.querySelector('.character-select-btn')?.classList.add('active');
+      }
+    }
+  } catch (e) {
+    console.error('Load characters for selector error:', e);
+    loginNotice.style.display = 'none';
+    group.style.display = 'none';
+    noCharNotice.style.display = 'block';
+  }
+}
+
+// 选择角色
+function selectCharacter(characterId) {
+  selectedCharacter = userCharacters.find(c => c.id === characterId) || null;
+  
+  // 更新按钮状态
+  document.querySelectorAll('.character-select-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  event.target.closest('.character-select-btn')?.classList.add('active');
+}
+
+// 获取生成时使用的参考图片
+function getGenerationReferenceImages() {
+  if (selectedCharacter && selectedCharacter.photos?.length > 0) {
+    // 使用角色的照片
+    return selectedCharacter.photos.map(photo => ({
+      data: photo.data,
+      mimeType: photo.mimeType
+    }));
+  }
+  return [];
+}
+
+// 页面加载时初始化认证
+initAuth();
