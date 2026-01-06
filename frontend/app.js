@@ -35,6 +35,7 @@ const i18n = {
     
     // Settings section
     'settings.title': 'Adjust Settings',
+    'settings.desc': 'Click to expand options, using recommended settings by default',
     
     // Model
     'model.label': 'Quality',
@@ -204,6 +205,7 @@ const i18n = {
     
     // Settings section
     'settings.title': '调整设置',
+    'settings.desc': '点击选项可展开调整，默认为推荐配置',
     
     // Model
     'model.label': '生成质量',
@@ -627,6 +629,7 @@ function initSelectors() {
         aspectGrid.querySelectorAll('.aspect-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         selectedAspectRatio = btn.dataset.ratio;
+        updateSettingPreview('aspectRatio');
       }
     });
   }
@@ -641,6 +644,8 @@ function initSelectors() {
         btn.classList.add('active');
         selectedModel = btn.dataset.model;
         updateResolutionOptions();
+        updateSettingPreview('model');
+        updateSettingPreview('resolution');
       }
     });
   }
@@ -654,6 +659,7 @@ function initSelectors() {
         quantitySelector.querySelectorAll('.quantity-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         selectedQuantity = parseInt(btn.dataset.count);
+        updateSettingPreview('quantity');
       }
     });
   }
@@ -667,9 +673,123 @@ function initSelectors() {
         resolutionSelector.querySelectorAll('.resolution-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         selectedResolution = btn.dataset.size;
+        updateSettingPreview('resolution');
       }
     });
   }
+}
+
+// 切换设置项的展开/折叠状态
+function toggleSetting(settingName) {
+  const allItems = document.querySelectorAll('.setting-item');
+  const targetItem = document.querySelector(`.setting-item[data-setting="${settingName}"]`);
+  
+  if (!targetItem) return;
+  
+  const isExpanded = targetItem.classList.contains('expanded');
+  
+  // 折叠所有其他项
+  allItems.forEach(item => {
+    if (item !== targetItem) {
+      item.classList.remove('expanded');
+    }
+  });
+  
+  // 切换目标项
+  if (isExpanded) {
+    targetItem.classList.remove('expanded');
+  } else {
+    targetItem.classList.add('expanded');
+  }
+}
+
+// 更新设置预览显示
+function updateSettingPreview(settingName) {
+  switch(settingName) {
+    case 'aspectRatio':
+      updateAspectRatioPreview();
+      break;
+    case 'model':
+      updateModelPreview();
+      break;
+    case 'quantity':
+      updateQuantityPreview();
+      break;
+    case 'resolution':
+      updateResolutionPreview();
+      break;
+  }
+}
+
+// 更新宽高比预览
+function updateAspectRatioPreview() {
+  const preview = document.getElementById('aspectRatioPreview');
+  if (!preview) return;
+  
+  const aspectMap = {
+    '1:1': { w: 16, h: 16 },
+    '16:9': { w: 20, h: 11 },
+    '9:16': { w: 11, h: 20 },
+    '4:3': { w: 18, h: 14 },
+    '3:4': { w: 14, h: 18 },
+    '3:2': { w: 18, h: 12 },
+    '2:3': { w: 12, h: 18 },
+    '21:9': { w: 22, h: 9 }
+  };
+  
+  const dims = aspectMap[selectedAspectRatio] || { w: 16, h: 16 };
+  preview.innerHTML = `
+    <div class="aspect-icon-mini" style="width: ${dims.w}px; height: ${dims.h}px;"></div>
+    <span>${selectedAspectRatio}</span>
+  `;
+}
+
+// 更新模型预览
+function updateModelPreview() {
+  const preview = document.getElementById('modelPreview');
+  if (!preview) return;
+  
+  const isPremium = selectedModel === 'gemini-3-pro-image-preview';
+  const icon = isPremium ? 'ph-fill ph-star' : 'ph-fill ph-lightning';
+  const name = isPremium ? t('model.premium') : t('model.fast');
+  
+  preview.innerHTML = `
+    <i class="${icon}"></i>
+    <span>${name}</span>
+  `;
+}
+
+// 更新数量预览
+function updateQuantityPreview() {
+  const preview = document.getElementById('quantityPreview');
+  if (!preview) return;
+  
+  const timeMap = { 1: '~30秒', 2: '~60秒', 4: '~2分钟' };
+  const time = timeMap[selectedQuantity] || '~30秒';
+  
+  preview.innerHTML = `
+    <span class="qty-badge">${selectedQuantity}</span>
+    <span>张 · ${time}</span>
+  `;
+}
+
+// 更新分辨率预览
+function updateResolutionPreview() {
+  const preview = document.getElementById('resolutionPreview');
+  if (!preview) return;
+  
+  const labelMap = {
+    '1K': currentLang === 'zh' ? '标准' : 'Standard',
+    '2K': currentLang === 'zh' ? '高清' : 'HD',
+    '4K': currentLang === 'zh' ? '超清' : 'Ultra HD'
+  };
+  
+  const label = labelMap[selectedResolution] || '超清';
+  
+  preview.innerHTML = `
+    <span class="res-badge">${selectedResolution}</span>
+    <span>${label}</span>
+  `;
 }
 
 // 初始化无障碍支持

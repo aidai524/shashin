@@ -97,7 +97,7 @@
                         <h2><span class="step-number">2</span> <span data-i18n="characters.select.title">选择角色</span></h2>
                         <p class="section-desc" data-i18n="characters.select.desc">选择一个已创建的角色，AI 将使用其照片进行锁脸生成</p>
                     </div>
-                    
+
                     <!-- 未登录提示 -->
                     <div class="login-required-notice" id="loginRequiredNotice">
                         <div class="notice-icon"><i class="ph ph-lock-key"></i></div>
@@ -105,7 +105,7 @@
                         <button class="btn btn-primary" onclick="showAuthModal('login')">
                             <span data-i18n="auth.login">登录</span>
                         </button>
-                    </div>
+                        </div>
                     
                     <!-- 角色选择器（已登录用户可见） -->
                     <div class="form-group character-select-group" id="characterSelectGroup" style="display: none;">
@@ -118,7 +118,7 @@
                             </a>
                         </p>
                     </div>
-                    
+
                     <!-- 无角色提示 -->
                     <div class="no-characters-notice" id="noCharactersNotice" style="display: none;">
                         <div class="notice-icon"><i class="ph ph-masks-theater"></i></div>
@@ -130,109 +130,167 @@
                     </div>
                 </section>
 
-                <!-- 步骤 3: 调整参数 -->
+                <!-- 步骤 3: 调整参数 - 折叠式设计 -->
                 <section class="settings-section">
                     <div class="section-header">
                         <h2><span class="step-number">3</span> <span data-i18n="settings.title">调整设置</span></h2>
+                        <p class="section-desc" data-i18n="settings.desc">点击选项可展开调整，默认为推荐配置</p>
                     </div>
 
-                    <!-- 宽高比选择 - 可视化图标 -->
-                    <div class="form-group">
-                        <label data-i18n="aspectratio.label">宽高比</label>
-                        <div class="aspect-ratio-grid" id="aspectRatioGrid">
-                            <button type="button" class="aspect-btn active" data-ratio="1:1" title="1:1 正方形">
-                                <div class="aspect-icon" style="width: 32px; height: 32px;"></div>
-                                <span>1:1</span>
-                            </button>
-                            <button type="button" class="aspect-btn" data-ratio="16:9" title="16:9 横屏宽幅">
-                                <div class="aspect-icon" style="width: 40px; height: 22px;"></div>
-                                <span>16:9</span>
-                            </button>
-                            <button type="button" class="aspect-btn" data-ratio="9:16" title="9:16 竖屏/手机">
-                                <div class="aspect-icon" style="width: 22px; height: 40px;"></div>
-                                <span>9:16</span>
-                            </button>
-                            <button type="button" class="aspect-btn" data-ratio="4:3" title="4:3 标准横屏">
-                                <div class="aspect-icon" style="width: 36px; height: 27px;"></div>
-                                <span>4:3</span>
-                            </button>
-                            <button type="button" class="aspect-btn" data-ratio="3:4" title="3:4 标准竖屏">
-                                <div class="aspect-icon" style="width: 27px; height: 36px;"></div>
-                                <span>3:4</span>
-                            </button>
-                            <button type="button" class="aspect-btn" data-ratio="3:2" title="3:2 照片横屏">
-                                <div class="aspect-icon" style="width: 36px; height: 24px;"></div>
-                                <span>3:2</span>
-                            </button>
-                            <button type="button" class="aspect-btn" data-ratio="2:3" title="2:3 照片竖屏">
-                                <div class="aspect-icon" style="width: 24px; height: 36px;"></div>
-                                <span>2:3</span>
-                            </button>
-                            <button type="button" class="aspect-btn" data-ratio="21:9" title="21:9 超宽屏">
-                                <div class="aspect-icon" style="width: 44px; height: 19px;"></div>
-                                <span>21:9</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <!-- 模型选择 - 简化为高级/快速 -->
-                        <div class="form-group">
-                            <label data-i18n="model.label">生成质量</label>
-                            <div class="model-toggle" id="modelToggle">
-                                <button type="button" class="model-btn active" data-model="gemini-3-pro-image-preview">
-                                    <span class="model-icon"><i class="ph-fill ph-star"></i></span>
-                                    <span class="model-name" data-i18n="model.premium">高级</span>
-                                    <span class="model-desc" data-i18n="model.premium.desc">4K 高清</span>
-                                </button>
-                                <button type="button" class="model-btn" data-model="gemini-2.5-flash-image">
-                                    <span class="model-icon"><i class="ph-fill ph-lightning"></i></span>
-                                    <span class="model-name" data-i18n="model.fast">快速</span>
-                                    <span class="model-desc" data-i18n="model.fast.desc">标准画质</span>
-                                </button>
+                    <!-- 折叠式参数设置 -->
+                    <div class="settings-compact">
+                        <!-- 宽高比 -->
+                        <div class="setting-item" data-setting="aspectRatio">
+                            <div class="setting-header" onclick="toggleSetting('aspectRatio')">
+                                <div class="setting-info">
+                                    <i class="ph ph-rectangle"></i>
+                                    <span class="setting-label" data-i18n="aspectratio.label">宽高比</span>
+                                </div>
+                                <div class="setting-value">
+                                    <div class="setting-preview" id="aspectRatioPreview">
+                                        <div class="aspect-icon-mini" style="width: 16px; height: 16px;"></div>
+                                        <span>1:1</span>
+                                    </div>
+                                    <i class="ph ph-caret-down setting-arrow"></i>
+                                </div>
+                            </div>
+                            <div class="setting-options" id="aspectRatioOptions">
+                                <div class="aspect-ratio-grid" id="aspectRatioGrid">
+                                    <button type="button" class="aspect-btn active" data-ratio="1:1" title="1:1 正方形">
+                                        <div class="aspect-icon" style="width: 28px; height: 28px;"></div>
+                                        <span>1:1</span>
+                                    </button>
+                                    <button type="button" class="aspect-btn" data-ratio="16:9" title="16:9 横屏">
+                                        <div class="aspect-icon" style="width: 36px; height: 20px;"></div>
+                                        <span>16:9</span>
+                                    </button>
+                                    <button type="button" class="aspect-btn" data-ratio="9:16" title="9:16 竖屏">
+                                        <div class="aspect-icon" style="width: 20px; height: 36px;"></div>
+                                        <span>9:16</span>
+                                    </button>
+                                    <button type="button" class="aspect-btn" data-ratio="4:3" title="4:3 标准">
+                                        <div class="aspect-icon" style="width: 32px; height: 24px;"></div>
+                                        <span>4:3</span>
+                                    </button>
+                                    <button type="button" class="aspect-btn" data-ratio="3:4" title="3:4 竖屏">
+                                        <div class="aspect-icon" style="width: 24px; height: 32px;"></div>
+                                        <span>3:4</span>
+                                    </button>
+                                    <button type="button" class="aspect-btn" data-ratio="3:2" title="3:2 照片">
+                                        <div class="aspect-icon" style="width: 33px; height: 22px;"></div>
+                                        <span>3:2</span>
+                                    </button>
+                                    <button type="button" class="aspect-btn" data-ratio="2:3" title="2:3 竖版">
+                                        <div class="aspect-icon" style="width: 22px; height: 33px;"></div>
+                                        <span>2:3</span>
+                                    </button>
+                                    <button type="button" class="aspect-btn" data-ratio="21:9" title="21:9 超宽">
+                                        <div class="aspect-icon" style="width: 42px; height: 18px;"></div>
+                                        <span>21:9</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- 生成数量 - 带预估时间 -->
-                        <div class="form-group">
-                            <label data-i18n="quantity.label">生成数量</label>
-                            <div class="quantity-selector" id="quantitySelector">
-                                <button type="button" class="quantity-btn active" data-count="1">
-                                    <span class="quantity-num">1</span>
-                                    <span class="quantity-time">~30秒</span>
-                                </button>
-                                <button type="button" class="quantity-btn" data-count="2">
-                                    <span class="quantity-num">2</span>
-                                    <span class="quantity-time">~60秒</span>
-                                </button>
-                                <button type="button" class="quantity-btn" data-count="4">
-                                    <span class="quantity-num">4</span>
-                                    <span class="quantity-time">~2分钟</span>
-                                </button>
+                        <!-- 生成质量 -->
+                        <div class="setting-item" data-setting="model">
+                            <div class="setting-header" onclick="toggleSetting('model')">
+                                <div class="setting-info">
+                                    <i class="ph ph-star"></i>
+                                    <span class="setting-label" data-i18n="model.label">生成质量</span>
+                                </div>
+                                <div class="setting-value">
+                                    <div class="setting-preview" id="modelPreview">
+                                        <i class="ph-fill ph-star"></i>
+                                        <span data-i18n="model.premium">高级</span>
+                                    </div>
+                                    <i class="ph ph-caret-down setting-arrow"></i>
+                                </div>
+                            </div>
+                            <div class="setting-options" id="modelOptions">
+                                <div class="model-toggle" id="modelToggle">
+                                    <button type="button" class="model-btn active" data-model="gemini-3-pro-image-preview">
+                                        <span class="model-icon"><i class="ph-fill ph-star"></i></span>
+                                        <span class="model-name" data-i18n="model.premium">高级</span>
+                                        <span class="model-desc" data-i18n="model.premium.desc">4K 高清</span>
+                                    </button>
+                                    <button type="button" class="model-btn" data-model="gemini-2.5-flash-image">
+                                        <span class="model-icon"><i class="ph-fill ph-lightning"></i></span>
+                                        <span class="model-name" data-i18n="model.fast">快速</span>
+                                        <span class="model-desc" data-i18n="model.fast.desc">标准画质</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- 分辨率 - 更直观的展示 -->
-                    <div class="form-group" id="resolutionGroup">
-                        <label data-i18n="resolution.label">画质</label>
-                        <div class="resolution-selector" id="resolutionSelector">
-                            <button type="button" class="resolution-btn" data-size="1K">
-                                <span class="resolution-label">标准</span>
-                                <span class="resolution-size">1K</span>
-                            </button>
-                            <button type="button" class="resolution-btn" data-size="2K">
-                                <span class="resolution-label">高清</span>
-                                <span class="resolution-size">2K</span>
-                            </button>
-                            <button type="button" class="resolution-btn active" data-size="4K">
-                                <span class="resolution-label">超清</span>
-                                <span class="resolution-size">4K</span>
-                            </button>
+                        <!-- 生成数量 -->
+                        <div class="setting-item" data-setting="quantity">
+                            <div class="setting-header" onclick="toggleSetting('quantity')">
+                                <div class="setting-info">
+                                    <i class="ph ph-images"></i>
+                                    <span class="setting-label" data-i18n="quantity.label">生成数量</span>
+                                </div>
+                                <div class="setting-value">
+                                    <div class="setting-preview" id="quantityPreview">
+                                        <span class="qty-badge">1</span>
+                                        <span>张 · ~30秒</span>
+                                    </div>
+                                    <i class="ph ph-caret-down setting-arrow"></i>
+                                </div>
+                            </div>
+                            <div class="setting-options" id="quantityOptions">
+                                <div class="quantity-selector" id="quantitySelector">
+                                    <button type="button" class="quantity-btn active" data-count="1">
+                                        <span class="quantity-num">1</span>
+                                        <span class="quantity-time">~30秒</span>
+                                    </button>
+                                    <button type="button" class="quantity-btn" data-count="2">
+                                        <span class="quantity-num">2</span>
+                                        <span class="quantity-time">~60秒</span>
+                                    </button>
+                                    <button type="button" class="quantity-btn" data-count="4">
+                                        <span class="quantity-num">4</span>
+                                        <span class="quantity-time">~2分钟</span>
+                                    </button>
                         </div>
-                        <p class="form-hint resolution-hint" id="resolutionHint" data-i18n="resolution.hint.supported">
-                            高级模式支持 1K/2K/4K 分辨率
-                        </p>
+                    </div>
+                        </div>
+
+                        <!-- 画质/分辨率 -->
+                        <div class="setting-item" data-setting="resolution" id="resolutionGroup">
+                            <div class="setting-header" onclick="toggleSetting('resolution')">
+                                <div class="setting-info">
+                                    <i class="ph ph-high-definition"></i>
+                                    <span class="setting-label" data-i18n="resolution.label">画质</span>
+                                </div>
+                                <div class="setting-value">
+                                    <div class="setting-preview" id="resolutionPreview">
+                                        <span class="res-badge">4K</span>
+                                        <span>超清</span>
+                                    </div>
+                                    <i class="ph ph-caret-down setting-arrow"></i>
+                                </div>
+                            </div>
+                            <div class="setting-options" id="resolutionOptions">
+                                <div class="resolution-selector" id="resolutionSelector">
+                                    <button type="button" class="resolution-btn" data-size="1K">
+                                        <span class="resolution-label">标准</span>
+                                        <span class="resolution-size">1K</span>
+                                    </button>
+                                    <button type="button" class="resolution-btn" data-size="2K">
+                                        <span class="resolution-label">高清</span>
+                                        <span class="resolution-size">2K</span>
+                                    </button>
+                                    <button type="button" class="resolution-btn active" data-size="4K">
+                                        <span class="resolution-label">超清</span>
+                                        <span class="resolution-size">4K</span>
+                                    </button>
+                                </div>
+                                <p class="form-hint resolution-hint" id="resolutionHint" data-i18n="resolution.hint.supported">
+                                    高级模式支持 1K/2K/4K 分辨率
+                                </p>
+                            </div>
+                        </div>
                     </div>
 
                     <button
