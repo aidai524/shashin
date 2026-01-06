@@ -1267,7 +1267,7 @@ async function handleHistoryAPI(request, env, pathname) {
   const method = request.method;
   
   // 验证用户登录
-  const user = await verifyToken(request, env);
+  const user = await getUserFromRequest(request, env);
   if (!user) {
     return errorResponse('Unauthorized', 401);
   }
