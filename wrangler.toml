@@ -19,3 +19,7 @@ id = "631bb0f9c32e4202ba7fe0f2bb17cb5a"
 [[kv_namespaces]]
 binding = "CHARACTERS_KV"
 id = "ab353bdfd25145fdaa8e2fb375182da9"
+
+[[kv_namespaces]]
+binding = "HISTORY_KV"
+id = "79e18d0705cb4736a83e4aa044b99cd5"

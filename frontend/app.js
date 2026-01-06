@@ -1334,26 +1334,16 @@ async function cleanupOrphanedImages() {
 }
 
 // 历史记录相关
-function saveToHistory(template, model, images, refImages) {
+async function saveToHistory(template, model, images, refImages) {
   console.log('[History] saveToHistory called, images:', images.length);
   
-  const history = getHistory();
   lastGeneratedImages = images;
   const recordId = Date.now();
 
-  // 先保存原图到 IndexedDB
-  saveOriginalImages(recordId, images.map(img => ({
-    base64: img.base64,
-    mimeType: img.mimeType
-  }))).then(() => {
-    console.log('[History] Original images saved to IndexedDB');
-  }).catch(e => {
-    console.error('[History] Failed to save original images:', e);
-  });
-
-  // 再压缩缩略图保存到 localStorage
-  console.log('[History] Starting thumbnail compression...');
-  compressImagesAsync(images).then((thumbnails) => {
+  try {
+    // 压缩缩略图
+    console.log('[History] Starting thumbnail compression...');
+    const thumbnails = await compressImagesAsync(images);
     console.log('[History] Thumbnails compressed:', thumbnails.length);
     
     const record = {
@@ -1367,23 +1357,128 @@ function saveToHistory(template, model, images, refImages) {
       createdAt: new Date().toISOString(),
     };
 
-    history.unshift(record);
-    console.log('[History] Record created, total history:', history.length);
+    const originalImages = images.map(img => ({
+      base64: img.base64,
+      mimeType: img.mimeType
+    }));
 
-    // 限制历史记录数量
-    while (history.length > 20) {
-      const removed = history.pop();
-      // 同时删除 IndexedDB 中的原图
-      if (removed) deleteOriginalImages(removed.id);
+    // 如果已登录，保存到后端
+    if (currentUser) {
+      console.log('[History] Saving to backend...');
+      await saveHistoryToBackend(record, originalImages);
+    } else {
+      // 未登录，保存到本地
+      console.log('[History] Saving to local storage...');
+      await saveOriginalImages(recordId, originalImages);
+      
+      const history = getHistory();
+      history.unshift(record);
+      
+      while (history.length > 20) {
+        const removed = history.pop();
+        if (removed) deleteOriginalImages(removed.id);
+      }
+      
+      saveHistoryToStorage(history);
     }
-
-    saveHistoryToStorage(history);
-    console.log('[History] History saved to localStorage');
+    
+    console.log('[History] History saved successfully');
     loadHistory();
-    console.log('[History] loadHistory called');
-  }).catch(e => {
-    console.error('[History] Compression failed:', e);
-  });
+  } catch (e) {
+    console.error('[History] Save failed:', e);
+  }
+}
+
+// 保存历史记录到后端
+async function saveHistoryToBackend(record, originalImages) {
+  const token = localStorage.getItem('auth_token');
+  if (!token) return;
+  
+  try {
+    const response = await fetch(`${config.endpoint}/api/history`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ record, originalImages })
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to save history to backend');
+    }
+    
+    console.log('[History] Saved to backend successfully');
+  } catch (e) {
+    console.error('[History] Backend save error:', e);
+    // 后端保存失败时，回退到本地存储
+    await saveOriginalImages(record.id, originalImages);
+    const history = getHistory();
+    history.unshift(record);
+    saveHistoryToStorage(history);
+  }
+}
+
+// 从后端获取历史记录
+async function getHistoryFromBackend() {
+  const token = localStorage.getItem('auth_token');
+  if (!token) return null;
+  
+  try {
+    const response = await fetch(`${config.endpoint}/api/history`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    return data;
+  } catch (e) {
+    console.error('[History] Backend fetch error:', e);
+    return null;
+  }
+}
+
+// 删除后端历史记录
+async function deleteHistoryFromBackend(recordId) {
+  const token = localStorage.getItem('auth_token');
+  if (!token) return false;
+  
+  try {
+    const response = await fetch(`${config.endpoint}/api/history/${recordId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    return response.ok;
+  } catch (e) {
+    console.error('[History] Backend delete error:', e);
+    return false;
+  }
+}
+
+// 清空后端历史记录
+async function clearHistoryFromBackend() {
+  const token = localStorage.getItem('auth_token');
+  if (!token) return false;
+  
+  try {
+    const response = await fetch(`${config.endpoint}/api/history`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    return response.ok;
+  } catch (e) {
+    console.error('[History] Backend clear error:', e);
+    return false;
+  }
 }
 
 // 异步压缩图片 - 生成高质量缩略图 (720P)
@@ -1499,15 +1594,34 @@ function getHistory() {
   }
 }
 
-function loadHistory() {
+// 缓存后端历史数据
+let backendHistoryCache = null;
+
+async function loadHistory() {
   console.log('[History] loadHistory started');
-  const history = getHistory();
-  console.log('[History] Got history records:', history.length);
   
   const container = document.getElementById("historyGrid");
   if (!container) {
     console.error('[History] Container historyGrid not found!');
     return;
+  }
+
+  let history = [];
+  
+  // 如果已登录，从后端获取历史记录
+  if (currentUser) {
+    console.log('[History] Loading from backend...');
+    const backendData = await getHistoryFromBackend();
+    if (backendData) {
+      history = backendData.records || [];
+      backendHistoryCache = backendData;
+      console.log('[History] Got backend records:', history.length);
+    }
+  } else {
+    // 未登录，从本地获取
+    history = getHistory();
+    backendHistoryCache = null;
+    console.log('[History] Got local records:', history.length);
   }
 
   if (history.length === 0) {
@@ -1544,8 +1658,24 @@ function loadHistory() {
   console.log('[History] Rendered', history.length, 'records');
 }
 
+// 获取当前历史记录（支持本地和后端）
+function getCurrentHistory() {
+  if (currentUser && backendHistoryCache) {
+    return backendHistoryCache.records || [];
+  }
+  return getHistory();
+}
+
+// 获取历史记录的原图（支持本地和后端）
+async function getHistoryOriginalImages(recordId) {
+  if (currentUser && backendHistoryCache && backendHistoryCache.images) {
+    return backendHistoryCache.images[recordId] || null;
+  }
+  return await getOriginalImages(recordId);
+}
+
 async function showHistoryDetail(id) {
-  const history = getHistory();
+  const history = getCurrentHistory();
   const record = history.find((h) => h.id === id);
   if (!record) return;
 
@@ -1555,8 +1685,8 @@ async function showHistoryDetail(id) {
   // 先显示缩略图，然后异步加载原图
   const thumbnails = record.thumbnails || record.images || [];
   
-  // 尝试从 IndexedDB 获取原图
-  const originalImages = await getOriginalImages(record.id);
+  // 尝试获取原图（后端或本地 IndexedDB）
+  const originalImages = await getHistoryOriginalImages(record.id);
   const displayImages = originalImages && originalImages.length > 0 ? originalImages : thumbnails;
   const hasOriginal = originalImages && originalImages.length > 0;
   
@@ -1606,12 +1736,12 @@ function closeHistoryModal() {
 
 // 下载历史图片
 async function downloadHistoryImage(recordId, imageIndex) {
-  const history = getHistory();
+  const history = getCurrentHistory();
   const record = history.find(h => h.id === recordId);
   if (!record) return;
   
-  // 优先使用 IndexedDB 中的原图
-  const originalImages = await getOriginalImages(recordId);
+  // 优先获取原图（后端或本地）
+  const originalImages = await getHistoryOriginalImages(recordId);
   const images = originalImages || record.thumbnails || record.images || [];
   const img = images[imageIndex];
   if (!img) return;
@@ -1626,12 +1756,12 @@ async function downloadHistoryImage(recordId, imageIndex) {
 
 // 下载全部历史图片
 async function downloadAllHistoryImages(recordId) {
-  const history = getHistory();
+  const history = getCurrentHistory();
   const record = history.find(h => h.id === recordId);
   if (!record) return;
   
-  // 优先使用 IndexedDB 中的原图
-  const originalImages = await getOriginalImages(recordId);
+  // 优先获取原图（后端或本地）
+  const originalImages = await getHistoryOriginalImages(recordId);
   const images = originalImages || record.thumbnails || record.images || [];
   
   images.forEach((img, index) => {
@@ -1648,12 +1778,12 @@ async function downloadAllHistoryImages(recordId) {
 
 // 预览历史图片（打开大图弹窗）
 async function previewHistoryImage(recordId, imageIndex) {
-  const history = getHistory();
+  const history = getCurrentHistory();
   const record = history.find(h => h.id === recordId);
   if (!record) return;
   
-  // 优先使用 IndexedDB 中的原图
-  const originalImages = await getOriginalImages(recordId);
+  // 优先获取原图（后端或本地）
+  const originalImages = await getHistoryOriginalImages(recordId);
   const images = originalImages || record.thumbnails || record.images || [];
   const img = images[imageIndex];
   if (!img) return;
@@ -1670,13 +1800,24 @@ function reuseTemplate(templateId) {
   }
 }
 
-function deleteHistoryItem(id) {
+async function deleteHistoryItem(id) {
   if (!confirm(t('confirm.delete'))) return;
 
-  const history = getHistory().filter((item) => item.id !== id);
-  localStorage.setItem("gemini_history", JSON.stringify(history));
-  // 同时删除 IndexedDB 中的原图
-  deleteOriginalImages(id);
+  if (currentUser) {
+    // 已登录，从后端删除
+    const success = await deleteHistoryFromBackend(id);
+    if (!success) {
+      showToast(currentLang === 'zh' ? '删除失败' : 'Delete failed', 'error');
+      return;
+    }
+  } else {
+    // 未登录，从本地删除
+    const history = getHistory().filter((item) => item.id !== id);
+    localStorage.setItem("gemini_history", JSON.stringify(history));
+    // 同时删除 IndexedDB 中的原图
+    deleteOriginalImages(id);
+  }
+  
   closeHistoryModal();
   loadHistory();
   showToast(t('toast.record.deleted'), "info");
@@ -1685,13 +1826,22 @@ function deleteHistoryItem(id) {
 async function clearHistory() {
   if (!confirm(t('confirm.clear'))) return;
 
-  // 先获取所有历史记录的 ID，然后删除对应的原图
-  const history = getHistory();
-  for (const record of history) {
-    await deleteOriginalImages(record.id);
+  if (currentUser) {
+    // 已登录，从后端清空
+    const success = await clearHistoryFromBackend();
+    if (!success) {
+      showToast(currentLang === 'zh' ? '清空失败' : 'Clear failed', 'error');
+      return;
+    }
+  } else {
+    // 未登录，从本地清空
+    const history = getHistory();
+    for (const record of history) {
+      await deleteOriginalImages(record.id);
+    }
+    localStorage.removeItem("gemini_history");
   }
-
-  localStorage.removeItem("gemini_history");
+  
   loadHistory();
   showToast(t('toast.history.cleared'), "info");
 }

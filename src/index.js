@@ -1221,6 +1221,132 @@ async function deleteCharacterPhoto(env, user, characterId, photoId) {
 }
 
 // =========================================
+// 历史记录 API
+// =========================================
+
+async function handleHistoryAPI(request, env, pathname) {
+  const method = request.method;
+  
+  // 验证用户登录
+  const user = await verifyToken(request, env);
+  if (!user) {
+    return errorResponse('Unauthorized', 401);
+  }
+
+  // GET /api/history - 获取用户的历史记录
+  if (pathname === '/api/history' && method === 'GET') {
+    return await getUserHistory(env, user);
+  }
+
+  // POST /api/history - 保存历史记录
+  if (pathname === '/api/history' && method === 'POST') {
+    return await saveHistoryRecord(request, env, user);
+  }
+
+  // DELETE /api/history/:id - 删除单条历史记录
+  const deleteMatch = pathname.match(/^\/api\/history\/([^\/]+)$/);
+  if (deleteMatch && method === 'DELETE') {
+    return await deleteHistoryRecord(env, user, deleteMatch[1]);
+  }
+
+  // DELETE /api/history - 清空所有历史记录
+  if (pathname === '/api/history' && method === 'DELETE') {
+    return await clearUserHistory(env, user);
+  }
+
+  return errorResponse('Not found', 404);
+}
+
+// 获取用户历史记录
+async function getUserHistory(env, user) {
+  try {
+    const key = `history:${user.id}`;
+    const data = await env.HISTORY_KV.get(key, 'json');
+    return jsonResponse(data || { records: [], images: {} });
+  } catch (e) {
+    console.error('Get history error:', e);
+    return errorResponse('Failed to get history', 500);
+  }
+}
+
+// 保存历史记录
+async function saveHistoryRecord(request, env, user) {
+  try {
+    const body = await request.json();
+    const { record, originalImages } = body;
+    
+    if (!record || !record.id) {
+      return errorResponse('Invalid record data', 400);
+    }
+
+    const key = `history:${user.id}`;
+    let data = await env.HISTORY_KV.get(key, 'json') || { records: [], images: {} };
+    
+    // 添加新记录到开头
+    data.records.unshift(record);
+    
+    // 保存原图（如果有）
+    if (originalImages && originalImages.length > 0) {
+      data.images[record.id] = originalImages;
+    }
+    
+    // 限制历史记录数量为 50 条
+    while (data.records.length > 50) {
+      const removed = data.records.pop();
+      if (removed && data.images[removed.id]) {
+        delete data.images[removed.id];
+      }
+    }
+    
+    await env.HISTORY_KV.put(key, JSON.stringify(data));
+    
+    return jsonResponse({ success: true, recordId: record.id });
+  } catch (e) {
+    console.error('Save history error:', e);
+    return errorResponse('Failed to save history: ' + e.message, 500);
+  }
+}
+
+// 删除单条历史记录
+async function deleteHistoryRecord(env, user, recordId) {
+  try {
+    const key = `history:${user.id}`;
+    let data = await env.HISTORY_KV.get(key, 'json');
+    
+    if (!data) {
+      return errorResponse('History not found', 404);
+    }
+    
+    const id = parseInt(recordId);
+    data.records = data.records.filter(r => r.id !== id);
+    
+    // 删除对应的原图
+    if (data.images[id]) {
+      delete data.images[id];
+    }
+    
+    await env.HISTORY_KV.put(key, JSON.stringify(data));
+    
+    return jsonResponse({ success: true });
+  } catch (e) {
+    console.error('Delete history error:', e);
+    return errorResponse('Failed to delete history', 500);
+  }
+}
+
+// 清空用户历史记录
+async function clearUserHistory(env, user) {
+  try {
+    const key = `history:${user.id}`;
+    await env.HISTORY_KV.delete(key);
+    return jsonResponse({ success: true });
+  } catch (e) {
+    console.error('Clear history error:', e);
+    return errorResponse('Failed to clear history', 500);
+  }
+}
+
+// =========================================
 // 主入口
 // =========================================
 
@@ -1238,11 +1364,12 @@ export default {
     if (pathname === "/" || pathname === "/health") {
       return jsonResponse({
         status: "ok",
-        message: "Gemini API Proxy + Template API + User Auth + Characters",
+        message: "Gemini API Proxy + Template API + User Auth + Characters + History",
         endpoints: {
           templates: "/api/templates",
           auth: "/api/auth/*",
           characters: "/api/characters/*",
+          history: "/api/history/*",
           admin: "/api/admin/*",
           gemini: "/v1beta/models/{model}:generateContent",
         },
@@ -1252,6 +1379,11 @@ export default {
     // 用户认证 API
     if (pathname.startsWith("/api/auth/")) {
       return await handleAuthAPI(request, env, pathname);
+    }
+
+    // 历史记录 API
+    if (pathname.startsWith("/api/history")) {
+      return await handleHistoryAPI(request, env, pathname);
     }
 
     // 角色管理 API
