@@ -39,7 +39,7 @@
                             </div>
                             <div class="dropdown-divider"></div>
                             <a href="#" onclick="showCharactersModal(); return false;" class="dropdown-item">
-                                <i class="ph ph-masks-theater"></i> <span data-i18n="user.characters">我的角色</span>
+                                <i class="ph ph-user-circle"></i> <span data-i18n="user.characters">我的角色</span>
                             </a>
                             <a href="#" onclick="showSettingsModal(); return false;" class="dropdown-item">
                                 <i class="ph ph-gear"></i> <span data-i18n="user.settings">账号设置</span>
@@ -114,14 +114,14 @@
                         </div>
                         <p class="form-hint">
                             <a href="#" onclick="showCharactersModal(); return false;" style="color: var(--accent-rose);">
-                                <i class="ph ph-masks-theater"></i> <span data-i18n="user.characters">管理我的角色</span>
+                                <i class="ph ph-user-circle"></i> <span data-i18n="user.characters">管理我的角色</span>
                             </a>
                         </p>
                     </div>
 
                     <!-- 无角色提示 -->
                     <div class="no-characters-notice" id="noCharactersNotice" style="display: none;">
-                        <div class="notice-icon"><i class="ph ph-masks-theater"></i></div>
+                        <div class="notice-icon"><i class="ph ph-user-circle"></i></div>
                         <p data-i18n="characters.empty.notice">你还没有创建角色</p>
                         <p class="notice-hint" data-i18n="characters.empty.notice.hint">创建角色并上传照片后，即可使用锁脸功能生成图片</p>
                         <button class="btn btn-primary" onclick="showAddCharacterForm()">
@@ -520,7 +520,7 @@
                 <span class="modal-close" onclick="closeCharactersModal()" aria-label="Close"><i class="ph ph-x"></i></span>
                 <div class="characters-content">
                     <div class="characters-header">
-                        <h2><i class="ph ph-masks-theater"></i> <span data-i18n="characters.title">我的角色</span></h2>
+                        <h2><i class="ph ph-user-circle"></i> <span data-i18n="characters.title">我的角色</span></h2>
                         <p class="characters-limit" id="charactersLimit"></p>
                     </div>
                     
