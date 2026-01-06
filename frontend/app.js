@@ -459,6 +459,9 @@ let lastGeneratedImages = [];
 
 // 初始化
 document.addEventListener("DOMContentLoaded", async () => {
+  // 页面入场动画
+  initPageAnimations();
+  
   cleanupOldHistory();
   loadHistory();
   initSelectors();
@@ -470,6 +473,34 @@ document.addEventListener("DOMContentLoaded", async () => {
   applyTheme();
   applyLanguage();
 });
+
+// 页面入场动画
+function initPageAnimations() {
+  // 给各个 section 添加渐入动画
+  const sections = document.querySelectorAll('section');
+  sections.forEach((section, index) => {
+    section.style.opacity = '0';
+    section.style.transform = 'translateY(30px)';
+    section.style.transition = 'opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)';
+    
+    setTimeout(() => {
+      section.style.opacity = '1';
+      section.style.transform = 'translateY(0)';
+    }, 100 + index * 120);
+  });
+  
+  // 头部动画
+  const header = document.querySelector('header');
+  if (header) {
+    header.style.opacity = '0';
+    header.style.transform = 'translateY(-20px)';
+    header.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    setTimeout(() => {
+      header.style.opacity = '1';
+      header.style.transform = 'translateY(0)';
+    }, 50);
+  }
+}
 
 // 从后端 API 加载模板
 async function loadTemplatesFromAPI() {
@@ -518,22 +549,31 @@ function renderTemplates() {
     ? templates 
     : templates.filter(t => t.category === selectedCategory);
   
-  grid.innerHTML = filteredTemplates.map(template => `
+  grid.innerHTML = filteredTemplates.map((template, index) => `
     <div class="template-card ${selectedTemplate?.id === template.id ? 'selected' : ''}" 
          data-template-id="${template.id}"
-         onclick="selectTemplate('${template.id}')">
-      <div class="template-thumbnail">
-        <img src="${template.thumbnail}" alt="${template.name[currentLang]}" loading="lazy" />
-        <div class="template-overlay">
-          <span class="template-select-icon">✓</span>
-        </div>
-      </div>
-      <div class="template-info">
-        <h3>${template.name[currentLang]}</h3>
-        <p>${template.description[currentLang]}</p>
+         onclick="selectTemplate('${template.id}')"
+         style="animation: cardFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${index * 0.06}s both;">
+      <img src="${template.thumbnail}" alt="${template.name[currentLang]}" loading="lazy" />
+      <div class="template-card-info">
+        <div class="template-card-name">${template.name[currentLang]}</div>
+        <div class="template-card-desc">${template.description[currentLang]}</div>
       </div>
     </div>
   `).join('');
+  
+  // 添加动画样式（如果尚未添加）
+  if (!document.getElementById('cardAnimationStyle')) {
+    const style = document.createElement('style');
+    style.id = 'cardAnimationStyle';
+    style.textContent = `
+      @keyframes cardFadeIn {
+        from { opacity: 0; transform: translateY(20px) scale(0.95); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+    `;
+    document.head.appendChild(style);
+  }
 }
 
 // 选择模板
@@ -707,38 +747,29 @@ function handleDroppedFiles(files) {
   });
 }
 
-// 简易 Toast 提示
+// Toast 提示 - 使用新设计系统
 function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer') || createToastContainer();
+  
   const toast = document.createElement('div');
-  toast.style.cssText = `
-    position: fixed;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%) translateY(20px);
-    background: ${type === 'warning' ? 'rgba(255, 179, 71, 0.95)' : type === 'error' ? 'rgba(255, 107, 107, 0.95)' : 'rgba(0, 229, 192, 0.95)'};
-    color: #000;
-    padding: 14px 28px;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    z-index: 3000;
-    opacity: 0;
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  `;
+  toast.className = `toast toast-${type}`;
   toast.textContent = message;
-  document.body.appendChild(toast);
-
-  requestAnimationFrame(() => {
-    toast.style.opacity = '1';
-    toast.style.transform = 'translateX(-50%) translateY(0)';
-  });
-
+  container.appendChild(toast);
+  
+  // 自动移除
   setTimeout(() => {
     toast.style.opacity = '0';
-    toast.style.transform = 'translateX(-50%) translateY(20px)';
-    setTimeout(() => toast.remove(), 400);
-  }, 3000);
+    toast.style.transform = 'translateX(100%)';
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
+}
+
+function createToastContainer() {
+  const container = document.createElement('div');
+  container.id = 'toastContainer';
+  container.className = 'toast-container';
+  document.body.appendChild(container);
+  return container;
 }
 
 // 清理旧格式的历史记录
@@ -1743,23 +1774,24 @@ function renderCharacters() {
   
   if (userCharacters.length === 0) {
     grid.innerHTML = `
-      <div class="empty-characters">
+      <div class="empty-characters" style="grid-column: 1 / -1;">
         <div class="empty-characters-icon">🎭</div>
         <p>${t('characters.empty')}</p>
-        <p style="font-size: 0.85rem;">${t('characters.empty.hint')}</p>
+        <p style="font-size: 0.85rem; color: var(--text-muted);">${t('characters.empty.hint')}</p>
       </div>
     `;
     return;
   }
   
-  grid.innerHTML = userCharacters.map(char => {
+  grid.innerHTML = userCharacters.map((char, index) => {
     const firstPhoto = char.photos?.[0];
     const avatarContent = firstPhoto 
       ? `<img src="data:${firstPhoto.mimeType};base64,${firstPhoto.data}" alt="${char.name}" />`
       : '👤';
     
     return `
-      <div class="character-card" data-id="${char.id}">
+      <div class="character-card" data-id="${char.id}" 
+           style="animation: cardFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${index * 0.08}s both;">
         <div class="character-avatar">${avatarContent}</div>
         <div class="character-name">${escapeHtml(char.name)}</div>
         <div class="character-meta">${char.photos?.length || 0} 张照片</div>
