@@ -2375,9 +2375,9 @@ function selectCharacter(characterId) {
 // 获取生成时使用的参考图片
 function getGenerationReferenceImages() {
   if (selectedCharacter && selectedCharacter.photos?.length > 0) {
-    // 使用角色的照片
+    // 使用角色的照片，确保属性名与 generateWithGemini 期望的一致
     return selectedCharacter.photos.map(photo => ({
-      data: photo.data,
+      base64: photo.data,  // photo.data 是 base64 编码的图片数据
       mimeType: photo.mimeType
     }));
   }
