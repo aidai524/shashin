@@ -1416,7 +1416,7 @@ async function saveHistoryToBackend(record, originalImages) {
   }
   
   try {
-    const response = await fetch(`${config.endpoint}/api/history`, {
+    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/history`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1442,7 +1442,7 @@ async function getHistoryFromBackend() {
   if (!token) return null;
   
   try {
-    const response = await fetch(`${config.endpoint}/api/history`, {
+    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/history`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -1464,7 +1464,7 @@ async function deleteHistoryFromBackend(recordId) {
   if (!token) return false;
   
   try {
-    const response = await fetch(`${config.endpoint}/api/history/${recordId}`, {
+    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/history/${recordId}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -1484,7 +1484,7 @@ async function clearHistoryFromBackend() {
   if (!token) return false;
   
   try {
-    const response = await fetch(`${config.endpoint}/api/history`, {
+    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/history`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`
