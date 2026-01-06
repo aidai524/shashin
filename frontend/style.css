@@ -223,6 +223,7 @@ header {
   text-align: center;
   padding: 3rem 0 4rem;
   position: relative;
+  z-index: 100;
 }
 
 header h1 {
