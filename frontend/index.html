@@ -6,6 +6,15 @@
         <meta name="theme-color" content="#030308" />
         <meta name="description" content="使用 Google Gemini AI 生成精美图片 - 梦想写真馆" />
         <title>梦想写真馆 - AI 图片生成器</title>
+        <!-- 在 CSS 加载前设置主题，避免闪烁 -->
+        <script>
+            (function() {
+                var theme = localStorage.getItem('gemini_theme') || 'dark';
+                document.documentElement.setAttribute('data-theme', theme);
+                var meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) meta.content = theme === 'light' ? '#f5f5fa' : '#06060f';
+            })();
+        </script>
         <link rel="stylesheet" href="style.css" />
         <!-- Phosphor Icons -->
         <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
