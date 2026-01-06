@@ -100,7 +100,7 @@ const i18n = {
   },
   zh: {
     // Header
-    'site.title': '星际创作室',
+    'site.title': '梦想写真馆',
     'site.subtitle': '由 Google Gemini AI 驱动 · 创造精美图像',
     
     // Config section
@@ -304,7 +304,7 @@ function applyLanguage() {
   
   // 更新页面标题
   document.title = currentLang === 'zh' 
-    ? 'Gemini 星际创作室 - AI 图片生成器' 
+    ? 'Gemini 梦想写真馆 - AI 图片生成器' 
     : 'Gemini Cosmic Studio - AI Image Generator';
   
   // 更新分辨率提示
