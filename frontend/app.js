@@ -755,7 +755,7 @@ function showToast(message, type = 'info') {
   toast.className = `toast toast-${type}`;
   toast.textContent = message;
   container.appendChild(toast);
-  
+
   // 自动移除
   setTimeout(() => {
     toast.style.opacity = '0';
@@ -1291,7 +1291,7 @@ function showHistoryDetail(id) {
     <div class="history-detail-images">${imagesHtml}</div>
     <div class="history-detail-actions">
       <button class="btn btn-secondary btn-small" onclick="reuseTemplate('${record.templateId}')">🔄 ${t('history.reuse')}</button>
-      <button class="btn btn-danger btn-small" onclick="deleteHistoryItem(${record.id})">🗑️ ${t('history.delete')}</button>
+      <button class="btn btn-danger btn-small" onclick="deleteHistoryItem(${record.id})"><i class="ph ph-trash"></i> ${t('history.delete')}</button>
     </div>
   `;
 
@@ -1460,12 +1460,12 @@ function updateUserUI() {
   const userPlanBadge = document.getElementById('userPlanBadge');
   
   if (currentUser) {
-    loginBtn.innerHTML = `<span class="user-avatar-small">${currentUser.nickname?.charAt(0) || '👤'}</span>`;
+    loginBtn.innerHTML = `<span class="user-avatar-small">${currentUser.nickname?.charAt(0) || '<i class="ph ph-user"></i>'}</span>`;
     loginBtn.onclick = toggleUserDropdown;
     userName.textContent = currentUser.nickname || currentUser.email;
     userPlanBadge.textContent = currentUser.planInfo?.name || t('plan.free');
   } else {
-    loginBtn.innerHTML = `<span class="user-icon">👤</span><span data-i18n="auth.login">${t('auth.login')}</span>`;
+    loginBtn.innerHTML = `<i class="ph ph-user"></i><span data-i18n="auth.login">${t('auth.login')}</span>`;
     loginBtn.onclick = () => showAuthModal('login');
     userDropdown.style.display = 'none';
   }
@@ -1775,7 +1775,7 @@ function renderCharacters() {
   if (userCharacters.length === 0) {
     grid.innerHTML = `
       <div class="empty-characters" style="grid-column: 1 / -1;">
-        <div class="empty-characters-icon">🎭</div>
+        <div class="empty-characters-icon"><i class="ph ph-masks-theater"></i></div>
         <p>${t('characters.empty')}</p>
         <p style="font-size: 0.85rem; color: var(--text-muted);">${t('characters.empty.hint')}</p>
       </div>
@@ -1787,7 +1787,7 @@ function renderCharacters() {
     const firstPhoto = char.photos?.[0];
     const avatarContent = firstPhoto 
       ? `<img src="data:${firstPhoto.mimeType};base64,${firstPhoto.data}" alt="${char.name}" />`
-      : '👤';
+      : '<i class="ph ph-user"></i>';
     
     return `
       <div class="character-card" data-id="${char.id}" 
@@ -1796,8 +1796,8 @@ function renderCharacters() {
         <div class="character-name">${escapeHtml(char.name)}</div>
         <div class="character-meta">${char.photos?.length || 0} 张照片</div>
         <div class="character-actions">
-          <button class="btn-edit-char" onclick="editCharacter('${char.id}')">✏️ ${t('common.edit')}</button>
-          <button class="btn-delete-char" onclick="deleteCharacter('${char.id}')">🗑️</button>
+          <button class="btn-edit-char" onclick="editCharacter('${char.id}')"><i class="ph ph-pencil-simple"></i> ${t('common.edit')}</button>
+          <button class="btn-delete-char" onclick="deleteCharacter('${char.id}')"><i class="ph ph-trash"></i></button>
         </div>
       </div>
     `;
@@ -1808,7 +1808,7 @@ function renderCharacters() {
 function showAddCharacterForm() {
   currentEditingCharacter = null;
   
-  document.getElementById('editCharacterTitle').innerHTML = `➕ <span>${t('characters.add')}</span>`;
+  document.getElementById('editCharacterTitle').innerHTML = `<i class="ph ph-plus"></i> <span>${t('characters.add')}</span>`;
   document.getElementById('characterId').value = '';
   document.getElementById('characterName').value = '';
   document.getElementById('characterDesc').value = '';
@@ -1825,7 +1825,7 @@ function editCharacter(characterId) {
   
   currentEditingCharacter = character;
   
-  document.getElementById('editCharacterTitle').innerHTML = `✏️ <span>${t('characters.edit')}</span>`;
+  document.getElementById('editCharacterTitle').innerHTML = `<i class="ph ph-pencil-simple"></i> <span>${t('characters.edit')}</span>`;
   document.getElementById('characterId').value = character.id;
   document.getElementById('characterName').value = character.name;
   document.getElementById('characterDesc').value = character.description || '';
@@ -1861,7 +1861,7 @@ function renderCharacterPhotos() {
   grid.innerHTML = photos.map(photo => `
     <div class="character-photo-item">
       <img src="data:${photo.mimeType};base64,${photo.data}" alt="Photo" />
-      <button class="photo-delete-btn" onclick="deleteCharacterPhoto('${photo.id}')" title="删除">✕</button>
+      <button class="photo-delete-btn" onclick="deleteCharacterPhoto('${photo.id}')" title="删除"><i class="ph ph-x"></i></button>
     </div>
   `).join('');
 }
@@ -1923,7 +1923,7 @@ async function handleSaveCharacter(e) {
         currentEditingCharacter = data.character;
         document.getElementById('characterId').value = data.character.id;
         document.getElementById('characterPhotosSection').style.display = 'block';
-        document.getElementById('editCharacterTitle').innerHTML = `✏️ <span>${t('characters.edit')}</span>`;
+        document.getElementById('editCharacterTitle').innerHTML = `<i class="ph ph-pencil-simple"></i> <span>${t('characters.edit')}</span>`;
         renderCharacterPhotos();
       }
       

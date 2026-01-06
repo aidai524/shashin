@@ -7,6 +7,7 @@
   <title>模板管理后台 - Dream Photo Admin</title>
   <link rel="preconnect" href="https://fonts.loli.net" crossorigin>
   <link href="https://fonts.loli.net/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>" />
   <style>
     /* =========================================
@@ -754,7 +755,7 @@
 <body>
   <!-- Login Section -->
   <div id="loginSection" class="login-container">
-    <h2>🔐 管理员登录</h2>
+    <h2><i class="ph ph-lock-key"></i> 管理员登录</h2>
     <form id="loginForm">
       <div class="form-group">
         <label>管理员密钥</label>
@@ -769,9 +770,9 @@
   <!-- Admin Dashboard -->
   <div id="adminDashboard" class="hidden">
     <header class="header">
-      <h1>🎨 Dream Photo 模板管理</h1>
+      <h1><i class="ph ph-palette"></i> Dream Photo 模板管理</h1>
       <div class="header-actions">
-        <a href="index.html" class="btn btn-secondary btn-sm">← 返回主站</a>
+        <a href="index.html" class="btn btn-secondary btn-sm"><i class="ph ph-arrow-left"></i> 返回主站</a>
         <button id="logoutBtn" class="btn btn-secondary btn-sm">退出登录</button>
       </div>
     </header>
@@ -805,10 +806,10 @@
       <div class="toolbar">
         <div class="toolbar-left">
           <button id="addTemplateBtn" class="btn btn-primary">
-            ➕ 添加模板
+            <i class="ph ph-plus"></i> 添加模板
           </button>
           <button id="refreshBtn" class="btn btn-secondary">
-            🔄 刷新列表
+            <i class="ph ph-arrows-clockwise"></i> 刷新列表
           </button>
         </div>
       </div>
@@ -1013,10 +1014,10 @@
             <div class="template-prompt">${t.prompt}</div>
             <div class="template-card-actions">
               <button class="btn btn-secondary btn-sm" onclick="editTemplate('${t.id}')">
-                ✏️ 编辑
+                <i class="ph ph-pencil-simple"></i> 编辑
               </button>
               <button class="btn btn-danger btn-sm" onclick="deleteTemplate('${t.id}')">
-                🗑️ 删除
+                <i class="ph ph-trash"></i> 删除
               </button>
             </div>
           </div>
@@ -1054,7 +1055,7 @@
       const title = document.getElementById('modalTitle');
       
       if (template) {
-        title.textContent = '✏️ 编辑模板';
+        title.innerHTML = '<i class="ph ph-pencil-simple"></i> 编辑模板';
         document.getElementById('templateId').value = template.id;
         document.getElementById('tplId').value = template.id;
         document.getElementById('tplId').disabled = true;
@@ -1068,7 +1069,7 @@
         document.getElementById('tplOrder').value = template.order || 99;
         document.getElementById('tplActive').value = template.active !== false ? 'true' : 'false';
       } else {
-        title.textContent = '➕ 添加模板';
+        title.innerHTML = '<i class="ph ph-plus"></i> 添加模板';
         document.getElementById('templateForm').reset();
         document.getElementById('templateId').value = '';
         document.getElementById('tplId').disabled = false;
