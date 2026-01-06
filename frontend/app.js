@@ -1335,6 +1335,8 @@ async function cleanupOrphanedImages() {
 
 // 历史记录相关
 function saveToHistory(template, model, images, refImages) {
+  console.log('[History] saveToHistory called, images:', images.length);
+  
   const history = getHistory();
   lastGeneratedImages = images;
   const recordId = Date.now();
@@ -1343,10 +1345,17 @@ function saveToHistory(template, model, images, refImages) {
   saveOriginalImages(recordId, images.map(img => ({
     base64: img.base64,
     mimeType: img.mimeType
-  })));
+  }))).then(() => {
+    console.log('[History] Original images saved to IndexedDB');
+  }).catch(e => {
+    console.error('[History] Failed to save original images:', e);
+  });
 
   // 再压缩缩略图保存到 localStorage
+  console.log('[History] Starting thumbnail compression...');
   compressImagesAsync(images).then((thumbnails) => {
+    console.log('[History] Thumbnails compressed:', thumbnails.length);
+    
     const record = {
       id: recordId,
       templateId: template.id,
@@ -1359,6 +1368,7 @@ function saveToHistory(template, model, images, refImages) {
     };
 
     history.unshift(record);
+    console.log('[History] Record created, total history:', history.length);
 
     // 限制历史记录数量
     while (history.length > 20) {
@@ -1368,7 +1378,11 @@ function saveToHistory(template, model, images, refImages) {
     }
 
     saveHistoryToStorage(history);
+    console.log('[History] History saved to localStorage');
     loadHistory();
+    console.log('[History] loadHistory called');
+  }).catch(e => {
+    console.error('[History] Compression failed:', e);
   });
 }
 
@@ -1394,15 +1408,26 @@ async function compressImagesAsync(images) {
 
 function compressImageAsync(base64, mimeType, maxSize, quality = 0.85) {
   return new Promise((resolve) => {
+    // 超时保护：5秒后自动返回原图片段
+    const timeout = setTimeout(() => {
+      console.warn('[Compress] Timeout, returning fallback');
+      resolve({
+        base64: base64.substring(0, 50000),
+        mimeType: mimeType,
+      });
+    }, 5000);
+    
     const img = new Image();
     img.onload = () => {
+      clearTimeout(timeout);
+      try {
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
 
       let width = img.width;
       let height = img.height;
 
-      // 按最长边缩放到 maxSize（720P）
+        // 按最长边缩放到 maxSize（720P）
       if (width > height) {
         if (width > maxSize) {
           height = Math.round((height * maxSize) / width);
@@ -1419,17 +1444,27 @@ function compressImageAsync(base64, mimeType, maxSize, quality = 0.85) {
       canvas.height = height;
       ctx.drawImage(img, 0, 0, width, height);
 
-      // 使用较高质量压缩
-      const compressedBase64 = canvas.toDataURL("image/jpeg", quality).split(",")[1];
+        // 使用较高质量压缩
+        const compressedBase64 = canvas.toDataURL("image/jpeg", quality).split(",")[1];
+        console.log('[Compress] Success, size:', compressedBase64.length);
       resolve({
         base64: compressedBase64,
         mimeType: "image/jpeg",
       });
+      } catch (e) {
+        console.error('[Compress] Canvas error:', e);
+        resolve({
+          base64: base64.substring(0, 50000),
+          mimeType: mimeType,
+        });
+      }
     };
 
-    img.onerror = () => {
+    img.onerror = (e) => {
+      clearTimeout(timeout);
+      console.error('[Compress] Image load error:', e);
       resolve({
-        base64: base64.substring(0, 5000),
+        base64: base64.substring(0, 50000),
         mimeType: mimeType,
       });
     };
@@ -1465,19 +1500,30 @@ function getHistory() {
 }
 
 function loadHistory() {
+  console.log('[History] loadHistory started');
   const history = getHistory();
+  console.log('[History] Got history records:', history.length);
+  
   const container = document.getElementById("historyGrid");
-
-  if (history.length === 0) {
-    container.innerHTML = `<p class="empty-tip">${t('history.empty')}</p>`;
+  if (!container) {
+    console.error('[History] Container historyGrid not found!');
     return;
   }
 
-  container.innerHTML = history
+  if (history.length === 0) {
+    container.innerHTML = `<p class="empty-tip">${t('history.empty')}</p>`;
+    console.log('[History] No history, showing empty tip');
+    return;
+  }
+
+  const html = history
     .map((record, index) => {
       const thumbnails = record.thumbnails || record.images || [];
       const firstImage = thumbnails[0];
-      if (!firstImage) return "";
+      if (!firstImage) {
+        console.warn('[History] Record has no thumbnails:', record.id);
+        return "";
+      }
 
       const imageCount = record.imageCount || thumbnails.length;
       const date = formatTime(record.createdAt);
@@ -1493,6 +1539,9 @@ function loadHistory() {
     `;
     })
     .join("");
+  
+  container.innerHTML = html;
+  console.log('[History] Rendered', history.length, 'records');
 }
 
 async function showHistoryDetail(id) {
