@@ -464,8 +464,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 页面入场动画
   initPageAnimations();
   
+  // 清理旧的本地历史数据
   cleanupOldHistory();
-  loadHistory();
+  
+  // 初始化选择器和模板
   initSelectors();
   await loadTemplatesFromAPI();
   initTemplateSystem();
@@ -474,6 +476,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   enhanceInteractions();
   applyTheme();
   applyLanguage();
+  
+  // 初始化用户认证状态（等待完成后再加载历史记录）
+  await initAuth();
+  
+  // 加载历史记录（在 initAuth 之后，确保 currentUser 已设置）
+  loadHistory();
 });
 
 // 页面入场动画
@@ -2071,6 +2079,7 @@ async function handleLogin(e) {
       closeAuthModal();
       updateUserUI();
       renderCharacterSelector();
+      loadHistory(); // 刷新历史记录
       showToast(t('auth.login.success').replace('{name}', currentUser.nickname), 'success');
     } else {
       showToast(data.error || '登录失败', 'error');
@@ -2119,6 +2128,7 @@ async function handleRegister(e) {
       closeAuthModal();
       updateUserUI();
       renderCharacterSelector();
+      loadHistory(); // 刷新历史记录
       showToast(t('auth.register.success').replace('{name}', currentUser.nickname), 'success');
     } else {
       showToast(data.error || '注册失败', 'error');
@@ -2137,10 +2147,12 @@ function logout() {
   authToken = null;
   selectedCharacter = null;
   userCharacters = [];
+  backendHistoryCache = null; // 清除历史记录缓存
   localStorage.removeItem('auth_token');
   document.getElementById('userDropdown').style.display = 'none';
   updateUserUI();
   renderCharacterSelector();
+  loadHistory(); // 刷新历史记录（显示登录提示）
   showToast(t('auth.logout.success'), 'info');
 }
 
@@ -2717,5 +2729,4 @@ function getGenerationReferenceImages() {
   return [];
 }
 
-// 页面加载时初始化认证
-initAuth();
+// initAuth 已在 DOMContentLoaded 中调用
