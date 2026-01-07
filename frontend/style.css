@@ -1522,7 +1522,7 @@ section {
   width: 100%;
   height: auto;
   display: block;
-  cursor: zoom-in;
+  cursor: default;
   transition: transform var(--duration-normal);
 }
 
@@ -1545,7 +1545,7 @@ section {
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
+  opacity: 1;
   transform: translateY(8px) scale(0.9);
   transition: all var(--duration-normal) var(--ease-out);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -1998,6 +1998,8 @@ section {
 .modal-edit-character {
   width: 480px;
   padding: var(--space-6);
+  min-height: auto;
+  overflow: visible;
 }
 
 .edit-character-content h2 {
@@ -2010,6 +2012,12 @@ section {
 /* 编辑角色表单样式 */
 .edit-character-content .form-group {
   margin-bottom: var(--space-5);
+  position: relative;
+  overflow: visible;
+}
+
+.edit-character-content form {
+  overflow: visible;
 }
 
 .edit-character-content .form-group label {
@@ -2047,6 +2055,211 @@ section {
 .edit-character-content .form-group input[type="text"]::placeholder {
   color: var(--text-muted);
   font-weight: 400;
+}
+
+/* 自定义下拉框样式 */
+.custom-select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.custom-select {
+  width: 100%;
+  padding: var(--space-4);
+  padding-right: calc(var(--space-4) + 24px);
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.custom-select:hover {
+  border-color: rgba(139, 92, 246, 0.4);
+  background: var(--bg-muted);
+}
+
+.custom-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: var(--bg-muted);
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15), 0 4px 12px rgba(139, 92, 246, 0.1);
+}
+
+.select-arrow {
+  position: absolute;
+  right: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 1rem;
+  pointer-events: none;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.custom-select:focus + .select-arrow {
+  color: var(--primary);
+  transform: translateY(-50%) rotate(180deg);
+}
+
+/* 自定义精美下拉组件 */
+.fancy-select {
+  position: relative;
+  width: 100%;
+  font-family: var(--font-body);
+}
+
+.fancy-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  background: var(--bg-base);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-out);
+}
+
+.fancy-select-trigger:hover {
+  border-color: rgba(139, 92, 246, 0.4);
+  background: var(--bg-muted);
+}
+
+.fancy-select.open .fancy-select-trigger {
+  border-color: var(--primary);
+  background: var(--bg-muted);
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15), 0 4px 12px rgba(139, 92, 246, 0.1);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.fancy-select-value {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.fancy-select-value[data-placeholder]:empty::before,
+.fancy-select-value.placeholder {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+}
+
+.fancy-select-arrow {
+  color: var(--text-muted);
+  font-size: 1rem;
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+
+.fancy-select.open .fancy-select-arrow {
+  transform: rotate(180deg);
+  color: var(--primary);
+}
+
+.fancy-select-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--primary);
+  border-top: none;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  max-height: 320px;
+  overflow-y: auto;
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all var(--duration-normal) var(--ease-out);
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.fancy-select.open .fancy-select-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.fancy-select-group {
+  padding: var(--space-2) 0;
+}
+
+.fancy-select-group:not(:last-child) {
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.fancy-select-group-label {
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fancy-select-group-label i {
+  font-size: 0.9rem;
+  color: var(--primary);
+}
+
+.fancy-select-option {
+  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-6);
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+  position: relative;
+}
+
+.fancy-select-option:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.fancy-select-option.selected {
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.fancy-select-option.selected::before {
+  content: '';
+  position: absolute;
+  left: var(--space-3);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  background: var(--primary);
+  border-radius: 50%;
+}
+
+/* 滚动条样式 */
+.fancy-select-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.fancy-select-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.fancy-select-dropdown::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 3px;
+}
+
+.fancy-select-dropdown::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 .character-photos-section {
@@ -2098,13 +2311,13 @@ section {
   align-items: center;
   justify-content: center;
   font-size: 0.65rem;
-  opacity: 0;
+    opacity: 0;
   transition: opacity var(--duration-fast);
-}
+  }
 
 .character-photo-item:hover .photo-delete-btn {
-  opacity: 1;
-}
+    opacity: 1;
+  }
 
 .photo-upload-area {
   display: flex;

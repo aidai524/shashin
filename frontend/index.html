@@ -31,7 +31,7 @@
                     <button class="theme-switch-btn" id="themeSwitchBtn" onclick="toggleTheme()" aria-label="Toggle theme">
                         <i class="ph ph-moon"></i>
                     </button>
-                    <button class="lang-switch-btn" id="langSwitchBtn" onclick="switchLanguage()" aria-label="Switch language">EN</button>
+                <button class="lang-switch-btn" id="langSwitchBtn" onclick="switchLanguage()" aria-label="Switch language">EN</button>
                     <!-- 用户账号 -->
                     <div class="user-menu" id="userMenu">
                         <button class="user-btn" id="loginBtn" onclick="showAuthModal('login')">
@@ -557,7 +557,41 @@
                         <input type="hidden" id="characterId" />
                         <div class="form-group">
                             <label for="characterName" data-i18n="characters.name">角色名称</label>
-                            <input type="text" id="characterName" required placeholder="例如：我自己、女儿、爸爸..." />
+                            <input type="hidden" id="characterName" required />
+                            <div class="fancy-select" id="characterSelect">
+                                <div class="fancy-select-trigger" onclick="toggleFancySelect()">
+                                    <span class="fancy-select-value" data-placeholder="请选择角色">请选择角色</span>
+                                    <i class="ph ph-caret-down fancy-select-arrow"></i>
+                                </div>
+                                <div class="fancy-select-dropdown">
+                                    <div class="fancy-select-group">
+                                        <div class="fancy-select-group-label"><i class="ph ph-user"></i> 常用</div>
+                                        <div class="fancy-select-option" data-value="本人">本人</div>
+                                        <div class="fancy-select-option" data-value="老婆">老婆</div>
+                                        <div class="fancy-select-option" data-value="老公">老公</div>
+                                        <div class="fancy-select-option" data-value="女儿">女儿</div>
+                                        <div class="fancy-select-option" data-value="儿子">儿子</div>
+                                    </div>
+                                    <div class="fancy-select-group">
+                                        <div class="fancy-select-group-label"><i class="ph ph-users-three"></i> 父母</div>
+                                        <div class="fancy-select-option" data-value="爸爸">爸爸</div>
+                                        <div class="fancy-select-option" data-value="妈妈">妈妈</div>
+                                        <div class="fancy-select-option" data-value="公公">公公</div>
+                                        <div class="fancy-select-option" data-value="婆婆">婆婆</div>
+                                    </div>
+                                    <div class="fancy-select-group">
+                                        <div class="fancy-select-group-label"><i class="ph ph-users"></i> 祖辈</div>
+                                        <div class="fancy-select-option" data-value="爷爷">爷爷</div>
+                                        <div class="fancy-select-option" data-value="奶奶">奶奶</div>
+                                        <div class="fancy-select-option" data-value="外公">外公</div>
+                                        <div class="fancy-select-option" data-value="外婆">外婆</div>
+                                    </div>
+                                    <div class="fancy-select-group">
+                                        <div class="fancy-select-group-label"><i class="ph ph-plus-circle"></i> 更多</div>
+                                        <div class="fancy-select-option" data-value="其他">其他</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="characterDesc" data-i18n="characters.description">描述（可选）</label>

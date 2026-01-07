@@ -383,9 +383,9 @@ function applyTheme() {
   html.setAttribute('data-theme', currentTheme);
   
   if (themeBtn) {
-    const icon = currentTheme === 'dark' ? '🌙' : '☀️';
-    const label = currentTheme === 'dark' ? 'Dark' : 'Light';
-    themeBtn.textContent = `${icon} ${label}`;
+    // 使用 Phosphor Icons
+    const iconClass = currentTheme === 'dark' ? 'ph-moon' : 'ph-sun';
+    themeBtn.innerHTML = `<i class="ph ${iconClass}"></i>`;
   }
   
   const metaTheme = document.querySelector('meta[name="theme-color"]');
@@ -476,6 +476,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   enhanceInteractions();
   applyTheme();
   applyLanguage();
+  
+  // 初始化自定义下拉组件
+  initFancySelect();
   
   // 初始化用户认证状态（等待完成后再加载历史记录）
   await initAuth();
@@ -1721,7 +1724,7 @@ async function showHistoryDetail(id) {
   const imagesHtml = displayImages
     .map((img, i) => `
       <div class="history-image-item">
-        <img src="data:${img.mimeType};base64,${img.base64}" alt="Generated image ${i + 1}" onclick="previewHistoryImage(${record.id}, ${i})" />
+        <img src="data:${img.mimeType};base64,${img.base64}" alt="Generated image ${i + 1}" />
         <button class="history-download-btn" onclick="downloadHistoryImage(${record.id}, ${i})" title="${t('modal.download')}">
           <i class="ph ph-download-simple"></i>
         </button>
@@ -1735,8 +1738,8 @@ async function showHistoryDetail(id) {
     : (currentLang === 'zh' ? '快速' : 'Fast');
 
   const qualityNote = hasOriginal 
-    ? (currentLang === 'zh' ? '✓ 已保存原图，点击可预览或下载' : '✓ Original images saved, click to preview or download')
-    : (currentLang === 'zh' ? '📷 720P预览图（可下载）' : '📷 720P preview (downloadable)');
+    ? (currentLang === 'zh' ? '✓ 已保存原图，点击右下角按钮下载' : '✓ Original images saved, click download button')
+    : (currentLang === 'zh' ? '📷 720P预览图，点击下载按钮保存' : '📷 720P preview, click to download');
 
   detail.innerHTML = `
     <div class="history-detail-prompt">${t('history.template')}: ${templateName}</div>
@@ -2342,13 +2345,91 @@ function renderCharacters() {
   }).join('');
 }
 
+// ========== 自定义下拉组件交互 ==========
+function toggleFancySelect() {
+  const select = document.getElementById('characterSelect');
+  select.classList.toggle('open');
+}
+
+function selectFancyOption(value) {
+  const select = document.getElementById('characterSelect');
+  const valueSpan = select.querySelector('.fancy-select-value');
+  const hiddenInput = document.getElementById('characterName');
+  
+  // 更新显示值
+  valueSpan.textContent = value;
+  valueSpan.classList.remove('placeholder');
+  hiddenInput.value = value;
+  
+  // 更新选中状态
+  select.querySelectorAll('.fancy-select-option').forEach(opt => {
+    opt.classList.toggle('selected', opt.dataset.value === value);
+  });
+  
+  // 关闭下拉框
+  select.classList.remove('open');
+}
+
+function resetFancySelect() {
+  const select = document.getElementById('characterSelect');
+  const valueSpan = select.querySelector('.fancy-select-value');
+  const hiddenInput = document.getElementById('characterName');
+  
+  valueSpan.textContent = '请选择角色';
+  valueSpan.classList.add('placeholder');
+  hiddenInput.value = '';
+  
+  select.querySelectorAll('.fancy-select-option').forEach(opt => {
+    opt.classList.remove('selected');
+  });
+  select.classList.remove('open');
+}
+
+function setFancySelectValue(value) {
+  const select = document.getElementById('characterSelect');
+  const valueSpan = select.querySelector('.fancy-select-value');
+  const hiddenInput = document.getElementById('characterName');
+  
+  if (value) {
+    valueSpan.textContent = value;
+    valueSpan.classList.remove('placeholder');
+    hiddenInput.value = value;
+    
+    select.querySelectorAll('.fancy-select-option').forEach(opt => {
+      opt.classList.toggle('selected', opt.dataset.value === value);
+    });
+  } else {
+    resetFancySelect();
+  }
+}
+
+// 初始化下拉组件点击事件
+function initFancySelect() {
+  const select = document.getElementById('characterSelect');
+  if (!select) return;
+  
+  // 点击选项
+  select.querySelectorAll('.fancy-select-option').forEach(opt => {
+    opt.addEventListener('click', () => {
+      selectFancyOption(opt.dataset.value);
+    });
+  });
+  
+  // 点击外部关闭
+  document.addEventListener('click', (e) => {
+    if (!select.contains(e.target)) {
+      select.classList.remove('open');
+    }
+  });
+}
+
 // 显示添加角色表单
 function showAddCharacterForm() {
   currentEditingCharacter = null;
   
   document.getElementById('editCharacterTitle').innerHTML = `<i class="ph ph-plus"></i> <span>${t('characters.add')}</span>`;
   document.getElementById('characterId').value = '';
-  document.getElementById('characterName').value = '';
+  resetFancySelect();
   document.getElementById('characterDesc').value = '';
   document.getElementById('characterPhotosSection').style.display = 'none';
   
@@ -2365,7 +2446,7 @@ function editCharacter(characterId) {
   
   document.getElementById('editCharacterTitle').innerHTML = `<i class="ph ph-pencil-simple"></i> <span>${t('characters.edit')}</span>`;
   document.getElementById('characterId').value = character.id;
-  document.getElementById('characterName').value = character.name;
+  setFancySelectValue(character.name);
   document.getElementById('characterDesc').value = character.description || '';
   
   // 显示照片管理区域
