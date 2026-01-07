@@ -14,8 +14,8 @@ let templates = [];
 const i18n = {
   en: {
     // Header
-    'site.title': 'CYBER DREAM',
-    'site.subtitle': 'POWERED BY GEMINI AI // CREATE YOUR DIGITAL ILLUSIONS',
+    'site.title': 'Dream Photo',
+    'site.subtitle': 'Powered by Gemini AI · Create Your Perfect Portrait',
     
     // Template section
     'template.title': 'Choose Style Template',
@@ -75,11 +75,11 @@ const i18n = {
     'history.template': 'Template',
     
     // Footer
-    'footer.text': '// SYSTEM ONLINE // GEMINI AI × CLOUDFLARE WORKERS //',
+    'footer.text': 'Made with Gemini AI · Powered by Cloudflare',
     
     // Loading
     'loading.title': 'Creating your masterpiece...',
-    'loading.hint': 'This usually takes 10-30 seconds',
+    'loading.hint': 'Usually takes 10-30 seconds',
     
     // Modal
     'modal.download': 'Download Image',
@@ -112,7 +112,7 @@ const i18n = {
     'auth.login.subtitle': 'Sign in to continue creating',
     'auth.login.submit': 'Sign In',
     'auth.register.title': 'Create Account',
-    'auth.register.subtitle': 'Join CYBER DREAM // Start your digital journey',
+    'auth.register.subtitle': 'Join Dream Photo · Start your AI creative journey',
     'auth.register.submit': 'Sign Up',
     'auth.email': 'Email',
     'auth.password': 'Password',
@@ -184,8 +184,8 @@ const i18n = {
   },
   zh: {
     // Header
-    'site.title': '梦想照相馆',
-    'site.subtitle': 'POWERED BY GEMINI AI // 创造属于你的数字形象',
+    'site.title': 'Dream Photo',
+    'site.subtitle': '由 Gemini AI 驱动 · 创造你的完美写真',
     
     // Template section
     'template.title': '选择风格模板',
@@ -245,7 +245,7 @@ const i18n = {
     'history.template': '模板',
     
     // Footer
-    'footer.text': '// SYSTEM ONLINE // GEMINI AI × CLOUDFLARE WORKERS //',
+    'footer.text': '由 Gemini AI 驱动 · Powered by Cloudflare',
     
     // Loading
     'loading.title': '正在创作你的杰作...',
@@ -282,7 +282,7 @@ const i18n = {
     'auth.login.subtitle': '登录你的账号继续创作',
     'auth.login.submit': '登录',
     'auth.register.title': '创建账号',
-    'auth.register.subtitle': '接入梦想照相馆 // 开启数字创作之旅',
+    'auth.register.subtitle': '加入 Dream Photo，开启 AI 创作之旅',
     'auth.register.submit': '注册',
     'auth.email': '邮箱',
     'auth.password': '密码',
@@ -357,8 +357,8 @@ const i18n = {
 // 当前语言（默认中文）
 let currentLang = localStorage.getItem('gemini_lang') || 'zh';
 
-// 当前主题（默认深色）
-let currentTheme = localStorage.getItem('gemini_theme') || 'dark';
+// 当前主题（默认浅色 - Minimalist Modern）
+let currentTheme = localStorage.getItem('gemini_theme') || 'light';
 
 // 当前选择状态
 let selectedTemplate = null;
@@ -383,14 +383,14 @@ function applyTheme() {
   html.setAttribute('data-theme', currentTheme);
   
   if (themeBtn) {
-    // 使用 Phosphor Icons - 赛博朋克风格
-    const iconClass = currentTheme === 'dark' ? 'ph-moon-stars' : 'ph-sun-dim';
+    // 使用 Phosphor Icons - 简洁风格
+    const iconClass = currentTheme === 'dark' ? 'ph-moon' : 'ph-sun';
     themeBtn.innerHTML = `<i class="ph ${iconClass}"></i>`;
   }
   
   const metaTheme = document.querySelector('meta[name="theme-color"]');
   if (metaTheme) {
-    metaTheme.content = currentTheme === 'light' ? '#f0f0f5' : '#0a0a0f';
+    metaTheme.content = currentTheme === 'dark' ? '#0F172A' : '#FAFAFA';
   }
 }
 
