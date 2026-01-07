@@ -434,7 +434,10 @@ function applyLanguage() {
   updateQuantityLabels();
   updateResolutionOptions();
   renderTemplates();
+  // 只有在用户已登录时才刷新历史记录（避免在 initAuth 之前调用）
+  if (currentUser) {
   loadHistory();
+  }
 }
 
 // 更新数量按钮标签
@@ -1428,6 +1431,7 @@ async function saveHistoryToBackend(record, originalImages) {
       body: JSON.stringify({ record, originalImages })
     });
     
+    if (handleAuthError(response)) return;
     if (!response.ok) {
       throw new Error('Failed to save history to backend');
     }
@@ -1451,6 +1455,7 @@ async function getHistoryFromBackend() {
       }
     });
     
+    if (handleAuthError(response)) return null;
     if (!response.ok) return null;
     
     const data = await response.json();
@@ -1474,6 +1479,7 @@ async function deleteHistoryFromBackend(recordId) {
       }
     });
     
+    if (handleAuthError(response)) return false;
     return response.ok;
   } catch (e) {
     console.error('[History] Backend delete error:', e);
@@ -1494,6 +1500,7 @@ async function clearHistoryFromBackend() {
       }
     });
     
+    if (handleAuthError(response)) return false;
     return response.ok;
   } catch (e) {
     console.error('[History] Backend clear error:', e);
@@ -1959,15 +1966,86 @@ document.addEventListener("keydown", (e) => {
 let currentUser = null;
 let authToken = localStorage.getItem('auth_token');
 
+// 清除登录状态
+function clearAuth() {
+  console.log('[Auth] Clearing auth state. Stack:', new Error().stack);
+  currentUser = null;
+  authToken = null;
+  localStorage.removeItem('auth_token');
+  updateUserUI();
+  renderCharacterSelector();
+  loadHistory(); // 刷新历史记录显示
+}
+
+// 检查并处理 API 响应中的认证错误
+function handleAuthError(response) {
+  if (response.status === 401) {
+    // Token 过期或无效，清除登录状态
+    console.warn('[Auth] Received 401, token expired or invalid. Clearing auth state.');
+    clearAuth();
+    showToast(currentLang === 'zh' ? '登录已过期，请重新登录' : 'Session expired, please login again', 'warning');
+    return true;
+  }
+  return false;
+}
+
+// 验证当前 token 是否仍然有效（静默验证，不显示错误）
+async function validateToken() {
+  if (!authToken) return false;
+  
+  try {
+    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${authToken}`
+      }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      // 更新用户信息（可能已更新）
+      currentUser = data.user;
+      currentUser.planInfo = data.plan;
+      return true;
+    } else if (response.status === 401) {
+      // Token 已过期
+      console.warn('[Auth] Token validation failed: 401');
+      clearAuth();
+      return false;
+    }
+    // 其他错误，保留状态
+    return true;
+  } catch (e) {
+    console.error('[Auth] Token validation error:', e);
+    // 网络错误，保留状态
+    return true;
+  }
+}
+
 // 初始化用户状态
 async function initAuth() {
+  // 重新从 localStorage 读取 token（确保获取最新值）
+  authToken = localStorage.getItem('auth_token');
+  
+  console.log('[Auth] initAuth called');
+  console.log('[Auth] authToken from localStorage:', authToken ? `${authToken.substring(0, 20)}...` : 'null');
+  
   if (authToken) {
+    // 有 token 时，先显示加载状态，避免闪烁显示"登录"按钮
+    const loginBtn = document.getElementById('loginBtn');
+    if (loginBtn) {
+      loginBtn.innerHTML = `<i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite;"></i>`;
+      loginBtn.onclick = null;
+    }
+    
     try {
+      console.log('[Auth] Fetching /api/auth/me...');
       const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${authToken}`
         }
       });
+      
+      console.log('[Auth] Response status:', response.status);
       
       if (response.ok) {
         const data = await response.json();
@@ -1976,17 +2054,30 @@ async function initAuth() {
         updateUserUI();
         // 渲染角色选择器
         renderCharacterSelector();
+        console.log('[Auth] User authenticated successfully:', currentUser.email);
+      } else if (response.status === 401) {
+        // 只有 401 才清除登录状态（token 过期或无效）
+        const errorData = await response.json().catch(() => ({}));
+        console.warn('[Auth] Token expired or invalid, clearing auth state. Error:', errorData);
+        clearAuth();
       } else {
-        // Token 无效，清除
-        localStorage.removeItem('auth_token');
-        authToken = null;
+        // 其他错误（如 500），保留登录状态，只记录错误
+        console.error('[Auth] Auth check failed with status:', response.status);
+        // 不清除状态，可能是服务器临时问题
+        updateUserUI(); // 恢复登录按钮
       }
     } catch (e) {
-      console.error('Auth check failed:', e);
+      console.error('[Auth] Network error during auth check:', e);
+      // 网络错误时不清除登录状态，保留 token，避免因网络问题误登出
+      updateUserUI(); // 恢复登录按钮
     }
+  } else {
+    // 没有 token，确保状态清除
+    console.log('[Auth] No token found, user is not logged in');
+    currentUser = null;
+    updateUserUI();
+    renderCharacterSelector();
   }
-  updateUserUI();
-  renderCharacterSelector();
 }
 
 // 更新用户界面
@@ -2202,6 +2293,8 @@ async function handleUpdateProfile(e) {
     
     const data = await response.json();
     
+    if (handleAuthError(response)) return;
+    
     if (response.ok) {
       currentUser = { ...currentUser, ...data.user };
       updateUserUI();
@@ -2232,6 +2325,8 @@ async function handleChangePassword(e) {
     });
     
     const data = await response.json();
+    
+    if (handleAuthError(response)) return;
     
     if (response.ok) {
       document.getElementById('oldPassword').value = '';
@@ -2288,6 +2383,7 @@ async function loadCharacters() {
       headers: { 'Authorization': `Bearer ${authToken}` }
     });
     
+    if (handleAuthError(response)) return;
     if (!response.ok) throw new Error('Failed to load');
     
     const data = await response.json();
@@ -2524,6 +2620,11 @@ async function handleSaveCharacter(e) {
     
     const data = await response.json();
     
+    if (handleAuthError(response)) {
+      saveBtn.disabled = false;
+      return;
+    }
+    
     if (response.ok) {
       if (characterId) {
         // 更新本地数据
@@ -2575,6 +2676,8 @@ async function deleteCharacter(characterId) {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${authToken}` }
     });
+    
+    if (handleAuthError(response)) return;
     
     if (response.ok) {
       // 如果删除的是当前选中的角色，清除选择
@@ -2629,11 +2732,14 @@ async function handlePhotoUpload(e) {
         body: JSON.stringify({ photoData: base64, mimeType })
       });
       
+      if (handleAuthError(response)) return;
+      
       if (response.ok) {
         // 重新加载角色数据
         const charResponse = await fetch(`${DEFAULT_API_ENDPOINT}/api/characters/${currentEditingCharacter.id}`, {
           headers: { 'Authorization': `Bearer ${authToken}` }
         });
+        if (handleAuthError(charResponse)) return;
         if (charResponse.ok) {
           const charData = await charResponse.json();
           currentEditingCharacter = charData;
@@ -2670,6 +2776,8 @@ async function deleteCharacterPhoto(photoId) {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${authToken}` }
     });
+    
+    if (handleAuthError(response)) return;
     
     if (response.ok) {
       currentEditingCharacter.photos = currentEditingCharacter.photos.filter(p => p.id !== photoId);
@@ -2723,6 +2831,8 @@ async function renderCharacterSelector() {
     const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/characters`, {
       headers: { 'Authorization': `Bearer ${authToken}` }
     });
+    
+    if (handleAuthError(response)) return;
     
     if (response.ok) {
       const data = await response.json();
