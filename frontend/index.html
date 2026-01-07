@@ -15,7 +15,7 @@
                 if (meta) meta.content = theme === 'dark' ? '#0F172A' : '#FAFAFA';
             })();
         </script>
-        <link rel="stylesheet" href="style.css?v=20260107" />
+        <link rel="stylesheet" href="style.css?v=20260107r" />
         <!-- Phosphor Icons -->
         <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
         <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✨</text></svg>" />
@@ -38,7 +38,7 @@
                             <i class="ph ph-user"></i>
                             <span data-i18n="auth.login">登录</span>
                         </button>
-                        <div class="user-dropdown" id="userDropdown" style="display: none;">
+                        <div class="user-dropdown" id="userDropdown">
                             <div class="user-info">
                                 <span class="user-avatar" id="userAvatar"><i class="ph ph-user"></i></span>
                                 <div class="user-details">
@@ -560,7 +560,7 @@
                             <input type="hidden" id="characterName" required />
                             <div class="fancy-select" id="characterSelect">
                                 <div class="fancy-select-trigger" onclick="toggleFancySelect()">
-                                    <span class="fancy-select-value" data-placeholder="请选择角色">请选择角色</span>
+                                    <span class="fancy-select-value"></span>
                                     <i class="ph ph-caret-down fancy-select-arrow"></i>
                                 </div>
                                 <div class="fancy-select-dropdown">
@@ -633,6 +633,6 @@
         <!-- Toast 通知 -->
         <div class="toast-container" id="toastContainer"></div>
 
-        <script src="app.js?v=20260107c"></script>
+        <script src="app.js?v=20260107q"></script>
     </body>
 </html>

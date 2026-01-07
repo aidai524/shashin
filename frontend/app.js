@@ -1247,6 +1247,9 @@ function displayResults(images) {
     const imgEl = document.createElement("img");
     imgEl.src = `data:${img.mimeType};base64,${img.base64}`;
     imgEl.alt = `Generated image ${index + 1}`;
+    imgEl.style.width = "100%";
+    imgEl.style.height = "100%";
+    imgEl.style.objectFit = "cover";
     imgEl.loading = "lazy";
 
     div.appendChild(imgEl);
@@ -1422,21 +1425,38 @@ async function saveHistoryToBackend(record, originalImages) {
   }
   
   try {
+    // 计算请求体大小
+    const requestBody = JSON.stringify({ record, originalImages });
+    const bodySize = new Blob([requestBody]).size;
+    console.log('[History] Request body size:', (bodySize / 1024 / 1024).toFixed(2), 'MB');
+    
+    // 如果请求体太大(>20MB)，只保存缩略图，不保存原图
+    let finalBody = requestBody;
+    if (bodySize > 20 * 1024 * 1024) {
+      console.warn('[History] Request body too large, saving without original images');
+      finalBody = JSON.stringify({ record, originalImages: [] });
+    }
+    
     const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/history`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ record, originalImages })
+      body: finalBody
     });
+    
+    console.log('[History] Response status:', response.status);
     
     if (handleAuthError(response)) return;
     if (!response.ok) {
-      throw new Error('Failed to save history to backend');
+      const errorText = await response.text();
+      console.error('[History] Backend error response:', errorText);
+      throw new Error('Failed to save history to backend: ' + errorText);
     }
     
-    console.log('[History] Saved to backend successfully');
+    const result = await response.json();
+    console.log('[History] Saved to backend successfully, recordId:', result.recordId);
   } catch (e) {
     console.error('[History] Backend save error:', e);
     showToast(currentLang === 'zh' ? '历史记录保存失败' : 'Failed to save history', 'error');
@@ -1670,20 +1690,34 @@ async function loadHistory() {
 
   const html = history
     .map((record, index) => {
+      // 兼容新旧版本：优先使用 thumbKeys（R2），否则使用 thumbnails
       const thumbnails = record.thumbnails || record.images || [];
-      const firstImage = thumbnails[0];
-      if (!firstImage) {
+      const hasThumbKeys = record.thumbKeys && record.thumbKeys.length > 0;
+      const hasThumbnails = thumbnails.length > 0;
+      
+      if (!hasThumbKeys && !hasThumbnails) {
         console.warn('[History] Record has no thumbnails:', record.id);
         return "";
       }
 
-      const imageCount = record.imageCount || thumbnails.length;
+      const imageCount = record.imageCount || thumbnails.length || (record.thumbKeys?.length || 0);
       const date = formatTime(record.createdAt);
       const templateName = record.templateName?.[currentLang] || record.prompt?.substring(0, 20) || 'Unknown';
 
+      // 旧版本使用 base64，新版本使用占位图，稍后异步加载
+      let imgSrc;
+      let dataThumbKey = '';
+      if (hasThumbKeys) {
+        // 使用占位图，稍后通过 JS 异步加载
+        imgSrc = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Crect fill="%23e0e0e0" width="100" height="100"/%3E%3C/svg%3E';
+        dataThumbKey = `data-thumb-key="${record.thumbKeys[0]}"`;
+      } else {
+        imgSrc = `data:${thumbnails[0].mimeType};base64,${thumbnails[0].base64}`;
+      }
+
       return `
       <div class="history-thumb" onclick="showHistoryDetail(${record.id})" style="animation: fadeInUp 0.4s ease backwards; animation-delay: ${index * 0.03}s">
-        <img src="data:${firstImage.mimeType};base64,${firstImage.base64}" alt="History" loading="lazy" />
+        <img src="${imgSrc}" alt="History" loading="lazy" ${dataThumbKey} />
         ${imageCount > 1 ? `<span class="thumb-count">${imageCount}</span>` : ""}
         <span class="thumb-date">${date}</span>
         <span class="thumb-template">${templateName}</span>
@@ -1694,6 +1728,40 @@ async function loadHistory() {
   
   container.innerHTML = html;
   console.log('[History] Rendered', history.length, 'records');
+  
+  // 异步加载 R2 缩略图
+  loadR2Thumbnails(container);
+}
+
+// 异步加载 R2 缩略图
+async function loadR2Thumbnails(container) {
+  const authToken = localStorage.getItem('auth_token');
+  if (!authToken) return;
+  
+  const images = container.querySelectorAll('img[data-thumb-key]');
+  for (const img of images) {
+    const thumbKey = img.getAttribute('data-thumb-key');
+    if (!thumbKey) continue;
+    
+    try {
+      const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/history/image/${encodeURIComponent(thumbKey)}`, {
+        headers: {
+          'Authorization': `Bearer ${authToken}`
+        }
+      });
+      
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        img.src = url;
+        img.removeAttribute('data-thumb-key');
+      } else {
+        console.error('[History] Failed to load thumbnail:', response.status);
+      }
+    } catch (e) {
+      console.error('[History] Error loading thumbnail:', e);
+    }
+  }
 }
 
 // 获取当前历史记录（仅登录用户）
@@ -1706,10 +1774,101 @@ function getCurrentHistory() {
 
 // 获取历史记录的原图（仅登录用户）
 async function getHistoryOriginalImages(recordId) {
-  if (currentUser && backendHistoryCache && backendHistoryCache.images) {
-    return backendHistoryCache.images[recordId] || null;
+  if (!currentUser) return null;
+  
+  // 查找记录
+  const history = getCurrentHistory();
+  const record = history.find(h => h.id === recordId);
+  if (!record) return null;
+  
+  // 新版本：从 R2 获取图片
+  if (record.imageKeys && record.imageKeys.length > 0) {
+    const authToken = localStorage.getItem('auth_token');
+    if (!authToken) {
+      console.error('[History] No auth token for R2 image fetch');
+      return null;
+    }
+    try {
+      const images = await Promise.all(record.imageKeys.map(async (key) => {
+        const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/history/image/${encodeURIComponent(key)}`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+        if (!response.ok) {
+          console.error('[History] R2 image fetch failed:', response.status);
+          return null;
+        }
+        
+        const blob = await response.blob();
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64 = reader.result.split(',')[1];
+            resolve({
+              base64,
+              mimeType: blob.type || 'image/jpeg'
+            });
+          };
+          reader.readAsDataURL(blob);
+        });
+      }));
+      return images.filter(img => img !== null);
+    } catch (e) {
+      console.error('[History] Failed to fetch R2 images:', e);
+    }
   }
+  
+  // 旧版本兼容：从 backendHistoryCache.images 获取
+  if (backendHistoryCache && backendHistoryCache.images && backendHistoryCache.images[recordId]) {
+    return backendHistoryCache.images[recordId];
+  }
+  
   return null;
+}
+
+// 从 R2 获取缩略图
+async function getHistoryThumbnails(record) {
+  // 新版本：从 R2 获取缩略图
+  if (record.thumbKeys && record.thumbKeys.length > 0) {
+    const authToken = localStorage.getItem('auth_token');
+    if (!authToken) {
+      console.error('[History] No auth token for R2 thumbnail fetch');
+      return null;
+    }
+    try {
+      const images = await Promise.all(record.thumbKeys.map(async (key) => {
+        const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/history/image/${encodeURIComponent(key)}`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+        if (!response.ok) {
+          console.error('[History] R2 thumbnail fetch failed:', response.status);
+          return null;
+        }
+        
+        const blob = await response.blob();
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const base64 = reader.result.split(',')[1];
+            resolve({
+              base64,
+              mimeType: blob.type || 'image/jpeg'
+            });
+          };
+          reader.readAsDataURL(blob);
+        });
+      }));
+      return images.filter(img => img !== null);
+    } catch (e) {
+      console.error('[History] Failed to fetch R2 thumbnails:', e);
+    }
+  }
+  
+  // 旧版本兼容：直接返回 record 中的缩略图
+  return record.thumbnails || record.images || [];
 }
 
 async function showHistoryDetail(id) {
@@ -1720,13 +1879,22 @@ async function showHistoryDetail(id) {
   const modal = document.getElementById("historyModal");
   const detail = document.getElementById("historyDetail");
 
-  // 先显示缩略图，然后异步加载原图
-  const thumbnails = record.thumbnails || record.images || [];
-  
-  // 尝试获取原图（后端或本地 IndexedDB）
+  // 显示加载状态
+  detail.innerHTML = `<div style="text-align: center; padding: 2rem;"><i class="ph ph-spinner spin"></i> Loading...</div>`;
+  modal.classList.add("show");
+  document.body.style.overflow = 'hidden';
+
+  // 尝试获取原图（后端 R2）
   const originalImages = await getHistoryOriginalImages(record.id);
-  const displayImages = originalImages && originalImages.length > 0 ? originalImages : thumbnails;
   const hasOriginal = originalImages && originalImages.length > 0;
+  
+  // 如果没有原图，获取缩略图
+  let displayImages;
+  if (hasOriginal) {
+    displayImages = originalImages;
+  } else {
+    displayImages = await getHistoryThumbnails(record);
+  }
   
   const imagesHtml = displayImages
     .map((img, i) => `
@@ -1778,9 +1946,15 @@ async function downloadHistoryImage(recordId, imageIndex) {
   const record = history.find(h => h.id === recordId);
   if (!record) return;
   
-  // 优先获取原图（后端或本地）
+  // 优先获取原图（R2），否则获取缩略图
   const originalImages = await getHistoryOriginalImages(recordId);
-  const images = originalImages || record.thumbnails || record.images || [];
+  let images;
+  if (originalImages && originalImages.length > 0) {
+    images = originalImages;
+  } else {
+    images = await getHistoryThumbnails(record);
+  }
+  
   const img = images[imageIndex];
   if (!img) return;
   
@@ -1798,9 +1972,14 @@ async function downloadAllHistoryImages(recordId) {
   const record = history.find(h => h.id === recordId);
   if (!record) return;
   
-  // 优先获取原图（后端或本地）
+  // 优先获取原图（R2），否则获取缩略图
   const originalImages = await getHistoryOriginalImages(recordId);
-  const images = originalImages || record.thumbnails || record.images || [];
+  let images;
+  if (originalImages && originalImages.length > 0) {
+    images = originalImages;
+  } else {
+    images = await getHistoryThumbnails(record);
+  }
   
   images.forEach((img, index) => {
     setTimeout(() => {
@@ -1820,9 +1999,15 @@ async function previewHistoryImage(recordId, imageIndex) {
   const record = history.find(h => h.id === recordId);
   if (!record) return;
   
-  // 优先获取原图（后端或本地）
+  // 优先获取原图（R2），否则获取缩略图
   const originalImages = await getHistoryOriginalImages(recordId);
-  const images = originalImages || record.thumbnails || record.images || [];
+  let images;
+  if (originalImages && originalImages.length > 0) {
+    images = originalImages;
+  } else {
+    images = await getHistoryThumbnails(record);
+  }
+  
   const img = images[imageIndex];
   if (!img) return;
   
@@ -2095,7 +2280,7 @@ function updateUserUI() {
   } else {
     loginBtn.innerHTML = `<i class="ph ph-user"></i><span data-i18n="auth.login">${t('auth.login')}</span>`;
     loginBtn.onclick = () => showAuthModal('login');
-    userDropdown.style.display = 'none';
+    userDropdown.classList.remove('show');
   }
 }
 
@@ -2103,7 +2288,7 @@ function updateUserUI() {
 function toggleUserDropdown(e) {
   e.stopPropagation();
   const dropdown = document.getElementById('userDropdown');
-  dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+  dropdown.classList.toggle('show');
 }
 
 // 点击外部关闭下拉菜单
@@ -2111,7 +2296,7 @@ document.addEventListener('click', (e) => {
   const dropdown = document.getElementById('userDropdown');
   const userMenu = document.getElementById('userMenu');
   if (dropdown && !userMenu.contains(e.target)) {
-    dropdown.style.display = 'none';
+    dropdown.classList.remove('show');
   }
 });
 
@@ -2243,7 +2428,7 @@ function logout() {
   userCharacters = [];
   backendHistoryCache = null; // 清除历史记录缓存
   localStorage.removeItem('auth_token');
-  document.getElementById('userDropdown').style.display = 'none';
+  document.getElementById('userDropdown').classList.remove('show');
   updateUserUI();
   renderCharacterSelector();
   loadHistory(); // 刷新历史记录（显示登录提示）
@@ -2254,7 +2439,7 @@ function logout() {
 function showSettingsModal() {
   if (!currentUser) return;
   
-  document.getElementById('userDropdown').style.display = 'none';
+  document.getElementById('userDropdown').classList.remove('show');
   const modal = document.getElementById('settingsModal');
   modal.classList.add('show');
   document.body.style.overflow = 'hidden';
@@ -2355,7 +2540,7 @@ async function showCharactersModal() {
     return;
   }
   
-  document.getElementById('userDropdown').style.display = 'none';
+  document.getElementById('userDropdown').classList.remove('show');
   const modal = document.getElementById('charactersModal');
   modal.classList.add('show');
   document.body.style.overflow = 'hidden';
@@ -2429,12 +2614,14 @@ function renderCharacters() {
     return `
       <div class="character-card" data-id="${char.id}" 
            style="animation: cardFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${index * 0.08}s both;">
-        <div class="character-avatar">${avatarContent}</div>
-        <div class="character-name">${escapeHtml(char.name)}</div>
-        <div class="character-meta">${char.photos?.length || 0} 张照片</div>
-        <div class="character-actions">
-          <button class="btn-edit-char" onclick="editCharacter('${char.id}')"><i class="ph ph-pencil-simple"></i> ${t('common.edit')}</button>
-          <button class="btn-delete-char" onclick="deleteCharacter('${char.id}')"><i class="ph ph-trash"></i></button>
+        <div class="character-card-thumb">${avatarContent}</div>
+        <div class="character-card-info">
+          <div class="character-card-name">${escapeHtml(char.name)}</div>
+          <div class="character-card-meta">${char.photos?.length || 0} 张照片</div>
+        </div>
+        <div class="character-card-actions">
+          <button onclick="editCharacter('${char.id}')"><i class="ph ph-pencil-simple"></i></button>
+          <button class="delete-btn" onclick="deleteCharacter('${char.id}')"><i class="ph ph-trash"></i></button>
         </div>
       </div>
     `;

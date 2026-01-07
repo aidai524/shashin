@@ -663,6 +663,14 @@ async function handleTemplatesAPI(request, env, pathname) {
     return await initTemplates(env);
   }
   
+  // POST /api/upload/image - 上传图片到 R2
+  if (pathname === "/api/upload/image" && method === "POST") {
+    if (!isAdmin(request, env)) {
+      return errorResponse("Unauthorized", 401);
+    }
+    return await uploadImage(request, env);
+  }
+  
   return errorResponse("Not found", 404);
 }
 
@@ -833,6 +841,140 @@ async function initTemplates(env) {
   } catch (e) {
     console.error("Error initializing templates:", e);
     return errorResponse("Internal error", 500);
+  }
+}
+
+// =========================================
+// 图片上传到 R2
+// =========================================
+
+// 上传图片
+async function uploadImage(request, env) {
+  try {
+    if (!env.IMAGES_BUCKET) {
+      return errorResponse("R2 bucket not configured", 500);
+    }
+    
+    const contentType = request.headers.get('content-type') || '';
+    
+    // 支持 FormData 或 JSON 格式
+    let imageData, filename, mimeType;
+    
+    if (contentType.includes('multipart/form-data')) {
+      // FormData 格式上传
+      const formData = await request.formData();
+      const file = formData.get('image');
+      
+      if (!file || !(file instanceof File)) {
+        return errorResponse("No image file provided", 400);
+      }
+      
+      // 验证文件类型
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        return errorResponse("Invalid file type. Allowed: JPEG, PNG, GIF, WEBP", 400);
+      }
+      
+      // 验证文件大小 (最大 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        return errorResponse("File too large. Maximum size: 5MB", 400);
+      }
+      
+      imageData = await file.arrayBuffer();
+      mimeType = file.type;
+      
+      // 生成文件名
+      const ext = mimeType.split('/')[1] || 'jpg';
+      filename = `${Date.now()}-${crypto.randomUUID().substring(0, 8)}.${ext}`;
+      
+    } else if (contentType.includes('application/json')) {
+      // JSON 格式（Base64）上传
+      const body = await request.json();
+      
+      if (!body.image) {
+        return errorResponse("No image data provided", 400);
+      }
+      
+      // 解析 Base64 数据
+      const base64Match = body.image.match(/^data:image\/(jpeg|png|gif|webp);base64,(.+)$/);
+      if (!base64Match) {
+        return errorResponse("Invalid image data format. Expected: data:image/xxx;base64,xxx", 400);
+      }
+      
+      mimeType = `image/${base64Match[1]}`;
+      const base64Data = base64Match[2];
+      
+      // 将 Base64 转换为 ArrayBuffer
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      imageData = bytes.buffer;
+      
+      // 验证文件大小
+      if (imageData.byteLength > 5 * 1024 * 1024) {
+        return errorResponse("File too large. Maximum size: 5MB", 400);
+      }
+      
+      // 生成文件名
+      const ext = base64Match[1];
+      filename = body.filename || `${Date.now()}-${crypto.randomUUID().substring(0, 8)}.${ext}`;
+      
+    } else {
+      return errorResponse("Unsupported content type", 400);
+    }
+    
+    // 上传到 R2
+    const key = `templates/${filename}`;
+    await env.IMAGES_BUCKET.put(key, imageData, {
+      httpMetadata: {
+        contentType: mimeType,
+      },
+    });
+    
+    // 返回图片 URL
+    // 使用 Worker 作为代理访问图片
+    const imageUrl = `/api/images/${filename}`;
+    
+    return jsonResponse({
+      success: true,
+      url: imageUrl,
+      filename: filename,
+      size: imageData.byteLength,
+      mimeType: mimeType
+    });
+    
+  } catch (e) {
+    console.error("Error uploading image:", e);
+    return errorResponse("Failed to upload image: " + e.message, 500);
+  }
+}
+
+// 获取图片
+async function getImage(env, filename) {
+  try {
+    if (!env.IMAGES_BUCKET) {
+      return errorResponse("R2 bucket not configured", 500);
+    }
+    
+    const key = `templates/${filename}`;
+    const object = await env.IMAGES_BUCKET.get(key);
+    
+    if (!object) {
+      return errorResponse("Image not found", 404);
+    }
+    
+    const headers = new Headers();
+    headers.set('Content-Type', object.httpMetadata?.contentType || 'image/jpeg');
+    headers.set('Cache-Control', 'public, max-age=31536000'); // 缓存 1 年
+    headers.set('Access-Control-Allow-Origin', '*');
+    
+    return new Response(object.body, { headers });
+    
+  } catch (e) {
+    console.error("Error getting image:", e);
+    return errorResponse("Failed to get image", 500);
   }
 }
 
@@ -1281,6 +1423,12 @@ async function handleHistoryAPI(request, env, pathname) {
   if (pathname === '/api/history' && method === 'POST') {
     return await saveHistoryRecord(request, env, user);
   }
+  
+  // GET /api/history/image/:key - 从 R2 获取历史记录原图
+  const imageMatch = pathname.match(/^\/api\/history\/image\/(.+)$/);
+  if (imageMatch && method === 'GET') {
+    return await getHistoryImage(env, user, decodeURIComponent(imageMatch[1]));
+  }
 
   // DELETE /api/history/:id - 删除单条历史记录
   const deleteMatch = pathname.match(/^\/api\/history\/([^\/]+)$/);
@@ -1294,6 +1442,35 @@ async function handleHistoryAPI(request, env, pathname) {
   }
 
   return errorResponse('Not found', 404);
+}
+
+// 从 R2 获取历史记录原图
+async function getHistoryImage(env, user, r2Key) {
+  try {
+    // 验证 R2 key 的用户 ID 与当前用户匹配，防止未授权访问
+    const keyParts = r2Key.split('/');
+    if (keyParts.length < 4 || keyParts[0] !== 'history' || keyParts[1] !== user.id) {
+      return errorResponse('Forbidden', 403);
+    }
+    
+    const object = await env.IMAGES_BUCKET.get(r2Key);
+    if (!object) {
+      return errorResponse('Image not found', 404);
+    }
+    
+    const headers = new Headers();
+    headers.set('Content-Type', object.httpMetadata?.contentType || 'image/jpeg');
+    headers.set('Cache-Control', 'private, max-age=31536000');
+    // 添加 CORS headers
+    headers.set('Access-Control-Allow-Origin', '*');
+    headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
+    return new Response(object.body, { headers });
+  } catch (e) {
+    console.error('Get history image error:', e);
+    return errorResponse('Failed to get image: ' + e.message, 500);
+  }
 }
 
 // 获取用户历史记录
@@ -1319,21 +1496,73 @@ async function saveHistoryRecord(request, env, user) {
     }
 
     const key = `history:${user.id}`;
-    let data = await env.HISTORY_KV.get(key, 'json') || { records: [], images: {} };
+    let data = await env.HISTORY_KV.get(key, 'json') || { records: [] };
+    
+    // 保存原图到 R2（如果有）
+    if (originalImages && originalImages.length > 0) {
+      const imageKeys = [];
+      for (let i = 0; i < originalImages.length; i++) {
+        const img = originalImages[i];
+        const r2Key = `history/${user.id}/${record.id}/original_${i}.${img.mimeType.split('/')[1] || 'jpg'}`;
+        
+        // 将 base64 转换为 ArrayBuffer 并存储到 R2
+        const binaryString = atob(img.base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let j = 0; j < binaryString.length; j++) {
+          bytes[j] = binaryString.charCodeAt(j);
+        }
+        
+        await env.IMAGES_BUCKET.put(r2Key, bytes.buffer, {
+          httpMetadata: { contentType: img.mimeType }
+        });
+        
+        imageKeys.push(r2Key);
+      }
+      // 在 record 中存储 R2 原图 keys
+      record.imageKeys = imageKeys;
+    }
+    
+    // 保存缩略图到 R2（如果有）
+    if (record.thumbnails && record.thumbnails.length > 0) {
+      const thumbKeys = [];
+      for (let i = 0; i < record.thumbnails.length; i++) {
+        const thumb = record.thumbnails[i];
+        const r2Key = `history/${user.id}/${record.id}/thumb_${i}.${thumb.mimeType.split('/')[1] || 'jpg'}`;
+        
+        // 将 base64 转换为 ArrayBuffer 并存储到 R2
+        const binaryString = atob(thumb.base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let j = 0; j < binaryString.length; j++) {
+          bytes[j] = binaryString.charCodeAt(j);
+        }
+        
+        await env.IMAGES_BUCKET.put(r2Key, bytes.buffer, {
+          httpMetadata: { contentType: thumb.mimeType }
+        });
+        
+        thumbKeys.push(r2Key);
+      }
+      // 在 record 中存储 R2 缩略图 keys，删除原始 base64 数据
+      record.thumbKeys = thumbKeys;
+      delete record.thumbnails;
+    }
     
     // 添加新记录到开头
     data.records.unshift(record);
     
-    // 保存原图（如果有）
-    if (originalImages && originalImages.length > 0) {
-      data.images[record.id] = originalImages;
-    }
-    
     // 限制历史记录数量为 50 条
     while (data.records.length > 50) {
       const removed = data.records.pop();
-      if (removed && data.images[removed.id]) {
-        delete data.images[removed.id];
+      // 删除 R2 中的原图和缩略图
+      if (removed) {
+        const keysToDelete = [...(removed.imageKeys || []), ...(removed.thumbKeys || [])];
+        for (const key of keysToDelete) {
+          try {
+            await env.IMAGES_BUCKET.delete(key);
+          } catch (e) {
+            console.error('Failed to delete R2 image:', key, e);
+          }
+        }
       }
     }
     
@@ -1435,9 +1664,15 @@ export default {
       return await handleUsersAdminAPI(request, env, pathname);
     }
 
-    // 模板 API
-    if (pathname.startsWith("/api/templates")) {
+    // 模板 API（包括图片上传）
+    if (pathname.startsWith("/api/templates") || pathname === "/api/upload/image") {
       return await handleTemplatesAPI(request, env, pathname);
+    }
+    
+    // 获取图片（公开访问，不需要认证）
+    const imageMatch = pathname.match(/^\/api\/images\/(.+)$/);
+    if (imageMatch) {
+      return await getImage(env, imageMatch[1]);
     }
 
     // Gemini API 代理

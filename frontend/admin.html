@@ -586,6 +586,96 @@
     .hidden {
       display: none !important;
     }
+    
+    /* Image Upload */
+    .image-upload-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    
+    .image-preview {
+      width: 100%;
+      height: 160px;
+      border: 2px dashed var(--border-default);
+      border-radius: var(--radius-md);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--duration-fast);
+      background: var(--bg-surface);
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .image-preview:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(139, 92, 246, 0.05);
+    }
+    
+    .image-preview.has-image {
+      border-style: solid;
+      border-color: var(--primary);
+    }
+    
+    .image-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .image-preview i {
+      font-size: 2rem;
+    }
+    
+    .image-preview.has-image i,
+    .image-preview.has-image span {
+      display: none;
+    }
+    
+    .image-preview.uploading::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(9, 9, 11, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .image-preview.uploading::before {
+      content: '';
+      position: absolute;
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border-default);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      z-index: 1;
+    }
+    
+    .image-upload-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .image-upload-info small {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+    
+    .image-preview.drag-over {
+      border-color: var(--primary);
+      background: rgba(139, 92, 246, 0.1);
+      transform: scale(1.02);
+    }
 
     /* Scrollbar */
     ::-webkit-scrollbar {
@@ -790,8 +880,21 @@
           </div>
 
           <div class="form-group">
-            <label>缩略图 URL</label>
-            <input type="url" id="tplThumbnail" placeholder="https://example.com/image.jpg">
+            <label>缩略图</label>
+            <div class="image-upload-container">
+              <div class="image-preview" id="imagePreview">
+                <i class="ph ph-image"></i>
+                <span>点击或拖拽上传图片</span>
+              </div>
+              <input type="file" id="tplImageFile" accept="image/jpeg,image/png,image/gif,image/webp" style="display: none;">
+              <input type="hidden" id="tplThumbnail">
+              <div class="image-upload-info">
+                <small>支持 JPEG、PNG、GIF、WEBP，最大 5MB</small>
+                <button type="button" class="btn btn-secondary btn-sm" id="clearImageBtn" style="display: none;">
+                  <i class="ph ph-x"></i> 清除图片
+                </button>
+              </div>
+            </div>
           </div>
 
           <div class="form-group">
@@ -934,10 +1037,10 @@
             <div class="template-prompt">${t.prompt}</div>
             <div class="template-card-actions">
               <button class="btn btn-secondary btn-sm" onclick="editTemplate('${t.id}')">
-                <i class="ph ph-pencil-simple"></i> 编辑
+                <i class="ph ph-pencil-simple"></i>
               </button>
               <button class="btn btn-danger btn-sm" onclick="deleteTemplate('${t.id}')">
-                <i class="ph ph-trash"></i> 删除
+                <i class="ph ph-trash"></i>
               </button>
             </div>
           </div>
@@ -988,12 +1091,16 @@
         document.getElementById('tplPrompt').value = template.prompt || '';
         document.getElementById('tplOrder').value = template.order || 99;
         document.getElementById('tplActive').value = template.active !== false ? 'true' : 'false';
+        // 设置图片预览
+        setImagePreview(template.thumbnail);
       } else {
         title.innerHTML = '<i class="ph ph-plus"></i> 添加模板';
         document.getElementById('templateForm').reset();
         document.getElementById('templateId').value = '';
         document.getElementById('tplId').disabled = false;
         document.getElementById('tplOrder').value = templates.length + 1;
+        // 清除图片预览
+        clearImagePreview();
       }
       
       modal.classList.add('active');
@@ -1105,6 +1212,132 @@
         closeModal();
       }
     });
+    
+    // =========================================
+    // 图片上传功能
+    // =========================================
+    
+    const imagePreview = document.getElementById('imagePreview');
+    const imageFileInput = document.getElementById('tplImageFile');
+    const clearImageBtn = document.getElementById('clearImageBtn');
+    
+    // 点击预览区域触发文件选择
+    imagePreview.addEventListener('click', () => {
+      imageFileInput.click();
+    });
+    
+    // 文件选择处理
+    imageFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        uploadImage(file);
+      }
+    });
+    
+    // 拖拽上传
+    imagePreview.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      imagePreview.classList.add('drag-over');
+    });
+    
+    imagePreview.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      imagePreview.classList.remove('drag-over');
+    });
+    
+    imagePreview.addEventListener('drop', (e) => {
+      e.preventDefault();
+      imagePreview.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) {
+        uploadImage(file);
+      } else {
+        showToast('请上传图片文件', 'error');
+      }
+    });
+    
+    // 清除图片
+    clearImageBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      clearImagePreview();
+    });
+    
+    // 上传图片
+    async function uploadImage(file) {
+      // 验证文件类型
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        showToast('不支持的文件类型', 'error');
+        return;
+      }
+      
+      // 验证文件大小
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('文件太大，最大支持 5MB', 'error');
+        return;
+      }
+      
+      // 显示上传中状态
+      imagePreview.classList.add('uploading');
+      
+      try {
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        const response = await fetch(`${API_ENDPOINT}/api/upload/image`, {
+          method: 'POST',
+          headers: {
+            'x-admin-key': adminKey
+          },
+          body: formData
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Upload failed');
+        }
+        
+        const result = await response.json();
+        
+        // 更新预览和隐藏字段
+        // 将相对 URL 转换为完整 URL
+        const fullUrl = `${API_ENDPOINT}${result.url}`;
+        document.getElementById('tplThumbnail').value = fullUrl;
+        imagePreview.innerHTML = `<img src="${fullUrl}" alt="Preview">`;
+        imagePreview.classList.add('has-image');
+        clearImageBtn.style.display = 'inline-flex';
+        
+        showToast('图片上传成功', 'success');
+        
+      } catch (error) {
+        showToast('上传失败: ' + error.message, 'error');
+      } finally {
+        imagePreview.classList.remove('uploading');
+      }
+    }
+    
+    // 清除图片预览
+    function clearImagePreview() {
+      document.getElementById('tplThumbnail').value = '';
+      imagePreview.innerHTML = `
+        <i class="ph ph-image"></i>
+        <span>点击或拖拽上传图片</span>
+      `;
+      imagePreview.classList.remove('has-image');
+      clearImageBtn.style.display = 'none';
+      imageFileInput.value = '';
+    }
+    
+    // 设置图片预览（用于编辑时）
+    function setImagePreview(url) {
+      if (url) {
+        imagePreview.innerHTML = `<img src="${url}" alt="Preview" onerror="this.parentElement.innerHTML='<i class=\\'ph ph-image-broken\\'></i><span>图片加载失败</span>'">`;
+        imagePreview.classList.add('has-image');
+        clearImageBtn.style.display = 'inline-flex';
+      } else {
+        clearImagePreview();
+      }
+    }
   </script>
 </body>
 </html>

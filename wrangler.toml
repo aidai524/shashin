@@ -23,3 +23,8 @@ id = "ab353bdfd25145fdaa8e2fb375182da9"
 [[kv_namespaces]]
 binding = "HISTORY_KV"
 id = "79e18d0705cb4736a83e4aa044b99cd5"
+
+# R2 存储绑定（用于存储模板图片）
+[[r2_buckets]]
+bucket_name = "gemini-images"
+binding = "IMAGES_BUCKET"
