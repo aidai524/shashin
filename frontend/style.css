@@ -14,6 +14,64 @@
   box-sizing: border-box;
 }
 
+/* 初始化加载遮罩 - 必须在所有 CSS 变量之前定义，使用固定值 */
+.init-loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #FAFAFA;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+:root[data-theme="dark"] .init-loading-overlay {
+  background: #0F172A;
+}
+
+.init-loading-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.init-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.init-loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid #E2E8F0;
+  border-top-color: #3B82F6;
+  border-radius: 50%;
+  animation: initSpin 0.8s linear infinite;
+}
+
+:root[data-theme="dark"] .init-loading-spinner {
+  border-color: #334155;
+  border-top-color: #3B82F6;
+}
+
+.init-loading-text {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 0.9rem;
+  color: #64748B;
+}
+
+@keyframes initSpin {
+  to { transform: rotate(360deg); }
+}
+
 /* Phosphor Icons 样式 */
 [class^="ph-"], [class*=" ph-"] {
   display: inline-flex;

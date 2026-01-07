@@ -15,12 +15,20 @@
                 if (meta) meta.content = theme === 'dark' ? '#0F172A' : '#FAFAFA';
             })();
         </script>
-        <link rel="stylesheet" href="style.css?v=20260107r" />
+        <link rel="stylesheet" href="style.css?v=20260107u" />
         <!-- Phosphor Icons -->
         <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
         <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✨</text></svg>" />
     </head>
     <body>
+        <!-- 初始化加载遮罩 - 默认显示，数据加载完成后隐藏 -->
+        <div class="init-loading-overlay" id="initLoadingOverlay">
+            <div class="init-loading-content">
+                <div class="init-loading-spinner"></div>
+                <p class="init-loading-text">加载中...</p>
+            </div>
+        </div>
+
         <!-- 装饰背景 -->
         <div class="cosmic-bg" aria-hidden="true"></div>
         <div class="grid-overlay" aria-hidden="true"></div>
@@ -633,6 +641,6 @@
         <!-- Toast 通知 -->
         <div class="toast-container" id="toastContainer"></div>
 
-        <script src="app.js?v=20260107q"></script>
+        <script src="app.js?v=20260107u"></script>
     </body>
 </html>

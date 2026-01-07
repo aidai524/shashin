@@ -488,7 +488,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   
   // 加载历史记录（在 initAuth 之后，确保 currentUser 已设置）
   loadHistory();
+  
+  // 隐藏初始化加载遮罩
+  hideInitLoading();
 });
+
+// 隐藏初始化加载遮罩
+function hideInitLoading() {
+  const overlay = document.getElementById('initLoadingOverlay');
+  if (overlay) {
+    overlay.classList.add('hidden');
+    // 动画结束后完全移除元素
+    setTimeout(() => {
+      overlay.remove();
+    }, 300);
+  }
+}
 
 // 页面入场动画
 function initPageAnimations() {
@@ -2157,6 +2172,7 @@ function clearAuth() {
   currentUser = null;
   authToken = null;
   localStorage.removeItem('auth_token');
+  localStorage.removeItem('user_info'); // 清除缓存的用户信息
   updateUserUI();
   renderCharacterSelector();
   loadHistory(); // 刷新历史记录显示
@@ -2210,20 +2226,35 @@ async function validateToken() {
 async function initAuth() {
   // 重新从 localStorage 读取 token（确保获取最新值）
   authToken = localStorage.getItem('auth_token');
+  const cachedUserInfo = localStorage.getItem('user_info');
   
   console.log('[Auth] initAuth called');
   console.log('[Auth] authToken from localStorage:', authToken ? `${authToken.substring(0, 20)}...` : 'null');
+  console.log('[Auth] cachedUserInfo:', cachedUserInfo ? 'exists' : 'null');
   
   if (authToken) {
-    // 有 token 时，先显示加载状态，避免闪烁显示"登录"按钮
-    const loginBtn = document.getElementById('loginBtn');
-    if (loginBtn) {
-      loginBtn.innerHTML = `<i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite;"></i>`;
-      loginBtn.onclick = null;
+    // 先从缓存读取用户信息，立即显示（避免等待网络请求）
+    if (cachedUserInfo) {
+      try {
+        currentUser = JSON.parse(cachedUserInfo);
+        console.log('[Auth] Using cached user info, immediate display:', currentUser.email);
+        updateUserUI();
+        renderCharacterSelector();
+      } catch (e) {
+        console.warn('[Auth] Failed to parse cached user info:', e);
+      }
+    } else {
+      // 没有缓存，显示加载状态
+      const loginBtn = document.getElementById('loginBtn');
+      if (loginBtn) {
+        loginBtn.innerHTML = `<i class="ph ph-spinner-gap" style="animation: spin 1s linear infinite;"></i>`;
+        loginBtn.onclick = null;
+      }
     }
     
+    // 后台验证 token 并更新用户信息
     try {
-      console.log('[Auth] Fetching /api/auth/me...');
+      console.log('[Auth] Fetching /api/auth/me for validation...');
       const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${authToken}`
@@ -2236,8 +2267,9 @@ async function initAuth() {
         const data = await response.json();
         currentUser = data.user;
         currentUser.planInfo = data.plan;
+        // 更新缓存（用户信息可能有更新）
+        localStorage.setItem('user_info', JSON.stringify(currentUser));
         updateUserUI();
-        // 渲染角色选择器
         renderCharacterSelector();
         console.log('[Auth] User authenticated successfully:', currentUser.email);
       } else if (response.status === 401) {
@@ -2249,17 +2281,16 @@ async function initAuth() {
         // 其他错误（如 500），保留登录状态，只记录错误
         console.error('[Auth] Auth check failed with status:', response.status);
         // 不清除状态，可能是服务器临时问题
-        updateUserUI(); // 恢复登录按钮
       }
     } catch (e) {
       console.error('[Auth] Network error during auth check:', e);
-      // 网络错误时不清除登录状态，保留 token，避免因网络问题误登出
-      updateUserUI(); // 恢复登录按钮
+      // 网络错误时不清除登录状态，保留 token 和缓存，避免因网络问题误登出
     }
   } else {
     // 没有 token，确保状态清除
     console.log('[Auth] No token found, user is not logged in');
     currentUser = null;
+    localStorage.removeItem('user_info'); // 也清除缓存
     updateUserUI();
     renderCharacterSelector();
   }
@@ -2354,6 +2385,8 @@ async function handleLogin(e) {
       currentUser.planInfo = data.plan;
       authToken = data.token;
       localStorage.setItem('auth_token', authToken);
+      // 缓存用户信息，下次刷新可以立即显示
+      localStorage.setItem('user_info', JSON.stringify(currentUser));
       
       closeAuthModal();
       updateUserUI();
@@ -2403,6 +2436,8 @@ async function handleRegister(e) {
       currentUser.planInfo = data.plan;
       authToken = data.token;
       localStorage.setItem('auth_token', authToken);
+      // 缓存用户信息，下次刷新可以立即显示
+      localStorage.setItem('user_info', JSON.stringify(currentUser));
       
       closeAuthModal();
       updateUserUI();
@@ -2428,6 +2463,7 @@ function logout() {
   userCharacters = [];
   backendHistoryCache = null; // 清除历史记录缓存
   localStorage.removeItem('auth_token');
+  localStorage.removeItem('user_info'); // 清除缓存的用户信息
   document.getElementById('userDropdown').classList.remove('show');
   updateUserUI();
   renderCharacterSelector();
