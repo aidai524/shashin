@@ -3,22 +3,22 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <meta name="theme-color" content="#09090b" />
-        <meta name="description" content="使用 Google Gemini AI 生成精美图片 - 梦想写真馆" />
-        <title>梦想写真馆 - AI 图片生成器</title>
+        <meta name="theme-color" content="#0a0a0f" />
+        <meta name="description" content="使用 Google Gemini AI 生成精美图片 - 梦想照相馆写真馆" />
+        <title>梦想照相馆 - AI 图片生成器</title>
         <!-- 在 CSS 加载前设置主题，避免闪烁 -->
         <script>
             (function() {
                 var theme = localStorage.getItem('gemini_theme') || 'dark';
                 document.documentElement.setAttribute('data-theme', theme);
                 var meta = document.querySelector('meta[name="theme-color"]');
-                if (meta) meta.content = theme === 'light' ? '#fafafa' : '#09090b';
+                if (meta) meta.content = theme === 'light' ? '#f0f0f5' : '#0a0a0f';
             })();
         </script>
         <link rel="stylesheet" href="style.css" />
         <!-- Phosphor Icons -->
         <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✨</text></svg>" />
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌌</text></svg>" />
     </head>
     <body>
         <!-- Neo-Tokyo 背景层 -->
@@ -60,8 +60,8 @@
                         </div>
                     </div>
                 </div>
-                <h1><i class="ph ph-sparkle"></i> <span data-i18n="site.title">梦想写真馆</span></h1>
-                <p class="subtitle" data-i18n="site.subtitle">由 Google Gemini AI 驱动 · 创造精美图像</p>
+                <h1><i class="ph ph-atom"></i> <span data-i18n="site.title">梦想照相馆</span></h1>
+                <p class="subtitle" data-i18n="site.subtitle">POWERED BY GEMINI AI // 创造属于你的数字幻象</p>
             </header>
 
             <main>
@@ -340,7 +340,7 @@
             </main>
 
             <footer>
-                <p data-i18n="footer.text">基于 Google Gemini 和 Cloudflare Workers 构建 💫</p>
+                <p data-i18n="footer.text">// SYSTEM ONLINE // GEMINI AI × CLOUDFLARE WORKERS //</p>
             </footer>
         </div>
 

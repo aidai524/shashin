@@ -14,8 +14,8 @@ let templates = [];
 const i18n = {
   en: {
     // Header
-    'site.title': 'Dream Photo Studio',
-    'site.subtitle': 'Powered by Google Gemini AI · Create Stunning Images',
+    'site.title': 'CYBER DREAM',
+    'site.subtitle': 'POWERED BY GEMINI AI // CREATE YOUR DIGITAL ILLUSIONS',
     
     // Template section
     'template.title': 'Choose Style Template',
@@ -75,7 +75,7 @@ const i18n = {
     'history.template': 'Template',
     
     // Footer
-    'footer.text': 'Built with 💫 using Google Gemini & Cloudflare Workers',
+    'footer.text': '// SYSTEM ONLINE // GEMINI AI × CLOUDFLARE WORKERS //',
     
     // Loading
     'loading.title': 'Creating your masterpiece...',
@@ -112,7 +112,7 @@ const i18n = {
     'auth.login.subtitle': 'Sign in to continue creating',
     'auth.login.submit': 'Sign In',
     'auth.register.title': 'Create Account',
-    'auth.register.subtitle': 'Join Dream Photo Studio and start your AI journey',
+    'auth.register.subtitle': 'Join CYBER DREAM // Start your digital journey',
     'auth.register.submit': 'Sign Up',
     'auth.email': 'Email',
     'auth.password': 'Password',
@@ -184,8 +184,8 @@ const i18n = {
   },
   zh: {
     // Header
-    'site.title': '梦想写真馆',
-    'site.subtitle': '由 Google Gemini AI 驱动 · 创造精美图像',
+    'site.title': '梦想照相馆',
+    'site.subtitle': 'POWERED BY GEMINI AI // 创造属于你的数字形象',
     
     // Template section
     'template.title': '选择风格模板',
@@ -245,7 +245,7 @@ const i18n = {
     'history.template': '模板',
     
     // Footer
-    'footer.text': '基于 Google Gemini 和 Cloudflare Workers 构建 💫',
+    'footer.text': '// SYSTEM ONLINE // GEMINI AI × CLOUDFLARE WORKERS //',
     
     // Loading
     'loading.title': '正在创作你的杰作...',
@@ -282,7 +282,7 @@ const i18n = {
     'auth.login.subtitle': '登录你的账号继续创作',
     'auth.login.submit': '登录',
     'auth.register.title': '创建账号',
-    'auth.register.subtitle': '加入梦想写真馆，开启 AI 创作之旅',
+    'auth.register.subtitle': '接入梦想照相馆 // 开启数字创作之旅',
     'auth.register.submit': '注册',
     'auth.email': '邮箱',
     'auth.password': '密码',
@@ -383,14 +383,14 @@ function applyTheme() {
   html.setAttribute('data-theme', currentTheme);
   
   if (themeBtn) {
-    // 使用 Phosphor Icons
-    const iconClass = currentTheme === 'dark' ? 'ph-moon' : 'ph-sun';
+    // 使用 Phosphor Icons - 赛博朋克风格
+    const iconClass = currentTheme === 'dark' ? 'ph-moon-stars' : 'ph-sun-dim';
     themeBtn.innerHTML = `<i class="ph ${iconClass}"></i>`;
   }
   
   const metaTheme = document.querySelector('meta[name="theme-color"]');
   if (metaTheme) {
-    metaTheme.content = currentTheme === 'light' ? '#f5f5fa' : '#06060f';
+    metaTheme.content = currentTheme === 'light' ? '#f0f0f5' : '#0a0a0f';
   }
 }
 
