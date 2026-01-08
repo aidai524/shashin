@@ -1750,12 +1750,15 @@ footer p {
   padding: var(--space-8);
 }
 
+#imageModal {
+  text-align: center;
+}
+
 /* 图片预览弹窗 */
 #imageModal .modal-content {
   max-width: 90vw;
   max-height: 90vh;
   padding: var(--space-4);
-  background: var(--bg-inverted);
 }
 
 #imageModal img {
