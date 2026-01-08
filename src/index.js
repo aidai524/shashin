@@ -14,9 +14,9 @@ const corsHeaders = {
 
 // 用户权限等级（已移除角色数量限制）
 const USER_PLANS = {
-  FREE: { name: '免费版', maxCharacters: 9999, maxPhotosPerCharacter: 50 },
-  PERSONAL: { name: '个人版', maxCharacters: 9999, maxPhotosPerCharacter: 50 },
-  FAMILY: { name: '家庭版', maxCharacters: 9999, maxPhotosPerCharacter: 50 }
+  FREE: { name: '免费版', maxCharacters: 9999, maxPhotosPerCharacter: 10 },
+  PERSONAL: { name: '个人版', maxCharacters: 9999, maxPhotosPerCharacter: 10 },
+  FAMILY: { name: '家庭版', maxCharacters: 9999, maxPhotosPerCharacter: 10 }
 };
 
 // 默认模板数据（初始化用）

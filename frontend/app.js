@@ -1630,6 +1630,126 @@ function compressImageAsync(base64, mimeType, maxSize, quality = 0.85) {
   });
 }
 
+// 角色照片智能压缩 - 限制分辨率1024px，文件大小500KB以内
+async function compressCharacterPhoto(file) {
+  const MAX_RESOLUTION = 1024; // 最长边不超过1024px
+  const MAX_SIZE_KB = 500; // 目标文件大小500KB
+  const MAX_SIZE_BYTES = MAX_SIZE_KB * 1024;
+  
+  console.log('[CharacterPhoto] Processing:', (file.size / 1024).toFixed(0), 'KB');
+  
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const img = new Image();
+      img.onload = async () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          let width = img.width;
+          let height = img.height;
+          
+          console.log('[CharacterPhoto] Original dimensions:', width + 'x' + height);
+          
+          // 步骤1: 限制分辨率到1024px（最长边）
+          if (width > MAX_RESOLUTION || height > MAX_RESOLUTION) {
+            if (width > height) {
+              height = Math.round((height * MAX_RESOLUTION) / width);
+              width = MAX_RESOLUTION;
+            } else {
+              width = Math.round((width * MAX_RESOLUTION) / height);
+              height = MAX_RESOLUTION;
+            }
+            console.log('[CharacterPhoto] Resized to:', width + 'x' + height);
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // 步骤2: 调整质量以达到500KB目标
+          let quality = 0.90; // 从较高质量开始
+          let compressedBase64 = canvas.toDataURL('image/jpeg', quality).split(',')[1];
+          let compressedSize = Math.ceil(compressedBase64.length * 0.75); // Base64 to bytes
+          
+          console.log('[CharacterPhoto] Initial size at quality', quality + ':', (compressedSize / 1024).toFixed(0), 'KB');
+          
+          // 如果大于500KB，逐步降低质量
+          if (compressedSize > MAX_SIZE_BYTES) {
+            // 二分法快速找到合适的质量值
+            let minQuality = 0.5;
+            let maxQuality = quality;
+            let attempts = 0;
+            const maxAttempts = 10;
+            
+            while (attempts < maxAttempts && Math.abs(compressedSize - MAX_SIZE_BYTES) > MAX_SIZE_BYTES * 0.1) {
+              if (compressedSize > MAX_SIZE_BYTES) {
+                maxQuality = quality;
+              } else {
+                minQuality = quality;
+              }
+              
+              quality = (minQuality + maxQuality) / 2;
+              compressedBase64 = canvas.toDataURL('image/jpeg', quality).split(',')[1];
+              compressedSize = Math.ceil(compressedBase64.length * 0.75);
+              attempts++;
+              
+              console.log('[CharacterPhoto] Attempt', attempts, '- quality:', quality.toFixed(2), 'size:', (compressedSize / 1024).toFixed(0), 'KB');
+            }
+            
+            // 确保不超过500KB
+            while (compressedSize > MAX_SIZE_BYTES && quality > 0.5) {
+              quality -= 0.02;
+              compressedBase64 = canvas.toDataURL('image/jpeg', quality).split(',')[1];
+              compressedSize = Math.ceil(compressedBase64.length * 0.75);
+            }
+          }
+          
+          const finalSizeKB = (compressedSize / 1024).toFixed(0);
+          const originalSizeKB = (file.size / 1024).toFixed(0);
+          const reduction = (((file.size - compressedSize) / file.size) * 100).toFixed(1);
+          
+          console.log('[CharacterPhoto] Compression complete:', {
+            originalSize: originalSizeKB + 'KB',
+            compressedSize: finalSizeKB + 'KB',
+            reduction: reduction + '%',
+            finalQuality: quality.toFixed(2),
+            finalDimensions: width + 'x' + height
+          });
+          
+          resolve({
+            base64: compressedBase64,
+            mimeType: 'image/jpeg',
+            originalSize: file.size,
+            compressedSize: compressedSize,
+            compressed: true,
+            quality: quality,
+            dimensions: { width, height }
+          });
+        } catch (error) {
+          console.error('[CharacterPhoto] Compression error:', error);
+          reject(error);
+        }
+      };
+      
+      img.onerror = (error) => {
+        console.error('[CharacterPhoto] Image load error:', error);
+        reject(error);
+      };
+      
+      img.src = e.target.result;
+    };
+    
+    reader.onerror = (error) => {
+      console.error('[CharacterPhoto] File read error:', error);
+      reject(error);
+    };
+    
+    reader.readAsDataURL(file);
+  });
+}
+
 function saveHistoryToStorage(history) {
   try {
     localStorage.setItem("gemini_history", JSON.stringify(history));
@@ -2787,6 +2907,8 @@ function renderCharacterPhotos() {
   }
   
   const photos = currentEditingCharacter.photos || [];
+  console.log('[RenderPhotos] Rendering', photos.length, 'photos for character:', currentEditingCharacter.name);
+  
   limitText.textContent = t('characters.photo.limit')
     .replace('{current}', photos.length)
     .replace('{max}', characterLimits.maxPhotosPerCharacter);
@@ -2796,12 +2918,20 @@ function renderCharacterPhotos() {
     return;
   }
   
-  grid.innerHTML = photos.map(photo => `
-    <div class="character-photo-item">
-      <img src="data:${photo.mimeType};base64,${photo.data}" alt="Photo" />
-      <button class="photo-delete-btn" onclick="deleteCharacterPhoto('${photo.id}')" title="删除"><i class="ph ph-x"></i></button>
-    </div>
-  `).join('');
+  grid.innerHTML = photos.map((photo, index) => {
+    console.log('[RenderPhotos] Photo', index, 'id:', photo.id);
+    return `
+      <div class="character-photo-item">
+        <img src="data:${photo.mimeType};base64,${photo.data}" alt="Photo" />
+        <button class="photo-delete-btn" onclick="deleteCharacterPhoto('${photo.id}')" title="删除">
+          <i class="ph ph-trash"></i>
+        </button>
+      </div>
+    `;
+  }).join('');
+  
+  console.log('[RenderPhotos] Rendered HTML length:', grid.innerHTML.length);
+  console.log('[RenderPhotos] Delete buttons found:', grid.querySelectorAll('.photo-delete-btn').length);
 }
 
 // 关闭编辑角色弹窗
@@ -2939,88 +3069,154 @@ async function handlePhotoUpload(e) {
     return;
   }
   
-  // 读取文件
-  const reader = new FileReader();
-  reader.onload = async (event) => {
-    const base64 = event.target.result.split(',')[1];
-    const mimeType = file.type;
-    
-    try {
-      const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/characters/${currentEditingCharacter.id}/photos`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
-        },
-        body: JSON.stringify({ photoData: base64, mimeType })
-      });
-      
-      if (handleAuthError(response)) return;
-      
-      if (response.ok) {
-        // 重新加载角色数据
-        const charResponse = await fetch(`${DEFAULT_API_ENDPOINT}/api/characters/${currentEditingCharacter.id}`, {
-          headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-        if (handleAuthError(charResponse)) return;
-        if (charResponse.ok) {
-          const charData = await charResponse.json();
-          currentEditingCharacter = charData;
-          const index = userCharacters.findIndex(c => c.id === charData.id);
-          if (index !== -1) {
-            userCharacters[index] = charData;
-          }
-          // 如果是当前选中的角色，更新选中数据
-          if (selectedCharacter?.id === charData.id) {
-            selectedCharacter = charData;
-          }
-          renderCharacterPhotos();
-          renderCharacters();
-          renderCharacterSelector(); // 刷新生成页面的角色选择器
-        }
-        showToast(t('characters.photo.uploaded'), 'success');
-      } else {
-        const data = await response.json();
-        showToast(data.error || '上传失败', 'error');
-      }
-    } catch (e) {
-      showToast('网络错误，请重试', 'error');
+  // 验证文件类型
+  if (!file.type.startsWith('image/')) {
+    showToast('请上传图片文件', 'error');
+    return;
+  }
+  
+  try {
+    // 显示压缩提示
+    const originalSizeMB = (file.size / 1024 / 1024).toFixed(2);
+    if (file.size > 2 * 1024 * 1024) {
+      showToast(`正在压缩图片 (${originalSizeMB}MB)...`, 'info');
     }
-  };
-  reader.readAsDataURL(file);
+    
+    // 使用智能压缩
+    const compressed = await compressCharacterPhoto(file);
+    
+    // 显示压缩结果
+    if (compressed.compressed) {
+      const compressedSizeMB = (compressed.compressedSize / 1024 / 1024).toFixed(2);
+      const reduction = (((compressed.originalSize - compressed.compressedSize) / compressed.originalSize) * 100).toFixed(0);
+      console.log(`[Upload] Compressed: ${originalSizeMB}MB → ${compressedSizeMB}MB (减少 ${reduction}%)`);
+    }
+    
+    // 上传到服务器
+    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/characters/${currentEditingCharacter.id}/photos`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      },
+      body: JSON.stringify({ 
+        photoData: compressed.base64, 
+        mimeType: compressed.mimeType 
+      })
+    });
+    
+    if (handleAuthError(response)) return;
+    
+    if (response.ok) {
+      // 重新加载角色数据
+      const charResponse = await fetch(`${DEFAULT_API_ENDPOINT}/api/characters/${currentEditingCharacter.id}`, {
+        headers: { 'Authorization': `Bearer ${authToken}` }
+      });
+      if (handleAuthError(charResponse)) return;
+      if (charResponse.ok) {
+        const charData = await charResponse.json();
+        currentEditingCharacter = charData;
+        const index = userCharacters.findIndex(c => c.id === charData.id);
+        if (index !== -1) {
+          userCharacters[index] = charData;
+        }
+        // 如果是当前选中的角色，更新选中数据
+        if (selectedCharacter?.id === charData.id) {
+          selectedCharacter = charData;
+        }
+        renderCharacterPhotos();
+        renderCharacters();
+        renderCharacterSelector(); // 刷新生成页面的角色选择器
+      }
+      showToast(t('characters.photo.uploaded'), 'success');
+    } else {
+      const data = await response.json();
+      showToast(data.error || '上传失败', 'error');
+    }
+  } catch (e) {
+    console.error('[Upload] Error:', e);
+    showToast('上传失败，请重试', 'error');
+  }
 }
 
 // 删除照片
 async function deleteCharacterPhoto(photoId) {
   if (!currentEditingCharacter) return;
   
+  console.log('[DeletePhoto] Starting delete for photo:', photoId);
+  console.log('[DeletePhoto] Character:', currentEditingCharacter.id, currentEditingCharacter.name);
+  
+  // 确认删除
+  if (!confirm(currentLang === 'zh' ? '确定要删除这张照片吗？' : 'Delete this photo?')) {
+    console.log('[DeletePhoto] User cancelled');
+    return;
+  }
+  
   try {
-    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/characters/${currentEditingCharacter.id}/photos/${photoId}`, {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      console.error('[DeletePhoto] No auth token');
+      showToast('请先登录', 'error');
+      return;
+    }
+    
+    const url = `${DEFAULT_API_ENDPOINT}/api/characters/${currentEditingCharacter.id}/photos/${photoId}`;
+    console.log('[DeletePhoto] DELETE request to:', url);
+    
+    const response = await fetch(url, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${authToken}` }
+      headers: { 'Authorization': `Bearer ${token}` }
     });
     
-    if (handleAuthError(response)) return;
+    console.log('[DeletePhoto] Response status:', response.status);
+    
+    if (handleAuthError(response)) {
+      console.log('[DeletePhoto] Auth error, redirecting to login');
+      return;
+    }
     
     if (response.ok) {
-      currentEditingCharacter.photos = currentEditingCharacter.photos.filter(p => p.id !== photoId);
-      const index = userCharacters.findIndex(c => c.id === currentEditingCharacter.id);
-      if (index !== -1) {
-        userCharacters[index] = currentEditingCharacter;
+      const result = await response.json();
+      console.log('[DeletePhoto] Success response:', result);
+      
+      // 从服务器重新加载角色数据，确保数据一致性
+      const reloadResponse = await fetch(`${DEFAULT_API_ENDPOINT}/api/characters/${currentEditingCharacter.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (reloadResponse.ok) {
+        const updatedCharacter = await reloadResponse.json();
+        console.log('[DeletePhoto] Reloaded character, photos count:', updatedCharacter.photos?.length);
+        
+        // 更新 userCharacters 数组
+        const index = userCharacters.findIndex(c => c.id === currentEditingCharacter.id);
+        if (index !== -1) {
+          userCharacters[index] = updatedCharacter;
+        }
+        
+        // 更新当前编辑的角色
+        currentEditingCharacter = updatedCharacter;
+        
+        // 如果是当前选中的角色，更新选中数据
+        if (selectedCharacter?.id === currentEditingCharacter.id) {
+          selectedCharacter = updatedCharacter;
+        }
+        
+        renderCharacterPhotos();
+        renderCharacters();
+        renderCharacterSelector();
+        showToast(t('characters.photo.deleted'), 'success');
+      } else {
+        console.error('[DeletePhoto] Failed to reload character');
+        showToast('删除成功，但刷新数据失败', 'warning');
       }
-      // 如果是当前选中的角色，更新选中数据
-      if (selectedCharacter?.id === currentEditingCharacter.id) {
-        selectedCharacter = currentEditingCharacter;
-      }
-      renderCharacterPhotos();
-      renderCharacters();
-      renderCharacterSelector(); // 刷新生成页面的角色选择器
-      showToast(t('characters.photo.deleted'), 'success');
     } else {
       const data = await response.json();
+      console.error('[DeletePhoto] Error response:', data);
       showToast(data.error || '删除失败', 'error');
     }
   } catch (e) {
+    console.error('[DeletePhoto] Exception:', e);
     showToast('网络错误，请重试', 'error');
   }
 }
