@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#09090b">
   <title>模板管理后台 - Dream Photo Admin</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.loli.net" crossorigin>
+  <link href="https://fonts.loli.net/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>" />
   <style>
@@ -1020,10 +1020,10 @@
       grid.innerHTML = templates.map((t, index) => `
         <div class="template-card" data-id="${t.id}" style="animation: cardFade 0.4s ease ${index * 0.05}s both;">
           <div class="template-card-header">
-            <img src="${t.thumbnail || 'https://via.placeholder.com/400x180/1a1a24/666?text=No+Image'}" 
+            <img src="${t.thumbnail || 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27400%27 height=%27180%27%3E%3Crect fill=%27%231a1a24%27 width=%27400%27 height=%27180%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 fill=%27%23666%27 font-family=%27sans-serif%27 font-size=%2716%27%3ENo Image%3C/text%3E%3C/svg%3E'}" 
                  alt="${t.name?.zh || t.id}" 
                  class="template-thumbnail"
-                 onerror="this.src='https://via.placeholder.com/400x180/1a1a24/666?text=Error'">
+                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27400%27 height=%27180%27%3E%3Crect fill=%27%231a1a24%27 width=%27400%27 height=%27180%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 dominant-baseline=%27middle%27 text-anchor=%27middle%27 fill=%27%23666%27 font-family=%27sans-serif%27 font-size=%2716%27%3EError%3C/text%3E%3C/svg%3E'">
             <span class="template-badge ${t.active !== false ? 'badge-active' : 'badge-inactive'}">
               ${t.active !== false ? '已启用' : '已禁用'}
             </span>

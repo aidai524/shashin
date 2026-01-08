@@ -1630,6 +1630,86 @@ function compressImageAsync(base64, mimeType, maxSize, quality = 0.85) {
   });
 }
 
+// 原图压缩 - 保持高质量，适度压缩到2MB（用于下载）
+async function compressImageForDownload(file) {
+  const MAX_SIZE_MB = 2;
+  const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
+  
+  // 如果文件已经小于2MB，直接返回
+  if (file.size <= MAX_SIZE_BYTES) {
+    console.log('[OriginalPhoto] File size OK:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64 = e.target.result.split(',')[1];
+        resolve({
+          base64: base64,
+          mimeType: file.type,
+          originalSize: file.size,
+          compressedSize: file.size,
+          compressed: false
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  
+  console.log('[OriginalPhoto] Compressing to 2MB:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+  
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const img = new Image();
+      img.onload = async () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          // 保持原始分辨率，只调整质量
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          
+          // 从高质量开始，逐步降低直到小于2MB
+          let quality = 0.95;
+          let compressedBase64 = canvas.toDataURL('image/jpeg', quality).split(',')[1];
+          let compressedSize = Math.ceil(compressedBase64.length * 0.75);
+          
+          while (compressedSize > MAX_SIZE_BYTES && quality > 0.7) {
+            quality -= 0.05;
+            compressedBase64 = canvas.toDataURL('image/jpeg', quality).split(',')[1];
+            compressedSize = Math.ceil(compressedBase64.length * 0.75);
+          }
+          
+          console.log('[OriginalPhoto] Compressed:', {
+            originalSize: (file.size / 1024 / 1024).toFixed(2) + 'MB',
+            compressedSize: (compressedSize / 1024 / 1024).toFixed(2) + 'MB',
+            quality: quality.toFixed(2)
+          });
+          
+          resolve({
+            base64: compressedBase64,
+            mimeType: 'image/jpeg',
+            originalSize: file.size,
+            compressedSize: compressedSize,
+            compressed: true,
+            quality: quality
+          });
+        } catch (error) {
+          console.error('[OriginalPhoto] Error:', error);
+          reject(error);
+        }
+      };
+      
+      img.onerror = (error) => reject(error);
+      img.src = e.target.result;
+    };
+    
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
+  });
+}
+
 // 角色照片智能压缩 - 限制分辨率1024px，文件大小500KB以内
 async function compressCharacterPhoto(file) {
   const MAX_RESOLUTION = 1024; // 最长边不超过1024px
@@ -2019,17 +2099,12 @@ async function showHistoryDetail(id) {
   modal.classList.add("show");
   document.body.style.overflow = 'hidden';
 
-  // 尝试获取原图（后端 R2）
-  const originalImages = await getHistoryOriginalImages(record.id);
-  const hasOriginal = originalImages && originalImages.length > 0;
+  // 预览时优先使用缩略图（快速加载）
+  console.log('[History] Loading thumbnails for preview...');
+  const displayImages = await getHistoryThumbnails(record);
   
-  // 如果没有原图，获取缩略图
-  let displayImages;
-  if (hasOriginal) {
-    displayImages = originalImages;
-  } else {
-    displayImages = await getHistoryThumbnails(record);
-  }
+  // 检查是否有原图可供下载
+  const hasOriginal = record.imageKeys && record.imageKeys.length > 0;
   
   const imagesHtml = displayImages
     .map((img, i) => `
@@ -2048,8 +2123,8 @@ async function showHistoryDetail(id) {
     : (currentLang === 'zh' ? '快速' : 'Fast');
 
   const qualityNote = hasOriginal 
-    ? (currentLang === 'zh' ? '✓ 已保存原图，点击右下角按钮下载' : '✓ Original images saved, click download button')
-    : (currentLang === 'zh' ? '📷 720P预览图，点击下载按钮保存' : '📷 720P preview, click to download');
+    ? (currentLang === 'zh' ? '📷 预览图，点击下载按钮获取原图' : '📷 Preview, click download for original')
+    : (currentLang === 'zh' ? '📷 预览图，点击下载按钮保存' : '📷 Preview, click to download');
 
   detail.innerHTML = `
     <div class="history-detail-prompt">${t('history.template')}: ${templateName}</div>
@@ -2081,12 +2156,20 @@ async function downloadHistoryImage(recordId, imageIndex) {
   const record = history.find(h => h.id === recordId);
   if (!record) return;
   
+  // 显示加载提示
+  const hasOriginal = record.imageKeys && record.imageKeys.length > 0;
+  if (hasOriginal) {
+    showToast(currentLang === 'zh' ? '正在获取原图...' : 'Fetching original image...', 'info');
+  }
+  
   // 优先获取原图（R2），否则获取缩略图
   const originalImages = await getHistoryOriginalImages(recordId);
   let images;
   if (originalImages && originalImages.length > 0) {
+    console.log('[Download] Using original image');
     images = originalImages;
   } else {
+    console.log('[Download] Using thumbnail');
     images = await getHistoryThumbnails(record);
   }
   
@@ -2098,7 +2181,7 @@ async function downloadHistoryImage(recordId, imageIndex) {
   link.download = `dream-photo-${recordId}-${imageIndex + 1}.png`;
   link.click();
   
-  showToast(t('toast.download.started'), 'info');
+  showToast(t('toast.download.started'), 'success');
 }
 
 // 下载全部历史图片
@@ -2107,12 +2190,20 @@ async function downloadAllHistoryImages(recordId) {
   const record = history.find(h => h.id === recordId);
   if (!record) return;
   
+  // 显示加载提示
+  const hasOriginal = record.imageKeys && record.imageKeys.length > 0;
+  if (hasOriginal) {
+    showToast(currentLang === 'zh' ? '正在获取原图...' : 'Fetching original images...', 'info');
+  }
+  
   // 优先获取原图（R2），否则获取缩略图
   const originalImages = await getHistoryOriginalImages(recordId);
   let images;
   if (originalImages && originalImages.length > 0) {
+    console.log('[Download] Using original images for batch download');
     images = originalImages;
   } else {
+    console.log('[Download] Using thumbnails for batch download');
     images = await getHistoryThumbnails(record);
   }
   
@@ -2122,10 +2213,10 @@ async function downloadAllHistoryImages(recordId) {
       link.href = `data:${img.mimeType};base64,${img.base64}`;
       link.download = `dream-photo-${recordId}-${index + 1}.png`;
       link.click();
-    }, index * 300); // 延迟下载以避免浏览器阻止
+    }, index * 500);
   });
   
-  showToast(currentLang === 'zh' ? `正在下载 ${images.length} 张图片...` : `Downloading ${images.length} images...`, 'info');
+  showToast(t('toast.download.all'), 'success');
 }
 
 // 预览历史图片（打开大图弹窗）
@@ -2134,14 +2225,9 @@ async function previewHistoryImage(recordId, imageIndex) {
   const record = history.find(h => h.id === recordId);
   if (!record) return;
   
-  // 优先获取原图（R2），否则获取缩略图
-  const originalImages = await getHistoryOriginalImages(recordId);
-  let images;
-  if (originalImages && originalImages.length > 0) {
-    images = originalImages;
-  } else {
-    images = await getHistoryThumbnails(record);
-  }
+  // 预览时使用缩略图（快速加载）
+  console.log('[Preview] Using thumbnail for preview');
+  const images = await getHistoryThumbnails(record);
   
   const img = images[imageIndex];
   if (!img) return;
@@ -2292,7 +2378,16 @@ function clearAuth() {
   currentUser = null;
   authToken = null;
   localStorage.removeItem('auth_token');
-  localStorage.removeItem('user_info'); // 清除缓存的用户信息
+  localStorage.removeItem('user_info');
+  
+  // 清除缓存管理器中的数据
+  if (typeof clearUserCache === 'function') {
+    clearUserCache();
+  }
+  if (typeof clearCharactersCache === 'function') {
+    clearCharactersCache();
+  }
+  
   updateUserUI();
   renderCharacterSelector();
   loadHistory(); // 刷新历史记录显示
@@ -2346,23 +2441,19 @@ async function validateToken() {
 async function initAuth() {
   // 重新从 localStorage 读取 token（确保获取最新值）
   authToken = localStorage.getItem('auth_token');
-  const cachedUserInfo = localStorage.getItem('user_info');
   
   console.log('[Auth] initAuth called');
   console.log('[Auth] authToken from localStorage:', authToken ? `${authToken.substring(0, 20)}...` : 'null');
-  console.log('[Auth] cachedUserInfo:', cachedUserInfo ? 'exists' : 'null');
   
   if (authToken) {
-    // 先从缓存读取用户信息，立即显示（避免等待网络请求）
+    // 优先使用缓存管理器获取用户信息
+    const cachedUserInfo = typeof getCachedUserInfo === 'function' ? getCachedUserInfo() : null;
+    
     if (cachedUserInfo) {
-      try {
-        currentUser = JSON.parse(cachedUserInfo);
-        console.log('[Auth] Using cached user info, immediate display:', currentUser.email);
-        updateUserUI();
-        renderCharacterSelector();
-      } catch (e) {
-        console.warn('[Auth] Failed to parse cached user info:', e);
-      }
+      currentUser = cachedUserInfo;
+      console.log('[Auth] Using cached user info:', currentUser.email);
+      updateUserUI();
+      renderCharacterSelector();
     } else {
       // 没有缓存，显示加载状态
       const loginBtn = document.getElementById('loginBtn');
@@ -2387,8 +2478,15 @@ async function initAuth() {
         const data = await response.json();
         currentUser = data.user;
         currentUser.planInfo = data.plan;
-        // 更新缓存（用户信息可能有更新）
-        localStorage.setItem('user_info', JSON.stringify(currentUser));
+        
+        // 使用缓存管理器更新缓存
+        if (typeof cacheUserInfo === 'function') {
+          cacheUserInfo(currentUser);
+        } else {
+          // 降级到 localStorage
+          localStorage.setItem('user_info', JSON.stringify(currentUser));
+        }
+        
         updateUserUI();
         renderCharacterSelector();
         console.log('[Auth] User authenticated successfully:', currentUser.email);
@@ -2712,12 +2810,42 @@ function closeCharactersModal() {
 }
 
 // 加载用户的角色
-async function loadCharacters() {
+async function loadCharacters(forceRefresh = false) {
   const grid = document.getElementById('charactersGrid');
   const limitText = document.getElementById('charactersLimit');
   const addBtn = document.getElementById('addCharacterBtn');
   
+  // 优先使用缓存数据（除非强制刷新）
+  if (!forceRefresh && typeof getCachedCharacters === 'function') {
+    const cached = getCachedCharacters();
+    if (cached) {
+      console.log('[Characters] Using cached data');
+      userCharacters = cached.characters;
+      characterLimits = cached.limits;
+      
+      // 立即渲染缓存数据
+      limitText.textContent = t('characters.limit')
+        .replace('{current}', characterLimits.currentCount)
+        .replace('{max}', characterLimits.maxCharacters);
+      addBtn.disabled = characterLimits.currentCount >= characterLimits.maxCharacters;
+      renderCharacters();
+      
+      // 后台异步更新数据
+      loadCharactersFromServer(false);
+      return;
+    }
+  }
+  
+  // 没有缓存或强制刷新，显示加载状态
   grid.innerHTML = '<div class="loading-text">加载中...</div>';
+  await loadCharactersFromServer(true);
+}
+
+// 从服务器加载角色数据
+async function loadCharactersFromServer(showLoading = true) {
+  const grid = document.getElementById('charactersGrid');
+  const limitText = document.getElementById('charactersLimit');
+  const addBtn = document.getElementById('addCharacterBtn');
   
   try {
     const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/characters`, {
@@ -2731,6 +2859,11 @@ async function loadCharacters() {
     userCharacters = data.characters;
     characterLimits = data.limits;
     
+    // 缓存数据
+    if (typeof cacheCharacters === 'function') {
+      cacheCharacters(data.characters, data.limits);
+    }
+    
     // 更新限制提示
     limitText.textContent = t('characters.limit')
       .replace('{current}', characterLimits.currentCount)
@@ -2740,9 +2873,12 @@ async function loadCharacters() {
     addBtn.disabled = characterLimits.currentCount >= characterLimits.maxCharacters;
     
     renderCharacters();
+    console.log('[Characters] Loaded from server and cached');
   } catch (e) {
-    console.error('Load characters error:', e);
-    grid.innerHTML = '<div class="empty-characters"><p>加载失败，请重试</p></div>';
+    console.error('[Characters] Load error:', e);
+    if (showLoading) {
+      grid.innerHTML = '<div class="empty-characters"><p>加载失败，请重试</p></div>';
+    }
   }
 }
 
@@ -3076,23 +3212,22 @@ async function handlePhotoUpload(e) {
   }
   
   try {
-    // 显示压缩提示
     const originalSizeMB = (file.size / 1024 / 1024).toFixed(2);
-    if (file.size > 2 * 1024 * 1024) {
-      showToast(`正在压缩图片 (${originalSizeMB}MB)...`, 'info');
-    }
+    showToast(`正在处理图片 (${originalSizeMB}MB)...`, 'info');
     
-    // 使用智能压缩
-    const compressed = await compressCharacterPhoto(file);
+    // 生成缩略图版本（1024px，用于预览）
+    console.log('[Upload] Generating thumbnail...');
+    const thumbnail = await compressCharacterPhoto(file);
     
-    // 显示压缩结果
-    if (compressed.compressed) {
-      const compressedSizeMB = (compressed.compressedSize / 1024 / 1024).toFixed(2);
-      const reduction = (((compressed.originalSize - compressed.compressedSize) / compressed.originalSize) * 100).toFixed(0);
-      console.log(`[Upload] Compressed: ${originalSizeMB}MB → ${compressedSizeMB}MB (减少 ${reduction}%)`);
-    }
+    // 生成原图版本（适度压缩到2MB，用于下载）
+    console.log('[Upload] Processing original...');
+    const original = await compressImageForDownload(file);
     
-    // 上传到服务器
+    const thumbnailSizeMB = (thumbnail.compressedSize / 1024 / 1024).toFixed(2);
+    const originalSizeKB = (original.compressedSize / 1024).toFixed(0);
+    console.log(`[Upload] Thumbnail: ${thumbnailSizeMB}MB, Original: ${originalSizeKB}KB`);
+    
+    // 上传双版本到服务器
     const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/characters/${currentEditingCharacter.id}/photos`, {
       method: 'POST',
       headers: {
@@ -3100,8 +3235,11 @@ async function handlePhotoUpload(e) {
         'Authorization': `Bearer ${authToken}`
       },
       body: JSON.stringify({ 
-        photoData: compressed.base64, 
-        mimeType: compressed.mimeType 
+        photoData: thumbnail.base64,        // 缩略图（预览用）
+        originalData: original.base64,      // 原图（下载用）
+        mimeType: thumbnail.mimeType,
+        thumbnailSize: thumbnail.compressedSize,
+        originalSize: original.compressedSize
       })
     });
     

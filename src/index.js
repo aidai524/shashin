@@ -1322,7 +1322,7 @@ async function deleteCharacter(env, user, characterId) {
 async function addCharacterPhoto(request, env, user, characterId) {
   try {
     const body = await request.json();
-    const { photoData, mimeType, description } = body;
+    const { photoData, originalData, mimeType, description, thumbnailSize, originalSize } = body;
     
     if (!photoData) {
       return errorResponse('照片数据不能为空');
@@ -1342,12 +1342,15 @@ async function addCharacterPhoto(request, env, user, characterId) {
       return errorResponse(`${plan.name}每个角色最多上传 ${plan.maxPhotosPerCharacter} 张照片`);
     }
     
-    // 添加照片
+    // 添加照片（支持双版本）
     const photo = {
       id: crypto.randomUUID(),
-      data: photoData, // Base64 数据
+      data: photoData,                    // 缩略图 Base64（预览用）
+      originalData: originalData || photoData,  // 原图 Base64（下载用，如果没有则使用缩略图）
       mimeType: mimeType || 'image/jpeg',
       description: description || '',
+      thumbnailSize: thumbnailSize || 0,  // 缩略图大小
+      originalSize: originalSize || 0,    // 原图大小
       createdAt: new Date().toISOString()
     };
     
@@ -1357,7 +1360,14 @@ async function addCharacterPhoto(request, env, user, characterId) {
     await env.CHARACTERS_KV.put(`user:${user.id}:characters`, JSON.stringify(characters));
     
     // 返回时不包含完整的 base64 数据
-    const photoResponse = { ...photo, data: undefined, hasData: true };
+    const photoResponse = { 
+      ...photo, 
+      data: undefined, 
+      originalData: undefined,
+      hasData: true,
+      hasThumbnail: !!photoData,
+      hasOriginal: !!originalData
+    };
     
     return jsonResponse({
       success: true,
