@@ -545,7 +545,7 @@ async function handleUsersAdminAPI(request, env, pathname) {
   if (planMatch && method === 'PUT') {
     return await updateUserPlan(request, env, planMatch[1]);
   }
-
+  
   return errorResponse('Not found', 404);
 }
 
@@ -608,6 +608,7 @@ async function updateUserPlan(request, env, userId) {
     return errorResponse('更新权限失败: ' + e.message, 500);
   }
 }
+
 
 // =========================================
 // 模板 API 处理
@@ -1670,7 +1671,7 @@ export default {
     }
 
     // 用户管理 API（管理员）
-    if (pathname.startsWith("/api/admin/users")) {
+    if (pathname.startsWith("/api/admin/")) {
       return await handleUsersAdminAPI(request, env, pathname);
     }
 
