@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="theme-color" content="#FAFAFA" />
+        <meta name="description" content="Q版表情包生成器 - 使用 AI 为你的角色生成可爱的表情包" />
+        <title>Q版表情包生成器 - Dream Photo Studio</title>
+        <!-- 在 CSS 加载前设置主题，避免闪烁 -->
+        <script>
+            (function() {
+                var theme = localStorage.getItem('gemini_theme') || 'light';
+                document.documentElement.setAttribute('data-theme', theme);
+                var meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) meta.content = theme === 'dark' ? '#0F172A' : '#FAFAFA';
+            })();
+        </script>
+        <link rel="stylesheet" href="style.css?v=20260109" />
+        <!-- Phosphor Icons -->
+        <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+        <!-- Cache Manager -->
+        <script src="cache.js?v=20260109"></script>
+        <!-- JSZip for packaging stickers -->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>😊</text></svg>" />
+        <style>
+            /* 表情包页面专用样式 */
+            .sticker-hero {
+                text-align: center;
+                padding: 2rem 0;
+                margin-bottom: 2rem;
+            }
+            .sticker-hero h1 {
+                font-size: 2.5rem;
+                margin-bottom: 0.5rem;
+                background: linear-gradient(135deg, var(--accent-rose) 0%, var(--accent-primary) 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+            .sticker-hero p {
+                color: var(--text-muted);
+                font-size: 1.1rem;
+            }
+            
+            .sticker-steps {
+                display: flex;
+                justify-content: center;
+                gap: 2rem;
+                margin-bottom: 3rem;
+                flex-wrap: wrap;
+            }
+            .sticker-step {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                padding: 1rem 1.5rem;
+                background: var(--bg-secondary);
+                border-radius: 12px;
+                border: 1px solid var(--border-light);
+            }
+            .sticker-step.active {
+                border-color: var(--accent-primary);
+                background: rgba(0, 229, 192, 0.05);
+            }
+            .sticker-step.completed {
+                border-color: var(--accent-success);
+                background: rgba(34, 197, 94, 0.05);
+            }
+            .step-num {
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                background: var(--bg-tertiary);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 600;
+                color: var(--text-muted);
+            }
+            .sticker-step.active .step-num {
+                background: var(--accent-primary);
+                color: white;
+            }
+            .sticker-step.completed .step-num {
+                background: var(--accent-success);
+                color: white;
+            }
+            .step-text {
+                font-weight: 500;
+            }
+            
+            .sticker-main {
+                max-width: 800px;
+                margin: 0 auto;
+            }
+            
+            .sticker-section {
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                border-radius: 16px;
+                padding: 2rem;
+                margin-bottom: 2rem;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            }
+            [data-theme="light"] .sticker-section {
+                background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+            }
+            .sticker-section h2 {
+                font-size: 1.25rem;
+                margin-bottom: 1rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                color: #ffffff;
+            }
+            .sticker-section p,
+            .sticker-section label,
+            .sticker-section .form-hint {
+                color: rgba(255, 255, 255, 0.85);
+            }
+            
+            .sticker-preview {
+                width: 100%;
+                max-width: 600px;
+                margin: 0 auto;
+                aspect-ratio: 1;
+                background: #0d1117;
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                position: relative;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            .sticker-preview img {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+            }
+            .sticker-preview .placeholder {
+                text-align: center;
+                color: var(--text-muted);
+            }
+            .sticker-preview .placeholder i {
+                font-size: 4rem;
+                margin-bottom: 1rem;
+                display: block;
+            }
+            
+            .sticker-grid-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                pointer-events: none;
+                display: none;
+            }
+            .sticker-grid-overlay.show {
+                display: block;
+            }
+            .sticker-grid-overlay .grid-line-h,
+            .sticker-grid-overlay .grid-line-v {
+                position: absolute;
+                background: rgba(255, 255, 255, 0.3);
+            }
+            .sticker-grid-overlay .grid-line-h {
+                left: 0;
+                right: 0;
+                height: 1px;
+            }
+            .sticker-grid-overlay .grid-line-v {
+                top: 0;
+                bottom: 0;
+                width: 1px;
+            }
+            
+            .sticker-actions {
+                display: flex;
+                justify-content: center;
+                gap: 1rem;
+                margin-top: 1.5rem;
+                flex-wrap: wrap;
+            }
+            
+            .sticker-info {
+                background: rgba(0, 229, 192, 0.1);
+                border: 1px solid rgba(0, 229, 192, 0.3);
+                border-radius: 8px;
+                padding: 1rem;
+                margin-top: 1rem;
+                font-size: 0.9rem;
+                color: var(--text-secondary);
+            }
+            .sticker-info i {
+                color: var(--accent-primary);
+                margin-right: 0.5rem;
+            }
+            
+            .sticker-result-grid {
+                display: grid;
+                grid-template-columns: repeat(6, 1fr);
+                gap: 8px;
+                margin-top: 1rem;
+                padding: 1rem;
+                background: #0d1117;
+                border-radius: 12px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            .sticker-result-item {
+                aspect-ratio: 1;
+                background: #1a1a2e;
+                border-radius: 8px;
+                overflow: hidden;
+                cursor: pointer;
+                transition: transform 0.2s, box-shadow 0.2s;
+                border: 1px solid rgba(255, 255, 255, 0.05);
+            }
+            .sticker-result-item:hover {
+                transform: scale(1.08);
+                box-shadow: 0 4px 20px rgba(0, 229, 192, 0.3);
+                border-color: var(--accent-primary);
+            }
+            .sticker-result-item img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+            
+            .progress-bar {
+                width: 100%;
+                height: 8px;
+                background: var(--bg-tertiary);
+                border-radius: 4px;
+                overflow: hidden;
+                margin-top: 1rem;
+            }
+            .progress-bar-fill {
+                height: 100%;
+                background: linear-gradient(90deg, var(--accent-primary), var(--accent-rose));
+                border-radius: 4px;
+                transition: width 0.3s ease;
+            }
+            
+            .back-link {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                color: var(--text-muted);
+                text-decoration: none;
+                margin-bottom: 1rem;
+                font-size: 0.9rem;
+                transition: color 0.2s;
+            }
+            .back-link:hover {
+                color: var(--accent-primary);
+            }
+            
+            /* 历史记录区域 */
+            .sticker-history {
+                margin-top: 3rem;
+                padding-top: 2rem;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            .sticker-history h3 {
+                font-size: 1.1rem;
+                margin-bottom: 1rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                color: var(--text-primary);
+            }
+            .history-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 1rem;
+            }
+            .history-item {
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                border-radius: 12px;
+                overflow: hidden;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                transition: transform 0.2s, box-shadow 0.2s;
+                cursor: pointer;
+            }
+            .history-item:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 8px 24px rgba(0, 229, 192, 0.2);
+                border-color: var(--accent-primary);
+            }
+            .history-item-thumb {
+                aspect-ratio: 1;
+                background: #0d1117;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+            }
+            .history-item-thumb img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+            .history-item-info {
+                padding: 0.75rem;
+            }
+            .history-item-name {
+                font-weight: 500;
+                font-size: 0.9rem;
+                color: #ffffff;
+                margin-bottom: 0.25rem;
+            }
+            .history-item-date {
+                font-size: 0.75rem;
+                color: rgba(255, 255, 255, 0.5);
+            }
+            .history-item-actions {
+                display: flex;
+                gap: 0.5rem;
+                padding: 0 0.75rem 0.75rem;
+            }
+            .history-item-actions button {
+                flex: 1;
+                padding: 0.5rem;
+                border: none;
+                border-radius: 6px;
+                font-size: 0.8rem;
+                cursor: pointer;
+                transition: background 0.2s;
+            }
+            .history-item-actions .btn-download {
+                background: var(--accent-primary);
+                color: white;
+            }
+            .history-item-actions .btn-download:hover {
+                background: var(--accent-primary-hover);
+            }
+            .history-item-actions .btn-delete {
+                background: rgba(255, 255, 255, 0.1);
+                color: rgba(255, 255, 255, 0.7);
+            }
+            .history-item-actions .btn-delete:hover {
+                background: rgba(239, 68, 68, 0.3);
+                color: #ef4444;
+            }
+            .history-empty {
+                text-align: center;
+                padding: 2rem;
+                color: var(--text-muted);
+            }
+            .history-empty i {
+                font-size: 3rem;
+                margin-bottom: 1rem;
+                display: block;
+                opacity: 0.5;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- 初始化加载遮罩 -->
+        <div class="init-loading-overlay" id="initLoadingOverlay">
+            <div class="init-loading-content">
+                <div class="init-loading-spinner"></div>
+                <p class="init-loading-text">加载中...</p>
+            </div>
+        </div>
+
+        <!-- 装饰背景 -->
+        <div class="cosmic-bg" aria-hidden="true"></div>
+        <div class="grid-overlay" aria-hidden="true"></div>
+
+        <div class="container">
+            <header>
+                <div class="header-controls">
+                    <button class="theme-switch-btn" id="themeSwitchBtn" onclick="toggleTheme()" aria-label="Toggle theme">
+                        <i class="ph ph-moon"></i>
+                    </button>
+                    <!-- 用户账号 -->
+                    <div class="user-menu" id="userMenu">
+                        <button class="user-btn" id="loginBtn" onclick="showAuthModal('login')">
+                            <i class="ph ph-user"></i>
+                            <span>登录</span>
+                        </button>
+                        <div class="user-dropdown" id="userDropdown">
+                            <div class="user-info">
+                                <span class="user-avatar" id="userAvatar"><i class="ph ph-user"></i></span>
+                                <div class="user-details">
+                                    <span class="user-name" id="userName"></span>
+                                    <span class="user-plan" id="userPlanBadge"></span>
+                                </div>
+                            </div>
+                            <div class="dropdown-divider"></div>
+                            <a href="#" onclick="showCharactersModal(); return false;" class="dropdown-item">
+                                <i class="ph ph-user-circle"></i> 我的角色
+                            </a>
+                            <div class="dropdown-divider"></div>
+                            <a href="#" onclick="logout(); return false;" class="dropdown-item text-danger">
+                                <i class="ph ph-sign-out"></i> 退出登录
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <main>
+                <a href="index.html" class="back-link">
+                    <i class="ph ph-arrow-left"></i> 返回主页
+                </a>
+                
+                <div class="sticker-hero">
+                    <h1><i class="ph ph-smiley-sticker"></i> Q版表情包生成器</h1>
+                    <p>选择角色，一键生成36个可爱的Q版表情包</p>
+                </div>
+
+                <!-- 步骤指示器 -->
+                <div class="sticker-steps">
+                    <div class="sticker-step active" id="step1Indicator">
+                        <span class="step-num">1</span>
+                        <span class="step-text">选择角色</span>
+                    </div>
+                    <div class="sticker-step" id="step2Indicator">
+                        <span class="step-num">2</span>
+                        <span class="step-text">生成表情包</span>
+                    </div>
+                    <div class="sticker-step" id="step3Indicator">
+                        <span class="step-num">3</span>
+                        <span class="step-text">下载表情包</span>
+                    </div>
+                </div>
+
+                <div class="sticker-main">
+                    <!-- 步骤1: 选择角色 -->
+                    <section class="sticker-section" id="step1Section">
+                        <h2><i class="ph ph-user-circle"></i> 选择角色</h2>
+                        
+                        <!-- 未登录提示 -->
+                        <div class="login-required-notice" id="loginRequiredNotice">
+                            <div class="notice-icon"><i class="ph ph-lock-key"></i></div>
+                            <p>请先登录后创建角色</p>
+                            <button class="btn btn-primary" onclick="showAuthModal('login')">
+                                <span>登录</span>
+                            </button>
+                        </div>
+                        
+                        <!-- 角色选择器 -->
+                        <div class="form-group character-select-group" id="characterSelectGroup" style="display: none;">
+                            <div class="character-selector" id="characterSelector">
+                                <!-- 由 JS 动态生成 -->
+                            </div>
+                            <p class="form-hint">
+                                <a href="#" onclick="showCharactersModal(); return false;" style="color: var(--accent-rose);">
+                                    <i class="ph ph-user-circle"></i> 管理我的角色
+                                </a>
+                            </p>
+                        </div>
+
+                        <!-- 无角色提示 -->
+                        <div class="no-characters-notice" id="noCharactersNotice" style="display: none;">
+                            <div class="notice-icon"><i class="ph ph-user-circle"></i></div>
+                            <p>你还没有创建角色</p>
+                            <p class="notice-hint">创建角色并上传照片后，即可生成表情包</p>
+                            <button class="btn btn-primary" onclick="showAddCharacterForm()">
+                                <i class="ph ph-plus"></i> 添加角色
+                            </button>
+                        </div>
+
+                        <div class="sticker-info">
+                            <i class="ph ph-info"></i>
+                            <strong>预设参数：</strong>宽高比 1:1 | 画质 4K超清 | 生成数量 1张
+                        </div>
+
+                        <div class="sticker-actions">
+                            <button class="btn btn-primary btn-generate" id="generateBtn" onclick="generateSticker()" disabled>
+                                <span class="btn-text"><i class="ph ph-sparkle"></i> 生成表情包</span>
+                                <span class="btn-loading" style="display: none">
+                                    <span class="spinner"></span>
+                                    创作中...
+                                </span>
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- 步骤2: 预览大图 -->
+                    <section class="sticker-section" id="step2Section" style="display: none;">
+                        <h2><i class="ph ph-image"></i> 表情包预览</h2>
+                        
+                        <div class="sticker-preview" id="stickerPreview">
+                            <div class="placeholder">
+                                <i class="ph ph-image"></i>
+                                <p>表情包将在这里显示</p>
+                            </div>
+                            <!-- 6x6 网格叠加层 -->
+                            <div class="sticker-grid-overlay" id="gridOverlay"></div>
+                        </div>
+
+                        <div class="sticker-info">
+                            <i class="ph ph-info"></i>
+                            生成的图片包含 6×6 共 36 个表情，点击下方按钮可自动切割并打包下载
+                        </div>
+
+                        <div class="sticker-actions">
+                            <button class="btn btn-secondary" onclick="regenerateSticker()">
+                                <i class="ph ph-arrow-counter-clockwise"></i> 重新生成
+                            </button>
+                            <button class="btn btn-primary" id="splitBtn" onclick="splitAndDownload()">
+                                <span class="btn-text"><i class="ph ph-scissors"></i> 切割并下载表情包</span>
+                                <span class="btn-loading" style="display: none">
+                                    <span class="spinner"></span>
+                                    处理中...
+                                </span>
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- 步骤3: 切割结果 -->
+                    <section class="sticker-section" id="step3Section" style="display: none;">
+                        <h2><i class="ph ph-check-circle"></i> 表情包已生成</h2>
+                        
+                        <div class="sticker-result-grid" id="stickerResultGrid">
+                            <!-- 36个表情将在这里显示 -->
+                        </div>
+
+                        <div class="progress-bar" id="progressBar" style="display: none;">
+                            <div class="progress-bar-fill" id="progressFill" style="width: 0%"></div>
+                        </div>
+
+                        <div class="sticker-actions">
+                            <button class="btn btn-secondary" onclick="startOver()">
+                                <i class="ph ph-arrow-counter-clockwise"></i> 重新开始
+                            </button>
+                            <button class="btn btn-primary" id="downloadAllBtn" onclick="downloadAllStickers()">
+                                <i class="ph ph-download-simple"></i> 下载全部表情包 (ZIP)
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- 历史记录区域 -->
+                    <div class="sticker-history" id="stickerHistory">
+                        <h3><i class="ph ph-clock-counter-clockwise"></i> 历史记录</h3>
+                        <div class="history-grid" id="historyGrid">
+                            <!-- 由 JS 动态生成 -->
+                        </div>
+                        <div class="history-empty" id="historyEmpty" style="display: none;">
+                            <i class="ph ph-folder-open"></i>
+                            <p>暂无历史记录</p>
+                            <p style="font-size: 0.85rem;">生成的表情包会自动保存在这里</p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <footer>
+                <p>Made with Gemini AI · Powered by Cloudflare</p>
+            </footer>
+        </div>
+
+        <!-- 加载动画遮罩 -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-pulse-bg" aria-hidden="true"></div>
+            <div class="loading-orbits" aria-hidden="true">
+                <div class="orbit orbit-1"><span></span><span></span><span></span></div>
+                <div class="orbit orbit-2"><span></span><span></span></div>
+                <div class="orbit orbit-3"><span></span><span></span><span></span><span></span></div>
+            </div>
+            <div class="loading-canvas">
+                <div class="canvas-frame">
+                    <div class="canvas-inner">
+                        <div class="canvas-wave"></div>
+                        <div class="canvas-wave wave-2"></div>
+                        <div class="canvas-wave wave-3"></div>
+                    </div>
+                    <div class="canvas-corners">
+                        <span></span><span></span><span></span><span></span>
+                    </div>
+                </div>
+                <div class="canvas-glow"></div>
+            </div>
+            <div class="loading-content">
+                <p class="loading-text">正在生成Q版表情包...</p>
+                <div class="loading-dots">
+                    <span></span><span></span><span></span>
+                </div>
+                <p class="loading-hint">通常需要 30-60 秒</p>
+            </div>
+        </div>
+
+        <!-- 图片预览弹窗 -->
+        <div class="modal" id="imageModal" onclick="closeModal()" role="dialog" aria-modal="true">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeModal()" aria-label="Close"><i class="ph ph-x"></i></span>
+                <img id="modalImage" src="" alt="Preview image" />
+                <div class="modal-actions">
+                    <button class="btn btn-primary" onclick="downloadCurrentImage()">
+                        <i class="ph ph-download-simple"></i> 下载图片
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 登录/注册弹窗 -->
+        <div class="modal" id="authModal" onclick="closeAuthModal()" role="dialog" aria-modal="true">
+            <div class="modal-content modal-auth" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeAuthModal()" aria-label="Close"><i class="ph ph-x"></i></span>
+                
+                <!-- 登录表单 -->
+                <div class="auth-form" id="loginForm">
+                    <div class="auth-header">
+                        <h2><i class="ph ph-hand-waving"></i> 欢迎回来</h2>
+                        <p>登录你的账号继续创作</p>
+                    </div>
+                    <form onsubmit="handleLogin(event)">
+                        <div class="form-group">
+                            <label for="loginEmail">邮箱</label>
+                            <input type="email" id="loginEmail" required placeholder="your@email.com" />
+                        </div>
+                        <div class="form-group">
+                            <label for="loginPassword">密码</label>
+                            <input type="password" id="loginPassword" required placeholder="••••••••" minlength="6" />
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full" id="loginSubmitBtn">
+                            <span>登录</span>
+                        </button>
+                    </form>
+                    <div class="auth-footer">
+                        <p>还没有账号？ 
+                            <a href="#" onclick="switchAuthForm('register'); return false;">立即注册</a>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 注册表单 -->
+                <div class="auth-form" id="registerForm" style="display: none;">
+                    <div class="auth-header">
+                        <h2><i class="ph ph-confetti"></i> 创建账号</h2>
+                        <p>加入 Dream Photo，开启 AI 创作之旅</p>
+                    </div>
+                    <form onsubmit="handleRegister(event)">
+                        <div class="form-group">
+                            <label for="registerEmail">邮箱</label>
+                            <input type="email" id="registerEmail" required placeholder="your@email.com" />
+                        </div>
+                        <div class="form-group">
+                            <label for="registerNickname">昵称</label>
+                            <input type="text" id="registerNickname" placeholder="你的昵称" />
+                        </div>
+                        <div class="form-group">
+                            <label for="registerPassword">密码</label>
+                            <input type="password" id="registerPassword" required placeholder="至少6位" minlength="6" />
+                        </div>
+                        <div class="form-group">
+                            <label for="registerPasswordConfirm">确认密码</label>
+                            <input type="password" id="registerPasswordConfirm" required placeholder="再次输入密码" minlength="6" />
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-full" id="registerSubmitBtn">
+                            <span>注册</span>
+                        </button>
+                    </form>
+                    <div class="auth-footer">
+                        <p>已有账号？ 
+                            <a href="#" onclick="switchAuthForm('login'); return false;">立即登录</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 角色管理弹窗 -->
+        <div class="modal" id="charactersModal" onclick="closeCharactersModal()" role="dialog" aria-modal="true">
+            <div class="modal-content modal-characters" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeCharactersModal()" aria-label="Close"><i class="ph ph-x"></i></span>
+                <div class="characters-content">
+                    <div class="characters-header">
+                        <h2><i class="ph ph-user-circle"></i> 我的角色</h2>
+                        <p class="characters-limit" id="charactersLimit"></p>
+                    </div>
+                    
+                    <div class="characters-grid" id="charactersGrid">
+                        <!-- 由 JS 动态生成 -->
+                    </div>
+                    
+                    <button class="btn btn-primary btn-add-character" id="addCharacterBtn" onclick="showAddCharacterForm()">
+                        <i class="ph ph-plus"></i> 添加角色
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 编辑角色弹窗 -->
+        <div class="modal" id="editCharacterModal" onclick="closeEditCharacterModal()" role="dialog" aria-modal="true">
+            <div class="modal-content modal-edit-character" onclick="event.stopPropagation()">
+                <span class="modal-close" onclick="closeEditCharacterModal()" aria-label="Close"><i class="ph ph-x"></i></span>
+                <div class="edit-character-content">
+                    <h2 id="editCharacterTitle"><i class="ph ph-pencil-simple"></i> 编辑角色</h2>
+                    
+                    <form id="characterForm" onsubmit="handleSaveCharacter(event)">
+                        <input type="hidden" id="characterId" />
+                        <div class="form-group">
+                            <label for="characterName">角色名称</label>
+                            <input type="hidden" id="characterName" required />
+                            <div class="fancy-select" id="characterSelect">
+                                <div class="fancy-select-trigger" onclick="toggleFancySelect()">
+                                    <span class="fancy-select-value placeholder">请选择角色</span>
+                                    <i class="ph ph-caret-down fancy-select-arrow"></i>
+                                </div>
+                                <div class="fancy-select-dropdown">
+                                    <div class="fancy-select-group">
+                                        <div class="fancy-select-group-label"><i class="ph ph-user"></i> 常用</div>
+                                        <div class="fancy-select-option" data-value="本人">本人</div>
+                                        <div class="fancy-select-option" data-value="老婆">老婆</div>
+                                        <div class="fancy-select-option" data-value="老公">老公</div>
+                                        <div class="fancy-select-option" data-value="女儿">女儿</div>
+                                        <div class="fancy-select-option" data-value="儿子">儿子</div>
+                                    </div>
+                                    <div class="fancy-select-group">
+                                        <div class="fancy-select-group-label"><i class="ph ph-users-three"></i> 父母</div>
+                                        <div class="fancy-select-option" data-value="爸爸">爸爸</div>
+                                        <div class="fancy-select-option" data-value="妈妈">妈妈</div>
+                                        <div class="fancy-select-option" data-value="公公">公公</div>
+                                        <div class="fancy-select-option" data-value="婆婆">婆婆</div>
+                                    </div>
+                                    <div class="fancy-select-group">
+                                        <div class="fancy-select-group-label"><i class="ph ph-users"></i> 祖辈</div>
+                                        <div class="fancy-select-option" data-value="爷爷">爷爷</div>
+                                        <div class="fancy-select-option" data-value="奶奶">奶奶</div>
+                                        <div class="fancy-select-option" data-value="外公">外公</div>
+                                        <div class="fancy-select-option" data-value="外婆">外婆</div>
+                                    </div>
+                                    <div class="fancy-select-group">
+                                        <div class="fancy-select-group-label"><i class="ph ph-plus-circle"></i> 更多</div>
+                                        <div class="fancy-select-option" data-value="其他">其他</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="characterDesc">描述（可选）</label>
+                            <input type="text" id="characterDesc" placeholder="简单描述这个角色" />
+                        </div>
+                        
+                        <!-- 照片管理 -->
+                        <div class="character-photos-section" id="characterPhotosSection" style="display: none;">
+                            <label>参考照片</label>
+                            <p class="form-hint">上传不同角度的清晰照片，帮助 AI 更好地锁定面部特征</p>
+                            
+                            <div class="character-photos-grid" id="characterPhotosGrid">
+                                <!-- 由 JS 动态生成 -->
+                            </div>
+                            
+                            <div class="photo-upload-area" id="photoUploadArea">
+                                <input type="file" id="photoUploadInput" accept="image/*" onchange="handlePhotoUpload(event)" class="file-input-hidden" />
+                                <label for="photoUploadInput" class="photo-upload-btn">
+                                    <i class="ph ph-camera"></i>
+                                    <span>上传照片</span>
+                                </label>
+                                <span class="photo-limit-text" id="photoLimitText"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="closeEditCharacterModal()">
+                                <span>取消</span>
+                            </button>
+                            <button type="submit" class="btn btn-primary" id="saveCharacterBtn">
+                                <span>保存</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast 通知 -->
+        <div class="toast-container" id="toastContainer"></div>
+
+        <script src="sticker.js?v=20260109"></script>
+    </body>
+</html>

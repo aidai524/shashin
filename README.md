@@ -9,9 +9,12 @@ gemini-proxy/
 ├── src/
 │   └── index.js          # Cloudflare Workers 代理代码
 ├── frontend/
-│   ├── index.html        # 图片生成器界面
+│   ├── index.html        # 图片生成器主界面
+│   ├── sticker.html      # Q版表情包生成器
 │   ├── style.css         # 样式文件
-│   ├── app.js            # 前端逻辑
+│   ├── app.js            # 主页前端逻辑
+│   ├── sticker.js        # 表情包生成器逻辑
+│   ├── cache.js          # 缓存管理
 │   └── README.md         # 前端说明
 ├── wrangler.toml         # Workers 配置
 └── package.json
@@ -33,6 +36,14 @@ gemini-proxy/
 - 📚 历史记录保存（本地存储）
 - 🔍 图片预览和下载
 - 📱 响应式设计，支持移动端
+
+### Q版表情包生成器 (sticker.html)
+- 😊 一键生成 36 个 Q版 LINE 风格表情包
+- 🎭 基于角色照片锁脸生成，保持面部特征一致
+- ✂️ 自动切割 6×6 网格，分离成独立表情
+- 📦 支持 ZIP 打包批量下载
+- 🎨 预设最佳参数：1:1 比例、4K 超清画质
+- 🔤 表情包带有手写简体中文标注
 
 ## 快速开始
 
