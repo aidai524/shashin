@@ -10,179 +10,8 @@ const DEFAULT_API_ENDPOINT = 'https://iapi.sendto.you';
 // =========================================
 let templates = [];
 
-// 多语言系统
-const i18n = {
-  en: {
-    // Header
-    'site.title': 'Dream Photo',
-    'site.subtitle': 'Powered by Gemini AI · Create Your Perfect Portrait',
-    
-    // Template section
-    'template.title': 'Choose Style Template',
-    'template.desc': 'Select your favorite style, AI will generate images in this style',
-    'template.category.all': 'All',
-    'template.category.portrait': 'Portrait',
-    'template.category.creative': 'Creative',
-    'template.category.scene': 'Scene',
-    'template.change': 'Change Template',
-    'template.select': 'Please select a template first',
-    
-    // Reference section
-    'reference.title': 'Upload Your Photos',
-    'reference.desc': 'Upload clear photos, AI will preserve your facial features',
-    'reference.upload': 'Click to upload photos (max 5)',
-    'reference.upload.hint': 'Recommend photos from different angles',
-    
-    // Settings section
-    'settings.title': 'Adjust Settings',
-    'settings.desc': 'Click to expand options, using recommended settings by default',
-    
-    // Model
-    'model.label': 'Quality',
-    'model.premium': 'Premium',
-    'model.premium.desc': '4K Ultra HD',
-    'model.fast': 'Fast',
-    'model.fast.desc': 'Standard',
-    
-    // Quantity
-    'quantity.label': 'Quantity',
-    'quantity.time.1': '~30s',
-    'quantity.time.2': '~60s',
-    'quantity.time.4': '~2min',
-    
-    // Aspect Ratio
-    'aspectratio.label': 'Aspect Ratio',
-    
-    // Resolution
-    'resolution.label': 'Resolution',
-    'resolution.hint.supported': 'Premium mode supports 1K/2K/4K resolution',
-    'resolution.hint.limited': 'Fast mode only supports 1K resolution',
-    
-    'generate.button': 'Generate Image',
-    'generate.loading': 'Creating Magic...',
-    
-    // Result section
-    'result.title': '🎨 Generated Results',
-    
-    // History section
-    'history.title': 'History',
-    'history.clear': 'Clear All',
-    'history.empty': 'No history yet. Start creating!',
-    'history.note': '💡 Note: History only saves thumbnail previews.',
-    'history.reuse': 'Reuse',
-    'history.delete': 'Delete',
-    'history.model': 'Model',
-    'history.template': 'Template',
-    
-    // Footer
-    'footer.text': 'Made with Gemini AI · Powered by Cloudflare',
-    
-    // Loading
-    'loading.title': 'Creating your masterpiece...',
-    'loading.hint': 'Usually takes 10-30 seconds',
-    
-    // Modal
-    'modal.download': 'Download Image',
-    
-    // Toast messages
-    'toast.max.images': 'Maximum {count} images allowed',
-    'toast.generate.success': 'Successfully generated {count} image(s)!',
-    'toast.generate.failed': 'Generation failed. Please try again.',
-    'toast.record.deleted': 'Record deleted',
-    'toast.history.cleared': 'History cleared',
-    'toast.download.started': 'Download started!',
-    'toast.template.selected': 'Template selected: {name}',
-    
-    // Errors
-    'error.parse': 'Response parse error',
-    'error.request': 'Request failed',
-    'error.no.images': 'No images generated. Please try again.',
-    
-    // Confirm dialogs
-    'confirm.delete': 'Delete this record?',
-    'confirm.clear': 'Clear all history?',
-    
-    // Language
-    'lang.switch': '中文',
-    
-    // Auth
-    'auth.login': 'Login',
-    'auth.logout': 'Logout',
-    'auth.login.title': 'Welcome Back',
-    'auth.login.subtitle': 'Sign in to continue creating',
-    'auth.login.submit': 'Sign In',
-    'auth.register.title': 'Create Account',
-    'auth.register.subtitle': 'Join Dream Photo · Start your AI creative journey',
-    'auth.register.submit': 'Sign Up',
-    'auth.email': 'Email',
-    'auth.password': 'Password',
-    'auth.password.confirm': 'Confirm Password',
-    'auth.nickname': 'Nickname',
-    'auth.no.account': "Don't have an account?",
-    'auth.have.account': 'Already have an account?',
-    'auth.register.now': 'Sign up now',
-    'auth.login.now': 'Sign in now',
-    'auth.login.success': 'Welcome back, {name}!',
-    'auth.register.success': 'Registration successful! Welcome, {name}!',
-    'auth.logout.success': 'Logged out successfully',
-    'auth.password.mismatch': 'Passwords do not match',
-    
-    // User menu
-    'user.characters': 'My Characters',
-    'user.settings': 'Settings',
-    
-    // Settings
-    'settings.account.title': 'Account Settings',
-    'settings.profile': 'Profile',
-    'settings.plan': 'Current Plan',
-    'settings.password': 'Change Password',
-    'settings.save': 'Save',
-    'settings.old.password': 'Current Password',
-    'settings.new.password': 'New Password',
-    'settings.change.password': 'Change Password',
-    'settings.update.success': 'Profile updated',
-    'settings.password.success': 'Password changed',
-    
-    // Plans
-    'plan.free': 'Free',
-    'plan.personal': 'Personal',
-    'plan.family': 'Family',
-    'plan.limits': '{characters} character(s), {photos} photos each',
-    
-    // Characters
-    'characters.title': 'My Characters',
-    'characters.add': 'Add Character',
-    'characters.edit': 'Edit Character',
-    'characters.name': 'Character Name',
-    'characters.description': 'Description (optional)',
-    'characters.photos': 'Reference Photos',
-    'characters.photos.hint': 'Upload clear photos from different angles to help AI better lock facial features',
-    'characters.upload.photo': 'Upload Photo',
-    'characters.empty': 'No characters yet',
-    'characters.empty.hint': 'Create a character and upload photos to use face-lock feature',
-    'characters.limit': '{current}/{max} characters',
-    'characters.photo.limit': '{current}/{max} photos',
-    'characters.created': 'Character created',
-    'characters.updated': 'Character updated',
-    'characters.deleted': 'Character deleted',
-    'characters.photo.uploaded': 'Photo uploaded',
-    'characters.photo.deleted': 'Photo deleted',
-    'characters.select': 'Select Character',
-    'characters.select.title': 'Select Character',
-    'characters.select.desc': 'Select a character with photos for AI face-lock generation',
-    'characters.login.required': 'Please login to create characters',
-    'characters.empty.notice': 'You have no characters yet',
-    'characters.empty.notice.hint': 'Create a character and upload photos to use face-lock feature',
-    'characters.required': 'Please select a character with photos',
-    'characters.no.photos': 'Selected character has no photos, please upload photos first',
-    
-    // Common
-    'common.cancel': 'Cancel',
-    'common.save': 'Save',
-    'common.delete': 'Delete',
-    'common.edit': 'Edit',
-  },
-  zh: {
+// 文本常量（仅中文）
+const texts = {
     // Header
     'site.title': 'Dream Photo',
     'site.subtitle': '由 Gemini AI 驱动 · 创造你的完美写真',
@@ -299,6 +128,8 @@ const i18n = {
     
     // User menu
     'user.characters': '我的角色',
+    'user.wallet': '我的钱包',
+    'user.invite': '邀请好友',
     'user.settings': '账号设置',
     
     // Settings
@@ -351,11 +182,7 @@ const i18n = {
     'common.save': '保存',
     'common.delete': '删除',
     'common.edit': '编辑',
-  }
 };
-
-// 当前语言（默认中文）
-let currentLang = localStorage.getItem('gemini_lang') || 'zh';
 
 // 当前主题（默认浅色 - Minimalist Modern）
 let currentTheme = localStorage.getItem('gemini_theme') || 'light';
@@ -394,23 +221,16 @@ function applyTheme() {
   }
 }
 
-// 获取翻译文本
+// 获取文本
 function t(key, params = {}) {
-  let text = i18n[currentLang]?.[key] || i18n['en'][key] || key;
+  let text = texts[key] || key;
   Object.keys(params).forEach(param => {
     text = text.replace(`{${param}}`, params[param]);
   });
   return text;
 }
 
-// 切换语言
-function switchLanguage() {
-  currentLang = currentLang === 'en' ? 'zh' : 'en';
-  localStorage.setItem('gemini_lang', currentLang);
-  applyLanguage();
-}
-
-// 应用语言到界面
+// 应用文本到界面
 function applyLanguage() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
@@ -422,21 +242,13 @@ function applyLanguage() {
     el.placeholder = t(key);
   });
   
-  const langBtn = document.getElementById('langSwitchBtn');
-  if (langBtn) {
-    langBtn.textContent = t('lang.switch');
-  }
-  
-  document.title = currentLang === 'zh' 
-    ? '梦想写真馆 - AI 图片生成器' 
-    : 'Dream Photo Studio - AI Image Generator';
+  document.title = '梦想写真馆 - AI 图片生成器';
   
   updateQuantityLabels();
   updateResolutionOptions();
   renderTemplates();
-  // 只有在用户已登录时才刷新历史记录（避免在 initAuth 之前调用）
   if (currentUser) {
-  loadHistory();
+    loadHistory();
   }
 }
 
@@ -585,10 +397,10 @@ function renderTemplates() {
          data-template-id="${template.id}"
          onclick="selectTemplate('${template.id}')"
          style="animation: cardFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${index * 0.06}s both;">
-      <img src="${template.thumbnail}" alt="${template.name[currentLang]}" loading="lazy" />
+      <img src="${template.thumbnail}" alt="${template.name.zh || template.name}" loading="lazy" />
       <div class="template-card-info">
-        <div class="template-card-name">${template.name[currentLang]}</div>
-        <div class="template-card-desc">${template.description[currentLang]}</div>
+        <div class="template-card-name">${template.name.zh || template.name}</div>
+        <div class="template-card-desc">${template.description.zh || template.description}</div>
       </div>
     </div>
   `).join('');
@@ -627,12 +439,12 @@ function selectTemplate(templateId) {
   
   if (selectedSection && selectedImg && selectedName && selectedDesc) {
     selectedImg.src = template.thumbnail;
-    selectedName.textContent = template.name[currentLang];
-    selectedDesc.textContent = template.description[currentLang];
+    selectedName.textContent = template.name.zh || template.name;
+    selectedDesc.textContent = template.description.zh || template.description;
     selectedSection.style.display = 'flex';
   }
   
-  showToast(t('toast.template.selected', { name: template.name[currentLang] }), 'info');
+  showToast(t('toast.template.selected', { name: template.name.zh || template.name }), 'info');
 }
 
 // 清除模板选择
@@ -808,9 +620,9 @@ function updateResolutionPreview() {
   if (!preview) return;
   
   const labelMap = {
-    '1K': currentLang === 'zh' ? '标准' : 'Standard',
-    '2K': currentLang === 'zh' ? '高清' : 'HD',
-    '4K': currentLang === 'zh' ? '超清' : 'Ultra HD'
+    '1K': '标准',
+    '2K': '高清',
+    '4K': '超清'
   };
   
   const label = labelMap[selectedResolution] || '超清';
@@ -1575,7 +1387,7 @@ async function saveHistoryToBackend(record, originalImages) {
     console.log('[History] Saved to backend successfully, recordId:', result.recordId);
   } catch (e) {
     console.error('[History] Backend save error:', e);
-    showToast(currentLang === 'zh' ? '历史记录保存失败' : 'Failed to save history', 'error');
+    showToast('历史记录保存失败', 'error');
   }
 }
 
@@ -1977,9 +1789,9 @@ async function loadHistory() {
     container.innerHTML = `
       <div class="empty-tip">
         <i class="ph ph-sign-in" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
-        <p>${currentLang === 'zh' ? '登录后查看历史记录' : 'Sign in to view history'}</p>
+        <p>登录后查看历史记录</p>
         <button class="btn btn-primary btn-small" onclick="showAuthModal('login')" style="margin-top: 1rem;">
-          ${currentLang === 'zh' ? '立即登录' : 'Sign In'}
+          立即登录
         </button>
       </div>
     `;
@@ -2018,7 +1830,7 @@ async function loadHistory() {
 
       const imageCount = record.imageCount || thumbnails.length || (record.thumbKeys?.length || 0);
       const date = formatTime(record.createdAt);
-      const templateName = record.templateName?.[currentLang] || record.prompt?.substring(0, 20) || 'Unknown';
+      const templateName = record.templateName?.zh || record.templateName || record.prompt?.substring(0, 20) || '未知模板';
 
       // 旧版本使用 base64，新版本使用占位图，稍后异步加载
       let imgSrc;
@@ -2218,14 +2030,12 @@ async function showHistoryDetail(id) {
     `)
     .join("");
 
-  const templateName = record.templateName?.[currentLang] || record.prompt?.substring(0, 50) || 'Unknown';
-  const modelName = record.model === 'gemini-3-pro-image-preview' 
-    ? (currentLang === 'zh' ? '高级' : 'Premium')
-    : (currentLang === 'zh' ? '快速' : 'Fast');
+  const templateName = record.templateName?.zh || record.templateName || record.prompt?.substring(0, 50) || '未知模板';
+  const modelName = record.model === 'gemini-3-pro-image-preview' ? '高级' : '快速';
 
   const qualityNote = hasOriginal 
-    ? (currentLang === 'zh' ? '📷 预览图，点击下载按钮获取原图' : '📷 Preview, click download for original')
-    : (currentLang === 'zh' ? '📷 预览图，点击下载按钮保存' : '📷 Preview, click to download');
+    ? '📷 预览图，点击下载按钮获取原图'
+    : '📷 预览图，点击下载按钮保存';
 
   detail.innerHTML = `
     <div class="history-detail-prompt">${t('history.template')}: ${templateName}</div>
@@ -2236,7 +2046,7 @@ async function showHistoryDetail(id) {
     <p class="history-quality-note">${qualityNote}</p>
     <div class="history-detail-images">${imagesHtml}</div>
     <div class="history-detail-actions">
-      <button class="btn btn-primary btn-small" onclick="downloadAllHistoryImages(${record.id})"><i class="ph ph-download-simple"></i> ${currentLang === 'zh' ? '下载全部' : 'Download All'}</button>
+      <button class="btn btn-primary btn-small" onclick="downloadAllHistoryImages(${record.id})"><i class="ph ph-download-simple"></i> 下载全部</button>
       <button class="btn btn-secondary btn-small" onclick="reuseTemplate('${record.templateId}')"><i class="ph ph-arrow-counter-clockwise"></i> ${t('history.reuse')}</button>
       <button class="btn btn-danger btn-small" onclick="deleteHistoryItem(${record.id})"><i class="ph ph-trash"></i> ${t('history.delete')}</button>
     </div>
@@ -2260,7 +2070,7 @@ async function downloadHistoryImage(recordId, imageIndex) {
   // 显示加载提示
   const hasOriginal = record.imageKeys && record.imageKeys.length > 0;
   if (hasOriginal) {
-    showToast(currentLang === 'zh' ? '正在获取原图...' : 'Fetching original image...', 'info');
+    showToast('正在获取原图...', 'info');
   }
   
   // 优先获取原图（R2），否则获取缩略图
@@ -2294,7 +2104,7 @@ async function downloadAllHistoryImages(recordId) {
   // 显示加载提示
   const hasOriginal = record.imageKeys && record.imageKeys.length > 0;
   if (hasOriginal) {
-    showToast(currentLang === 'zh' ? '正在获取原图...' : 'Fetching original images...', 'info');
+    showToast('正在获取原图...', 'info');
   }
   
   // 优先获取原图（R2），否则获取缩略图
@@ -2347,7 +2157,7 @@ function reuseTemplate(templateId) {
 
 async function deleteHistoryItem(id) {
   if (!currentUser) {
-    showToast(currentLang === 'zh' ? '请先登录' : 'Please sign in first', 'warning');
+    showToast('请先登录', 'warning');
     return;
   }
   
@@ -2355,7 +2165,7 @@ async function deleteHistoryItem(id) {
 
   const success = await deleteHistoryFromBackend(id);
   if (!success) {
-    showToast(currentLang === 'zh' ? '删除失败' : 'Delete failed', 'error');
+    showToast('删除失败', 'error');
     return;
   }
   
@@ -2366,7 +2176,7 @@ async function deleteHistoryItem(id) {
 
 async function clearHistory() {
   if (!currentUser) {
-    showToast(currentLang === 'zh' ? '请先登录' : 'Please sign in first', 'warning');
+    showToast('请先登录', 'warning');
     return;
   }
   
@@ -2374,7 +2184,7 @@ async function clearHistory() {
 
   const success = await clearHistoryFromBackend();
   if (!success) {
-    showToast(currentLang === 'zh' ? '清空失败' : 'Clear failed', 'error');
+    showToast('清空失败', 'error');
     return;
   }
   
@@ -2423,25 +2233,16 @@ function formatTime(isoString) {
   const now = new Date();
   const diff = now - date;
 
-  if (currentLang === 'zh') {
-    if (diff < 60000) return "刚刚";
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-    if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`;
-    return `${date.getMonth() + 1}/${date.getDate()}`;
-  } else {
-    if (diff < 60000) return "Just now";
-    if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-    if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
-    return `${date.getMonth() + 1}/${date.getDate()}`;
-  }
+  if (diff < 60000) return "刚刚";
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
+  if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`;
+  return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
 function formatTimeDetailed(isoString) {
   const date = new Date(isoString);
-  const locale = currentLang === 'zh' ? 'zh-CN' : 'en-US';
-  return date.toLocaleDateString(locale, {
+  return date.toLocaleDateString('zh-CN', {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -2500,7 +2301,7 @@ function handleAuthError(response) {
     // Token 过期或无效，清除登录状态
     console.warn('[Auth] Received 401, token expired or invalid. Clearing auth state.');
     clearAuth();
-    showToast(currentLang === 'zh' ? '登录已过期，请重新登录' : 'Session expired, please login again', 'warning');
+    showToast('登录已过期，请重新登录', 'warning');
     return true;
   }
   return false;
@@ -3414,7 +3215,7 @@ async function deleteCharacterPhoto(photoId) {
   console.log('[DeletePhoto] Character:', currentEditingCharacter.id, currentEditingCharacter.name);
   
   // 确认删除
-  if (!confirm(currentLang === 'zh' ? '确定要删除这张照片吗？' : 'Delete this photo?')) {
+  if (!confirm('确定要删除这张照片吗？')) {
     console.log('[DeletePhoto] User cancelled');
     return;
   }

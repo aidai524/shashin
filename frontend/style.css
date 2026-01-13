@@ -374,8 +374,7 @@ header h1 span {
   z-index: 9998;
 }
 
-.theme-switch-btn,
-.lang-switch-btn {
+.theme-switch-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -392,8 +391,7 @@ header h1 span {
   transition: all var(--duration-normal) var(--ease-out);
 }
 
-.theme-switch-btn:hover,
-.lang-switch-btn:hover {
+.theme-switch-btn:hover {
   border-color: var(--border-accent);
   background: var(--accent-bg);
   color: var(--accent);

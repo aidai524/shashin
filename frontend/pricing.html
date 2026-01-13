@@ -529,11 +529,11 @@
         </div>
 
         <script>
-            const API_BASE = '';
+            const API_BASE = 'https://iapi.sendto.you';
             let appliedPromo = null;
             
             function getToken() {
-                return localStorage.getItem('gemini_token');
+                return localStorage.getItem('auth_token') || localStorage.getItem('gemini_token');
             }
             
             async function applyPromo() {

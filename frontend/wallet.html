@@ -392,11 +392,11 @@
         </div>
 
         <script>
-            const API_BASE = '';
+            const API_BASE = 'https://iapi.sendto.you';
             
             // 获取用户 token
             function getToken() {
-                return localStorage.getItem('gemini_token');
+                return localStorage.getItem('auth_token') || localStorage.getItem('gemini_token');
             }
             
             // 检查登录状态
