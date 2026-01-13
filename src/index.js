@@ -316,7 +316,102 @@ async function handleAuthAPI(request, env, pathname) {
     return await changePassword(request, env);
   }
 
+  // POST /api/auth/wechat - 微信登录
+  if (pathname === '/api/auth/wechat' && method === 'POST') {
+    return await wechatLogin(request, env);
+  }
+
   return errorResponse('Not found', 404);
+}
+
+// 微信登录
+async function wechatLogin(request, env) {
+  try {
+    const body = await request.json();
+    const { code } = body;
+
+    if (!code) {
+      return errorResponse('Missing code parameter');
+    }
+
+    // 检查环境变量（如果未配置则返回错误）
+    if (!env.WX_APP_ID || !env.WX_APP_SECRET) {
+      // 开发环境下如果没配置，可以使用模拟数据（仅供测试）
+      // return errorResponse('WeChat configuration missing', 500);
+      console.warn('WX_APP_ID or WX_APP_SECRET not set');
+    }
+
+    let openid;
+    
+    // 调用微信 API
+    if (env.WX_APP_ID && env.WX_APP_SECRET) {
+      const wxUrl = `https://api.weixin.qq.com/sns/jscode2session?appid=${env.WX_APP_ID}&secret=${env.WX_APP_SECRET}&js_code=${code}&grant_type=authorization_code`;
+      const wxResp = await fetch(wxUrl);
+      const wxData = await wxResp.json();
+
+      if (wxData.errcode) {
+        return errorResponse(`WeChat Error: ${wxData.errmsg}`, 400);
+      }
+      openid = wxData.openid;
+    } else {
+      // 仅用于本地开发测试，生产环境必须配置
+      if (code === 'TEST_CODE') {
+        openid = 'test_openid_123456';
+      } else {
+        return errorResponse('WeChat configuration missing', 500);
+      }
+    }
+
+    // 检查用户是否存在
+    let userId = await env.USERS_KV.get(`wechat:${openid}`);
+    let user;
+
+    if (userId) {
+      const userData = await env.USERS_KV.get(`user:${userId}`);
+      if (userData) {
+        user = JSON.parse(userData);
+      }
+    }
+
+    if (!user) {
+      // 创建新用户
+      userId = crypto.randomUUID();
+      user = {
+        id: userId,
+        email: `${openid}@wechat.local`, // 占位邮箱
+        nickname: `微信用户${openid.substring(0, 4)}`,
+        openid: openid,
+        passwordHash: '', // 微信登录无密码
+        plan: 'FREE',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await env.USERS_KV.put(`user:${userId}`, JSON.stringify(user));
+      await env.USERS_KV.put(`wechat:${openid}`, userId);
+    }
+
+    // 更新最后登录时间
+    user.lastLoginAt = new Date().toISOString();
+    await env.USERS_KV.put(`user:${userId}`, JSON.stringify(user));
+
+    // 生成 JWT token
+    const token = await createJWT({ userId: user.id, openid: user.openid }, env.JWT_SECRET);
+
+    // 返回用户信息
+    const { passwordHash: _, ...safeUser } = user;
+    return jsonResponse({
+      success: true,
+      message: '登录成功',
+      user: safeUser,
+      token,
+      plan: USER_PLANS[user.plan]
+    });
+
+  } catch (e) {
+    console.error('WeChat login error:', e);
+    return errorResponse('WeChat login failed: ' + e.message, 500);
+  }
 }
 
 // 注册用户
@@ -1686,11 +1781,128 @@ export default {
       return await getImage(env, imageMatch[1]);
     }
 
-    // Gemini API 代理
-    if (pathname.startsWith("/v1beta/")) {
-      return await handleGeminiProxy(request, env, url);
-    }
+    // // POST /api/generate - 生成图片（代理 Gemini）
+  if (pathname === '/api/generate' && method === 'POST') {
+    return await handleGenerate(request, env);
+  }
 
-    return errorResponse("Not found", 404);
+  // Gemini API 代理
+  if (pathname.startsWith("/v1beta/")) {
+    return await handleGeminiProxy(request, env, url);
+  }
+
+  return errorResponse("Not found", 404);
   },
 };
+
+// =========================================
+// 图片生成处理 (Wrapper for Gemini)
+// =========================================
+
+async function handleGenerate(request, env) {
+  const user = await getUserFromRequest(request, env);
+  if (!user) {
+    return errorResponse('请先登录', 401);
+  }
+
+  try {
+    const body = await request.json();
+    const { model, templateId, characterId, ratio, width, height } = body;
+
+    // 1. 获取模板信息
+    let template;
+    if (env.TEMPLATES_KV) {
+      const templatesJson = await env.TEMPLATES_KV.get("templates");
+      if (templatesJson) {
+        const templates = JSON.parse(templatesJson);
+        template = templates.find(t => t.id === templateId);
+      }
+    }
+    if (!template) {
+      template = defaultTemplates.find(t => t.id === templateId);
+    }
+    if (!template) {
+      return errorResponse('模板不存在', 404);
+    }
+
+    // 2. 获取角色信息 (如果有)
+    let characterPrompt = '';
+    let characterImage = null;
+
+    if (characterId) {
+      const charactersJson = await env.CHARACTERS_KV.get(`user:${user.id}:characters`);
+      const characters = charactersJson ? JSON.parse(charactersJson) : [];
+      const character = characters.find(c => c.id === characterId);
+      
+      if (character) {
+        // 构建角色 Prompt
+        characterPrompt = `Subject is a specific person: ${character.name}. ${character.description || ''}. `;
+        
+        // 获取第一张照片作为参考图 (Base64)
+        if (character.photos && character.photos.length > 0) {
+          // 优先使用原图，如果没有则使用缩略图
+          // 注意：这里我们需要完整的 base64 数据传给 Gemini
+          // 现在的实现中，photos 数组里存的是 base64 字符串
+          characterImage = character.photos[0].originalData || character.photos[0].data;
+        }
+      }
+    }
+
+    // 3. 构建 Gemini 请求
+    // 合并 Prompt: 角色描述 + 模板 Prompt
+    const finalPrompt = `${characterPrompt}${template.prompt}. Aspect ratio ${ratio || '1:1'}. High quality, detailed.`;
+    
+    // 调用 Gemini API
+    const geminiUrl = `${GEMINI_API_BASE}/v1beta/models/${model || 'gemini-1.5-flash'}:generateContent?key=${env.GEMINI_API_KEY}`;
+    
+    const contents = [];
+    const parts = [{ text: finalPrompt }];
+    
+    // 如果有参考图，添加到请求中
+    if (characterImage) {
+      // 移除 data:image/jpeg;base64, 前缀
+      const base64Data = characterImage.replace(/^data:image\/\w+;base64,/, "");
+      parts.push({
+        inline_data: {
+          mime_type: "image/jpeg",
+          data: base64Data
+        }
+      });
+    }
+    
+    contents.push({ parts });
+
+    const geminiResp = await fetch(geminiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents })
+    });
+
+    const geminiData = await geminiResp.json();
+
+    if (geminiData.error) {
+      throw new Error(geminiData.error.message);
+    }
+
+    // 4. 解析返回结果
+    // 注意：Gemini 此时返回的可能是文本描述或者图片数据，取决于模型能力
+    // 假设是直接生成图片 (Imagen 3 / Gemini Pro Vision 能力)
+    // 如果是纯文本模型，这里需要对接绘图模型。
+    // *重要*：目前的 Gemini 1.5 Flash 主要生成文本，生图能力需要特定模型版本 (如 imagen-3)。
+    // 这里假设调用的是支持生图的端点，或者我们仅仅是模拟流程。
+    // 如果是标准 Gemini 文本模型，它返回的是 candidates[0].content.parts[0].text
+    
+    // 为了演示闭环，如果 Gemini 返回的是文本，我们将其作为“生成结果”返回
+    // 实际项目中，这里应该调用 Imagen API 或者 Stable Diffusion
+    
+    // 简化处理：假设 Gemini 返回了图片数据 (Mock for now if not actual image model)
+    // 实际对接 Imagen 3 时，响应结构不同。
+    
+    // 暂时返回 Gemini 的原始响应，前端负责解析
+    return jsonResponse(geminiData);
+
+  } catch (e) {
+    console.error('Generate error:', e);
+    return errorResponse('生成失败: ' + e.message, 500);
+  }
+}

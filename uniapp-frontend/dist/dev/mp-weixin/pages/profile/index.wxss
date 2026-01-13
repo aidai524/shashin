@@ -1,0 +1,71 @@
+
+.container {
+  min-height: 100vh;
+  background-color: #f8f8f8;
+  padding: 20rpx;
+}
+.user-card {
+  background-color: #fff;
+  border-radius: 20rpx;
+  padding: 40rpx;
+  margin-bottom: 30rpx;
+  display: flex;
+  align-items: center;
+}
+.user-info {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 60rpx;
+  background-color: #eee;
+  margin-right: 30rpx;
+}
+.info {
+  display: flex;
+  flex-direction: column;
+}
+.nickname {
+  font-size: 36rpx;
+  font-weight: bold;
+  margin-bottom: 10rpx;
+}
+.plan-badge {
+  font-size: 24rpx;
+  color: #fff;
+  background-color: #ff9800;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  align-self: flex-start;
+}
+.login-btn-container {
+  width: 100%;
+}
+.login-btn {
+  width: 100%;
+  border-radius: 40rpx;
+}
+.menu-list {
+  background-color: #fff;
+  border-radius: 20rpx;
+}
+.menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx 40rpx;
+  border-bottom: 1px solid #f0f0f0;
+}
+.menu-item:last-child {
+  border-bottom: none;
+}
+.menu-text {
+  font-size: 30rpx;
+  color: #333;
+}
+.arrow {
+  color: #999;
+}

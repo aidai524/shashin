@@ -1,0 +1,64 @@
+
+.container {
+  padding: 20rpx;
+  background-color: #f8f8f8;
+  min-height: 100vh;
+}
+.character-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+.character-card {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  display: flex;
+  align-items: center;
+}
+.char-avatar {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  background-color: #eee;
+  margin-right: 20rpx;
+}
+.char-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.char-name {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+}
+.char-desc {
+  font-size: 24rpx;
+  color: #999;
+  margin-top: 6rpx;
+}
+.arrow {
+  color: #ccc;
+}
+.add-btn {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #3cc51f;
+  font-size: 30rpx;
+  border: 1px dashed #3cc51f;
+}
+.plus {
+  font-size: 40rpx;
+  margin-right: 10rpx;
+  line-height: 1;
+}
+.loading, .empty {
+  text-align: center;
+  color: #999;
+  padding: 40rpx;
+}
