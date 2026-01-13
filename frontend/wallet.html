@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="theme-color" content="#FAFAFA" />
+        <meta name="description" content="我的钱包 - Dream Photo Studio" />
+        <title>我的钱包 - Dream Photo Studio</title>
+        <script>
+            (function() {
+                var theme = localStorage.getItem('gemini_theme') || 'light';
+                document.documentElement.setAttribute('data-theme', theme);
+                var meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) meta.content = theme === 'dark' ? '#0F172A' : '#FAFAFA';
+            })();
+        </script>
+        <link rel="stylesheet" href="style.css?v=20260109" />
+        <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✨</text></svg>" />
+        <style>
+            .wallet-container {
+                max-width: 900px;
+                margin: 0 auto;
+                padding: 2rem 1rem;
+            }
+            
+            .wallet-header {
+                text-align: center;
+                margin-bottom: 2rem;
+            }
+            
+            .wallet-header h1 {
+                font-size: 2rem;
+                font-weight: 700;
+                background: var(--gradient-primary);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                margin-bottom: 0.5rem;
+            }
+            
+            .back-link {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                color: var(--text-secondary);
+                text-decoration: none;
+                font-size: 0.9rem;
+                margin-bottom: 1rem;
+                transition: color 0.2s;
+            }
+            
+            .back-link:hover {
+                color: var(--accent);
+            }
+            
+            .wallet-cards {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 1.5rem;
+                margin-bottom: 2rem;
+            }
+            
+            .wallet-card {
+                background: var(--bg-card);
+                border-radius: 16px;
+                padding: 1.5rem;
+                border: 1px solid var(--border-default);
+                box-shadow: var(--shadow-sm);
+            }
+            
+            .wallet-card-header {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                margin-bottom: 1rem;
+            }
+            
+            .wallet-card-icon {
+                width: 48px;
+                height: 48px;
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.5rem;
+            }
+            
+            .wallet-card-icon.points {
+                background: linear-gradient(135deg, #FFD700, #FFA500);
+                color: white;
+            }
+            
+            .wallet-card-icon.subscription {
+                background: var(--gradient-primary);
+                color: white;
+            }
+            
+            .wallet-card-title {
+                font-size: 0.9rem;
+                color: var(--text-secondary);
+            }
+            
+            .wallet-card-value {
+                font-size: 2rem;
+                font-weight: 700;
+                color: var(--text-primary);
+            }
+            
+            .wallet-card-value.small {
+                font-size: 1.25rem;
+            }
+            
+            .wallet-card-subtitle {
+                font-size: 0.85rem;
+                color: var(--text-tertiary);
+                margin-top: 0.25rem;
+            }
+            
+            .subscription-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.5rem 1rem;
+                border-radius: 20px;
+                font-size: 0.9rem;
+                font-weight: 600;
+            }
+            
+            .subscription-badge.standard {
+                background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+                color: white;
+            }
+            
+            .subscription-badge.pro {
+                background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+                color: white;
+            }
+            
+            .subscription-badge.free {
+                background: var(--bg-muted);
+                color: var(--text-secondary);
+            }
+            
+            .action-buttons {
+                display: flex;
+                gap: 1rem;
+                flex-wrap: wrap;
+                margin-bottom: 2rem;
+            }
+            
+            .action-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.75rem 1.5rem;
+                border-radius: 12px;
+                font-size: 0.95rem;
+                font-weight: 600;
+                text-decoration: none;
+                transition: all 0.2s;
+                border: none;
+                cursor: pointer;
+            }
+            
+            .action-btn.primary {
+                background: var(--gradient-primary);
+                color: white;
+            }
+            
+            .action-btn.primary:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-accent);
+            }
+            
+            .action-btn.secondary {
+                background: var(--bg-muted);
+                color: var(--text-primary);
+                border: 1px solid var(--border-default);
+            }
+            
+            .action-btn.secondary:hover {
+                background: var(--bg-hover);
+            }
+            
+            .section-title {
+                font-size: 1.25rem;
+                font-weight: 600;
+                color: var(--text-primary);
+                margin-bottom: 1rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            
+            .transactions-list {
+                background: var(--bg-card);
+                border-radius: 16px;
+                border: 1px solid var(--border-default);
+                overflow: hidden;
+            }
+            
+            .transaction-item {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 1rem 1.5rem;
+                border-bottom: 1px solid var(--border-default);
+            }
+            
+            .transaction-item:last-child {
+                border-bottom: none;
+            }
+            
+            .transaction-info {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+            }
+            
+            .transaction-icon {
+                width: 40px;
+                height: 40px;
+                border-radius: 10px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.25rem;
+            }
+            
+            .transaction-icon.income {
+                background: rgba(34, 197, 94, 0.1);
+                color: #22C55E;
+            }
+            
+            .transaction-icon.expense {
+                background: rgba(239, 68, 68, 0.1);
+                color: #EF4444;
+            }
+            
+            .transaction-details h4 {
+                font-size: 0.95rem;
+                font-weight: 500;
+                color: var(--text-primary);
+                margin-bottom: 0.25rem;
+            }
+            
+            .transaction-details span {
+                font-size: 0.8rem;
+                color: var(--text-tertiary);
+            }
+            
+            .transaction-amount {
+                font-size: 1rem;
+                font-weight: 600;
+            }
+            
+            .transaction-amount.positive {
+                color: #22C55E;
+            }
+            
+            .transaction-amount.negative {
+                color: #EF4444;
+            }
+            
+            .empty-state {
+                text-align: center;
+                padding: 3rem;
+                color: var(--text-tertiary);
+            }
+            
+            .empty-state i {
+                font-size: 3rem;
+                margin-bottom: 1rem;
+                opacity: 0.5;
+            }
+            
+            .login-prompt {
+                text-align: center;
+                padding: 4rem 2rem;
+            }
+            
+            .login-prompt h2 {
+                font-size: 1.5rem;
+                color: var(--text-primary);
+                margin-bottom: 1rem;
+            }
+            
+            .login-prompt p {
+                color: var(--text-secondary);
+                margin-bottom: 2rem;
+            }
+            
+            @media (max-width: 640px) {
+                .wallet-cards {
+                    grid-template-columns: 1fr;
+                }
+                
+                .action-buttons {
+                    flex-direction: column;
+                }
+                
+                .action-btn {
+                    justify-content: center;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="cosmic-bg" aria-hidden="true"></div>
+        <div class="grid-overlay" aria-hidden="true"></div>
+
+        <div class="wallet-container">
+            <a href="/" class="back-link">
+                <i class="ph ph-arrow-left"></i> 返回首页
+            </a>
+            
+            <div class="wallet-header">
+                <h1><i class="ph ph-wallet"></i> 我的钱包</h1>
+            </div>
+
+            <!-- 未登录状态 -->
+            <div class="login-prompt" id="loginPrompt" style="display: none;">
+                <h2>请先登录</h2>
+                <p>登录后即可查看您的积分和订阅信息</p>
+                <a href="/" class="action-btn primary">
+                    <i class="ph ph-sign-in"></i> 去登录
+                </a>
+            </div>
+
+            <!-- 已登录状态 -->
+            <div id="walletContent" style="display: none;">
+                <!-- 钱包卡片 -->
+                <div class="wallet-cards">
+                    <div class="wallet-card">
+                        <div class="wallet-card-header">
+                            <div class="wallet-card-icon points">
+                                <i class="ph ph-coins"></i>
+                            </div>
+                            <div>
+                                <div class="wallet-card-title">积分余额</div>
+                                <div class="wallet-card-value" id="pointsBalance">0</div>
+                            </div>
+                        </div>
+                        <div class="wallet-card-subtitle">
+                            每张图片消耗 <strong>10</strong> 积分
+                        </div>
+                    </div>
+                    
+                    <div class="wallet-card">
+                        <div class="wallet-card-header">
+                            <div class="wallet-card-icon subscription">
+                                <i class="ph ph-crown"></i>
+                            </div>
+                            <div>
+                                <div class="wallet-card-title">订阅状态</div>
+                                <div class="wallet-card-value small" id="subscriptionStatus">
+                                    <span class="subscription-badge free">免费版</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="wallet-card-subtitle" id="subscriptionExpiry">
+                            升级订阅享受更多积分
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="action-buttons">
+                    <a href="/redeem" class="action-btn primary">
+                        <i class="ph ph-gift"></i> 兑换点卡
+                    </a>
+                    <a href="/invite" class="action-btn secondary">
+                        <i class="ph ph-users"></i> 邀请好友
+                    </a>
+                    <a href="/pricing" class="action-btn secondary">
+                        <i class="ph ph-shopping-cart"></i> 购买套餐
+                    </a>
+                </div>
+
+                <!-- 积分流水 -->
+                <h3 class="section-title">
+                    <i class="ph ph-list-bullets"></i> 积分记录
+                </h3>
+                <div class="transactions-list" id="transactionsList">
+                    <div class="empty-state" id="emptyTransactions">
+                        <i class="ph ph-receipt"></i>
+                        <p>暂无积分记录</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const API_BASE = '';
+            
+            // 获取用户 token
+            function getToken() {
+                return localStorage.getItem('gemini_token');
+            }
+            
+            // 检查登录状态
+            function checkAuth() {
+                const token = getToken();
+                if (!token) {
+                    document.getElementById('loginPrompt').style.display = 'block';
+                    document.getElementById('walletContent').style.display = 'none';
+                    return false;
+                }
+                document.getElementById('loginPrompt').style.display = 'none';
+                document.getElementById('walletContent').style.display = 'block';
+                return true;
+            }
+            
+            // 加载钱包数据
+            async function loadWallet() {
+                if (!checkAuth()) return;
+                
+                try {
+                    const response = await fetch(`${API_BASE}/api/wallet/me`, {
+                        headers: {
+                            'Authorization': `Bearer ${getToken()}`
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // 更新积分余额
+                        document.getElementById('pointsBalance').textContent = 
+                            (data.wallet.points_balance || 0).toLocaleString();
+                        
+                        // 更新订阅状态
+                        const subStatus = document.getElementById('subscriptionStatus');
+                        const subExpiry = document.getElementById('subscriptionExpiry');
+                        
+                        if (data.wallet.subscription) {
+                            const sub = data.wallet.subscription;
+                            const badgeClass = sub.plan_id === 'pro' ? 'pro' : 'standard';
+                            subStatus.innerHTML = `<span class="subscription-badge ${badgeClass}">${sub.plan_name}</span>`;
+                            
+                            const endDate = new Date(sub.end_at);
+                            subExpiry.textContent = `有效期至 ${endDate.toLocaleDateString('zh-CN')}，每月 ${sub.monthly_points} 积分`;
+                        } else {
+                            subStatus.innerHTML = '<span class="subscription-badge free">免费版</span>';
+                            subExpiry.textContent = '升级订阅享受更多积分';
+                        }
+                    }
+                } catch (error) {
+                    console.error('加载钱包失败:', error);
+                }
+            }
+            
+            // 加载积分流水
+            async function loadTransactions() {
+                if (!checkAuth()) return;
+                
+                try {
+                    const response = await fetch(`${API_BASE}/api/wallet/transactions?limit=20`, {
+                        headers: {
+                            'Authorization': `Bearer ${getToken()}`
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success && data.transactions && data.transactions.length > 0) {
+                        renderTransactions(data.transactions);
+                    }
+                } catch (error) {
+                    console.error('加载流水失败:', error);
+                }
+            }
+            
+            // 渲染流水列表
+            function renderTransactions(transactions) {
+                const container = document.getElementById('transactionsList');
+                const emptyState = document.getElementById('emptyTransactions');
+                
+                if (transactions.length === 0) {
+                    emptyState.style.display = 'block';
+                    return;
+                }
+                
+                emptyState.style.display = 'none';
+                
+                const reasonMap = {
+                    'signup_bonus': '新人注册奖励',
+                    'referral_bonus': '邀请奖励',
+                    'monthly_grant': '月度发放',
+                    'prepaid': '点卡兑换',
+                    'purchase': '购买积分',
+                    'consume': '生成图片消耗',
+                    'refund': '退款'
+                };
+                
+                const html = transactions.map(tx => {
+                    const isIncome = tx.delta > 0;
+                    const iconClass = isIncome ? 'income' : 'expense';
+                    const icon = isIncome ? 'ph-arrow-down-left' : 'ph-arrow-up-right';
+                    const amountClass = isIncome ? 'positive' : 'negative';
+                    const amountPrefix = isIncome ? '+' : '';
+                    const date = new Date(tx.created_at);
+                    
+                    return `
+                        <div class="transaction-item">
+                            <div class="transaction-info">
+                                <div class="transaction-icon ${iconClass}">
+                                    <i class="ph ${icon}"></i>
+                                </div>
+                                <div class="transaction-details">
+                                    <h4>${reasonMap[tx.reason] || tx.reason}</h4>
+                                    <span>${date.toLocaleString('zh-CN')}</span>
+                                </div>
+                            </div>
+                            <div class="transaction-amount ${amountClass}">
+                                ${amountPrefix}${tx.delta}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                container.innerHTML = html;
+            }
+            
+            // 页面加载
+            document.addEventListener('DOMContentLoaded', () => {
+                loadWallet();
+                loadTransactions();
+            });
+        </script>
+    </body>
+</html>

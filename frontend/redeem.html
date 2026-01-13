@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="theme-color" content="#FAFAFA" />
+        <meta name="description" content="兑换点卡 - Dream Photo Studio" />
+        <title>兑换点卡 - Dream Photo Studio</title>
+        <script>
+            (function() {
+                var theme = localStorage.getItem('gemini_theme') || 'light';
+                document.documentElement.setAttribute('data-theme', theme);
+                var meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) meta.content = theme === 'dark' ? '#0F172A' : '#FAFAFA';
+            })();
+        </script>
+        <link rel="stylesheet" href="style.css?v=20260109" />
+        <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✨</text></svg>" />
+        <style>
+            .redeem-container {
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 2rem 1rem;
+            }
+            
+            .redeem-header {
+                text-align: center;
+                margin-bottom: 2rem;
+            }
+            
+            .redeem-header h1 {
+                font-size: 2rem;
+                font-weight: 700;
+                background: var(--gradient-primary);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                margin-bottom: 0.5rem;
+            }
+            
+            .redeem-header p {
+                color: var(--text-secondary);
+            }
+            
+            .back-link {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                color: var(--text-secondary);
+                text-decoration: none;
+                font-size: 0.9rem;
+                margin-bottom: 1rem;
+                transition: color 0.2s;
+            }
+            
+            .back-link:hover {
+                color: var(--accent);
+            }
+            
+            .redeem-card {
+                background: var(--bg-card);
+                border-radius: 20px;
+                padding: 2rem;
+                border: 1px solid var(--border-default);
+                box-shadow: var(--shadow-md);
+            }
+            
+            .redeem-tabs {
+                display: flex;
+                gap: 0.5rem;
+                margin-bottom: 1.5rem;
+                background: var(--bg-muted);
+                padding: 0.25rem;
+                border-radius: 12px;
+            }
+            
+            .redeem-tab {
+                flex: 1;
+                padding: 0.75rem 1rem;
+                border: none;
+                background: transparent;
+                border-radius: 10px;
+                font-size: 0.95rem;
+                font-weight: 500;
+                color: var(--text-secondary);
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            
+            .redeem-tab.active {
+                background: var(--bg-card);
+                color: var(--accent);
+                box-shadow: var(--shadow-sm);
+            }
+            
+            .redeem-tab:hover:not(.active) {
+                color: var(--text-primary);
+            }
+            
+            .tab-content {
+                display: none;
+            }
+            
+            .tab-content.active {
+                display: block;
+            }
+            
+            .input-group {
+                margin-bottom: 1.5rem;
+            }
+            
+            .input-label {
+                display: block;
+                font-size: 0.9rem;
+                font-weight: 500;
+                color: var(--text-primary);
+                margin-bottom: 0.5rem;
+            }
+            
+            .code-input {
+                width: 100%;
+                padding: 1rem 1.25rem;
+                font-size: 1.25rem;
+                font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+                border: 2px solid var(--border-default);
+                border-radius: 12px;
+                background: var(--bg-base);
+                color: var(--text-primary);
+                text-align: center;
+                transition: all 0.2s;
+            }
+            
+            .code-input:focus {
+                outline: none;
+                border-color: var(--accent);
+                box-shadow: 0 0 0 4px var(--accent-bg);
+            }
+            
+            .code-input::placeholder {
+                color: var(--text-tertiary);
+                letter-spacing: 0.05em;
+            }
+            
+            .redeem-btn {
+                width: 100%;
+                padding: 1rem;
+                font-size: 1rem;
+                font-weight: 600;
+                border: none;
+                border-radius: 12px;
+                background: var(--gradient-primary);
+                color: white;
+                cursor: pointer;
+                transition: all 0.2s;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.5rem;
+            }
+            
+            .redeem-btn:hover:not(:disabled) {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-accent);
+            }
+            
+            .redeem-btn:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+            }
+            
+            .redeem-btn.loading {
+                pointer-events: none;
+            }
+            
+            .redeem-btn .spinner {
+                width: 20px;
+                height: 20px;
+                border: 2px solid rgba(255,255,255,0.3);
+                border-top-color: white;
+                border-radius: 50%;
+                animation: spin 0.8s linear infinite;
+            }
+            
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+            
+            .result-message {
+                margin-top: 1.5rem;
+                padding: 1rem 1.25rem;
+                border-radius: 12px;
+                display: none;
+            }
+            
+            .result-message.success {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                background: rgba(34, 197, 94, 0.1);
+                border: 1px solid rgba(34, 197, 94, 0.3);
+                color: #16A34A;
+            }
+            
+            .result-message.error {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                background: rgba(239, 68, 68, 0.1);
+                border: 1px solid rgba(239, 68, 68, 0.3);
+                color: #DC2626;
+            }
+            
+            .result-message i {
+                font-size: 1.5rem;
+            }
+            
+            .help-text {
+                margin-top: 1.5rem;
+                padding-top: 1.5rem;
+                border-top: 1px solid var(--border-default);
+            }
+            
+            .help-text h4 {
+                font-size: 0.9rem;
+                font-weight: 600;
+                color: var(--text-primary);
+                margin-bottom: 0.75rem;
+            }
+            
+            .help-text ul {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+            }
+            
+            .help-text li {
+                font-size: 0.85rem;
+                color: var(--text-secondary);
+                padding: 0.25rem 0;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            
+            .help-text li i {
+                color: var(--accent);
+            }
+            
+            .login-prompt {
+                text-align: center;
+                padding: 3rem 2rem;
+            }
+            
+            .login-prompt h2 {
+                font-size: 1.5rem;
+                color: var(--text-primary);
+                margin-bottom: 1rem;
+            }
+            
+            .login-prompt p {
+                color: var(--text-secondary);
+                margin-bottom: 2rem;
+            }
+            
+            .login-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.75rem 2rem;
+                border-radius: 12px;
+                font-size: 1rem;
+                font-weight: 600;
+                text-decoration: none;
+                background: var(--gradient-primary);
+                color: white;
+                transition: all 0.2s;
+            }
+            
+            .login-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-accent);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="cosmic-bg" aria-hidden="true"></div>
+        <div class="grid-overlay" aria-hidden="true"></div>
+
+        <div class="redeem-container">
+            <a href="/wallet" class="back-link">
+                <i class="ph ph-arrow-left"></i> 返回钱包
+            </a>
+            
+            <div class="redeem-header">
+                <h1><i class="ph ph-gift"></i> 兑换中心</h1>
+                <p>输入点卡码或优惠码，获取积分或订阅</p>
+            </div>
+
+            <!-- 未登录状态 -->
+            <div class="redeem-card login-prompt" id="loginPrompt" style="display: none;">
+                <h2>请先登录</h2>
+                <p>登录后即可兑换点卡和优惠码</p>
+                <a href="/" class="login-btn">
+                    <i class="ph ph-sign-in"></i> 去登录
+                </a>
+            </div>
+
+            <!-- 已登录状态 -->
+            <div class="redeem-card" id="redeemContent" style="display: none;">
+                <!-- 标签切换 -->
+                <div class="redeem-tabs">
+                    <button class="redeem-tab active" data-tab="prepaid" onclick="switchTab('prepaid')">
+                        <i class="ph ph-credit-card"></i> 点卡兑换
+                    </button>
+                    <button class="redeem-tab" data-tab="promo" onclick="switchTab('promo')">
+                        <i class="ph ph-tag"></i> 优惠码
+                    </button>
+                </div>
+
+                <!-- 点卡兑换 -->
+                <div class="tab-content active" id="prepaidTab">
+                    <div class="input-group">
+                        <label class="input-label">点卡码</label>
+                        <input type="text" 
+                               class="code-input" 
+                               id="prepaidCode" 
+                               placeholder="XXXX-XXXX-XXXX-XXXX"
+                               maxlength="19"
+                               autocomplete="off"
+                               spellcheck="false">
+                    </div>
+                    <button class="redeem-btn" id="redeemPrepaidBtn" onclick="redeemPrepaid()">
+                        <i class="ph ph-check-circle"></i> 立即兑换
+                    </button>
+                    <div class="result-message" id="prepaidResult"></div>
+                    
+                    <div class="help-text">
+                        <h4>点卡说明</h4>
+                        <ul>
+                            <li><i class="ph ph-check"></i> 点卡码格式：XXXX-XXXX-XXXX-XXXX</li>
+                            <li><i class="ph ph-check"></i> 支持订阅卡和积分卡</li>
+                            <li><i class="ph ph-check"></i> 每张点卡只能使用一次</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 优惠码 -->
+                <div class="tab-content" id="promoTab">
+                    <div class="input-group">
+                        <label class="input-label">优惠码</label>
+                        <input type="text" 
+                               class="code-input" 
+                               id="promoCode" 
+                               placeholder="输入优惠码"
+                               maxlength="20"
+                               autocomplete="off"
+                               spellcheck="false">
+                    </div>
+                    <button class="redeem-btn" id="validatePromoBtn" onclick="validatePromo()">
+                        <i class="ph ph-magnifying-glass"></i> 验证优惠码
+                    </button>
+                    <div class="result-message" id="promoResult"></div>
+                    
+                    <div class="help-text">
+                        <h4>优惠码说明</h4>
+                        <ul>
+                            <li><i class="ph ph-check"></i> 优惠码可在购买套餐时使用</li>
+                            <li><i class="ph ph-check"></i> 部分优惠码有使用次数限制</li>
+                            <li><i class="ph ph-check"></i> 优惠码可能有有效期限制</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const API_BASE = '';
+            
+            function getToken() {
+                return localStorage.getItem('gemini_token');
+            }
+            
+            function checkAuth() {
+                const token = getToken();
+                if (!token) {
+                    document.getElementById('loginPrompt').style.display = 'block';
+                    document.getElementById('redeemContent').style.display = 'none';
+                    return false;
+                }
+                document.getElementById('loginPrompt').style.display = 'none';
+                document.getElementById('redeemContent').style.display = 'block';
+                return true;
+            }
+            
+            function switchTab(tab) {
+                document.querySelectorAll('.redeem-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+                document.getElementById(`${tab}Tab`).classList.add('active');
+                
+                // 清除结果
+                document.getElementById('prepaidResult').className = 'result-message';
+                document.getElementById('promoResult').className = 'result-message';
+            }
+            
+            // 格式化点卡码输入
+            document.getElementById('prepaidCode').addEventListener('input', function(e) {
+                let value = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+                let formatted = '';
+                for (let i = 0; i < value.length && i < 16; i++) {
+                    if (i > 0 && i % 4 === 0) formatted += '-';
+                    formatted += value[i];
+                }
+                e.target.value = formatted;
+            });
+            
+            // 兑换点卡
+            async function redeemPrepaid() {
+                if (!checkAuth()) return;
+                
+                const code = document.getElementById('prepaidCode').value.trim();
+                if (!code) {
+                    showResult('prepaidResult', false, '请输入点卡码');
+                    return;
+                }
+                
+                const btn = document.getElementById('redeemPrepaidBtn');
+                btn.innerHTML = '<div class="spinner"></div> 兑换中...';
+                btn.disabled = true;
+                
+                try {
+                    const response = await fetch(`${API_BASE}/api/prepaid/redeem`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${getToken()}`
+                        },
+                        body: JSON.stringify({ code })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        showResult('prepaidResult', true, data.message || '兑换成功！');
+                        document.getElementById('prepaidCode').value = '';
+                    } else {
+                        showResult('prepaidResult', false, data.message || '兑换失败');
+                    }
+                } catch (error) {
+                    showResult('prepaidResult', false, '网络错误，请重试');
+                } finally {
+                    btn.innerHTML = '<i class="ph ph-check-circle"></i> 立即兑换';
+                    btn.disabled = false;
+                }
+            }
+            
+            // 验证优惠码
+            async function validatePromo() {
+                const code = document.getElementById('promoCode').value.trim();
+                if (!code) {
+                    showResult('promoResult', false, '请输入优惠码');
+                    return;
+                }
+                
+                const btn = document.getElementById('validatePromoBtn');
+                btn.innerHTML = '<div class="spinner"></div> 验证中...';
+                btn.disabled = true;
+                
+                try {
+                    const response = await fetch(`${API_BASE}/api/promo/validate`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ 
+                            code,
+                            product_type: 'subscription',
+                            product_id: 'standard'
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.valid) {
+                        const msg = `优惠码有效！${data.message}`;
+                        showResult('promoResult', true, msg);
+                    } else {
+                        showResult('promoResult', false, data.message || '优惠码无效');
+                    }
+                } catch (error) {
+                    showResult('promoResult', false, '网络错误，请重试');
+                } finally {
+                    btn.innerHTML = '<i class="ph ph-magnifying-glass"></i> 验证优惠码';
+                    btn.disabled = false;
+                }
+            }
+            
+            function showResult(elementId, success, message) {
+                const el = document.getElementById(elementId);
+                el.className = `result-message ${success ? 'success' : 'error'}`;
+                el.innerHTML = `
+                    <i class="ph ${success ? 'ph-check-circle' : 'ph-x-circle'}"></i>
+                    <span>${message}</span>
+                `;
+            }
+            
+            // 页面加载
+            document.addEventListener('DOMContentLoaded', checkAuth);
+        </script>
+    </body>
+</html>

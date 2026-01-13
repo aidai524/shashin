@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="theme-color" content="#FAFAFA" />
+        <meta name="description" content="套餐定价 - Dream Photo Studio" />
+        <title>套餐定价 - Dream Photo Studio</title>
+        <script>
+            (function() {
+                var theme = localStorage.getItem('gemini_theme') || 'light';
+                document.documentElement.setAttribute('data-theme', theme);
+                var meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) meta.content = theme === 'dark' ? '#0F172A' : '#FAFAFA';
+            })();
+        </script>
+        <link rel="stylesheet" href="style.css?v=20260109" />
+        <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✨</text></svg>" />
+        <style>
+            .pricing-container {
+                max-width: 1000px;
+                margin: 0 auto;
+                padding: 2rem 1rem;
+            }
+            
+            .pricing-header {
+                text-align: center;
+                margin-bottom: 3rem;
+            }
+            
+            .pricing-header h1 {
+                font-size: 2.5rem;
+                font-weight: 700;
+                background: var(--gradient-primary);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                margin-bottom: 0.75rem;
+            }
+            
+            .pricing-header p {
+                color: var(--text-secondary);
+                font-size: 1.1rem;
+            }
+            
+            .back-link {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                color: var(--text-secondary);
+                text-decoration: none;
+                font-size: 0.9rem;
+                margin-bottom: 1rem;
+                transition: color 0.2s;
+            }
+            
+            .back-link:hover {
+                color: var(--accent);
+            }
+            
+            .pricing-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 1.5rem;
+                margin-bottom: 3rem;
+            }
+            
+            .pricing-card {
+                background: var(--bg-card);
+                border-radius: 20px;
+                padding: 2rem;
+                border: 2px solid var(--border-default);
+                position: relative;
+                transition: all 0.3s;
+            }
+            
+            .pricing-card:hover {
+                transform: translateY(-4px);
+                box-shadow: var(--shadow-lg);
+            }
+            
+            .pricing-card.popular {
+                border-color: var(--accent);
+                box-shadow: var(--shadow-accent);
+            }
+            
+            .popular-badge {
+                position: absolute;
+                top: -12px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: var(--gradient-primary);
+                color: white;
+                padding: 0.375rem 1rem;
+                border-radius: 20px;
+                font-size: 0.8rem;
+                font-weight: 600;
+            }
+            
+            .plan-icon {
+                width: 60px;
+                height: 60px;
+                border-radius: 16px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 1.75rem;
+                margin-bottom: 1rem;
+            }
+            
+            .plan-icon.free {
+                background: var(--bg-muted);
+                color: var(--text-secondary);
+            }
+            
+            .plan-icon.standard {
+                background: linear-gradient(135deg, #3B82F6, #1D4ED8);
+                color: white;
+            }
+            
+            .plan-icon.pro {
+                background: linear-gradient(135deg, #8B5CF6, #6D28D9);
+                color: white;
+            }
+            
+            .plan-name {
+                font-size: 1.5rem;
+                font-weight: 700;
+                color: var(--text-primary);
+                margin-bottom: 0.5rem;
+            }
+            
+            .plan-desc {
+                font-size: 0.9rem;
+                color: var(--text-secondary);
+                margin-bottom: 1.5rem;
+            }
+            
+            .plan-price {
+                margin-bottom: 1.5rem;
+            }
+            
+            .price-amount {
+                font-size: 3rem;
+                font-weight: 700;
+                color: var(--text-primary);
+            }
+            
+            .price-amount .currency {
+                font-size: 1.5rem;
+                vertical-align: top;
+            }
+            
+            .price-period {
+                font-size: 0.9rem;
+                color: var(--text-tertiary);
+            }
+            
+            .plan-features {
+                list-style: none;
+                padding: 0;
+                margin: 0 0 1.5rem 0;
+            }
+            
+            .plan-features li {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+                padding: 0.5rem 0;
+                font-size: 0.95rem;
+                color: var(--text-secondary);
+            }
+            
+            .plan-features li i {
+                color: #22C55E;
+                font-size: 1.1rem;
+            }
+            
+            .plan-features li.highlight {
+                color: var(--text-primary);
+                font-weight: 500;
+            }
+            
+            .plan-btn {
+                width: 100%;
+                padding: 1rem;
+                border: none;
+                border-radius: 12px;
+                font-size: 1rem;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0.5rem;
+            }
+            
+            .plan-btn.primary {
+                background: var(--gradient-primary);
+                color: white;
+            }
+            
+            .plan-btn.primary:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-accent);
+            }
+            
+            .plan-btn.secondary {
+                background: var(--bg-muted);
+                color: var(--text-primary);
+                border: 1px solid var(--border-default);
+            }
+            
+            .plan-btn.secondary:hover {
+                background: var(--bg-hover);
+            }
+            
+            .plan-btn:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+            }
+            
+            .promo-section {
+                background: var(--bg-card);
+                border-radius: 16px;
+                padding: 1.5rem;
+                border: 1px solid var(--border-default);
+                margin-bottom: 2rem;
+            }
+            
+            .promo-title {
+                font-size: 1rem;
+                font-weight: 600;
+                color: var(--text-primary);
+                margin-bottom: 1rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            
+            .promo-input-group {
+                display: flex;
+                gap: 0.75rem;
+            }
+            
+            .promo-input {
+                flex: 1;
+                padding: 0.75rem 1rem;
+                border: 2px solid var(--border-default);
+                border-radius: 10px;
+                font-size: 0.95rem;
+                background: var(--bg-base);
+                color: var(--text-primary);
+                text-transform: uppercase;
+            }
+            
+            .promo-input:focus {
+                outline: none;
+                border-color: var(--accent);
+            }
+            
+            .promo-btn {
+                padding: 0.75rem 1.5rem;
+                border: none;
+                border-radius: 10px;
+                background: var(--accent);
+                color: white;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            
+            .promo-btn:hover {
+                background: var(--accent-dim);
+            }
+            
+            .promo-result {
+                margin-top: 0.75rem;
+                padding: 0.75rem;
+                border-radius: 8px;
+                font-size: 0.9rem;
+                display: none;
+            }
+            
+            .promo-result.success {
+                display: block;
+                background: rgba(34, 197, 94, 0.1);
+                color: #16A34A;
+            }
+            
+            .promo-result.error {
+                display: block;
+                background: rgba(239, 68, 68, 0.1);
+                color: #DC2626;
+            }
+            
+            .faq-section {
+                margin-top: 3rem;
+            }
+            
+            .faq-title {
+                font-size: 1.5rem;
+                font-weight: 700;
+                color: var(--text-primary);
+                text-align: center;
+                margin-bottom: 1.5rem;
+            }
+            
+            .faq-list {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .faq-item {
+                background: var(--bg-card);
+                border-radius: 12px;
+                padding: 1.25rem;
+                border: 1px solid var(--border-default);
+            }
+            
+            .faq-question {
+                font-size: 1rem;
+                font-weight: 600;
+                color: var(--text-primary);
+                margin-bottom: 0.5rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            
+            .faq-answer {
+                font-size: 0.9rem;
+                color: var(--text-secondary);
+                line-height: 1.6;
+            }
+            
+            @media (max-width: 768px) {
+                .pricing-grid {
+                    grid-template-columns: 1fr;
+                }
+                
+                .pricing-header h1 {
+                    font-size: 2rem;
+                }
+                
+                .promo-input-group {
+                    flex-direction: column;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="cosmic-bg" aria-hidden="true"></div>
+        <div class="grid-overlay" aria-hidden="true"></div>
+
+        <div class="pricing-container">
+            <a href="/" class="back-link">
+                <i class="ph ph-arrow-left"></i> 返回首页
+            </a>
+            
+            <div class="pricing-header">
+                <h1>选择适合你的套餐</h1>
+                <p>解锁更多创作可能，让 AI 为你生成无限精彩</p>
+            </div>
+
+            <!-- 优惠码 -->
+            <div class="promo-section">
+                <div class="promo-title">
+                    <i class="ph ph-tag"></i> 有优惠码？
+                </div>
+                <div class="promo-input-group">
+                    <input type="text" class="promo-input" id="promoCode" placeholder="输入优惠码">
+                    <button class="promo-btn" onclick="applyPromo()">应用</button>
+                </div>
+                <div class="promo-result" id="promoResult"></div>
+            </div>
+
+            <!-- 套餐卡片 -->
+            <div class="pricing-grid">
+                <!-- 免费版 -->
+                <div class="pricing-card">
+                    <div class="plan-icon free">
+                        <i class="ph ph-user"></i>
+                    </div>
+                    <div class="plan-name">免费版</div>
+                    <div class="plan-desc">体验 AI 图片生成的魅力</div>
+                    <div class="plan-price">
+                        <span class="price-amount"><span class="currency">¥</span>0</span>
+                        <span class="price-period">/ 永久</span>
+                    </div>
+                    <ul class="plan-features">
+                        <li class="highlight">
+                            <i class="ph ph-check-circle"></i>
+                            注册即送 100 积分
+                        </li>
+                        <li>
+                            <i class="ph ph-check-circle"></i>
+                            每张图片消耗 10 积分
+                        </li>
+                        <li>
+                            <i class="ph ph-check-circle"></i>
+                            邀请好友得积分
+                        </li>
+                        <li>
+                            <i class="ph ph-check-circle"></i>
+                            基础模板使用
+                        </li>
+                    </ul>
+                    <button class="plan-btn secondary" onclick="location.href='/'">
+                        开始使用
+                    </button>
+                </div>
+
+                <!-- Standard -->
+                <div class="pricing-card popular">
+                    <div class="popular-badge">最受欢迎</div>
+                    <div class="plan-icon standard">
+                        <i class="ph ph-star"></i>
+                    </div>
+                    <div class="plan-name">Standard</div>
+                    <div class="plan-desc">适合个人创作者</div>
+                    <div class="plan-price">
+                        <span class="price-amount" id="standardPrice"><span class="currency">¥</span>199</span>
+                        <span class="price-period">/ 年</span>
+                    </div>
+                    <ul class="plan-features">
+                        <li class="highlight">
+                            <i class="ph ph-check-circle"></i>
+                            每月 1000 积分
+                        </li>
+                        <li>
+                            <i class="ph ph-check-circle"></i>
+                            约 100 张图片/月
+                        </li>
+                        <li>
+                            <i class="ph ph-check-circle"></i>
+                            所有模板解锁
+                        </li>
+                        <li>
+                            <i class="ph ph-check-circle"></i>
+                            优先生成队列
+                        </li>
+                    </ul>
+                    <button class="plan-btn primary" onclick="subscribe('standard')">
+                        <i class="ph ph-shopping-cart"></i> 立即订阅
+                    </button>
+                </div>
+
+                <!-- Pro -->
+                <div class="pricing-card">
+                    <div class="plan-icon pro">
+                        <i class="ph ph-crown"></i>
+                    </div>
+                    <div class="plan-name">Pro</div>
+                    <div class="plan-desc">适合专业用户和团队</div>
+                    <div class="plan-price">
+                        <span class="price-amount" id="proPrice"><span class="currency">¥</span>599</span>
+                        <span class="price-period">/ 年</span>
+                    </div>
+                    <ul class="plan-features">
+                        <li class="highlight">
+                            <i class="ph ph-check-circle"></i>
+                            每月 5000 积分
+                        </li>
+                        <li>
+                            <i class="ph ph-check-circle"></i>
+                            约 500 张图片/月
+                        </li>
+                        <li>
+                            <i class="ph ph-check-circle"></i>
+                            所有模板解锁
+                        </li>
+                        <li>
+                            <i class="ph ph-check-circle"></i>
+                            最高优先级队列
+                        </li>
+                        <li>
+                            <i class="ph ph-check-circle"></i>
+                            专属客服支持
+                        </li>
+                    </ul>
+                    <button class="plan-btn primary" onclick="subscribe('pro')">
+                        <i class="ph ph-shopping-cart"></i> 立即订阅
+                    </button>
+                </div>
+            </div>
+
+            <!-- FAQ -->
+            <div class="faq-section">
+                <h2 class="faq-title">常见问题</h2>
+                <div class="faq-list">
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <i class="ph ph-question"></i> 积分是如何计算的？
+                        </div>
+                        <div class="faq-answer">
+                            每生成一张图片消耗 10 积分。订阅用户每月会自动获得对应套餐的积分，积分当月有效，不累计到下月。
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <i class="ph ph-question"></i> 可以随时取消订阅吗？
+                        </div>
+                        <div class="faq-answer">
+                            可以。取消订阅后，您仍可使用服务直到当前订阅期结束。之后将自动转为免费版。
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <i class="ph ph-question"></i> 支持哪些支付方式？
+                        </div>
+                        <div class="faq-answer">
+                            目前支持支付宝和微信支付。您也可以使用点卡码直接兑换订阅。
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <div class="faq-question">
+                            <i class="ph ph-question"></i> 如何获取更多积分？
+                        </div>
+                        <div class="faq-answer">
+                            除了订阅套餐外，您还可以通过邀请好友获得积分奖励（每成功邀请一人得 100 积分），或使用积分点卡充值。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const API_BASE = '';
+            let appliedPromo = null;
+            
+            function getToken() {
+                return localStorage.getItem('gemini_token');
+            }
+            
+            async function applyPromo() {
+                const code = document.getElementById('promoCode').value.trim();
+                if (!code) return;
+                
+                const resultEl = document.getElementById('promoResult');
+                
+                try {
+                    const response = await fetch(`${API_BASE}/api/promo/validate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            code, 
+                            product_type: 'subscription',
+                            product_id: 'standard'
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.valid) {
+                        appliedPromo = { code, discount: data.discount };
+                        resultEl.className = 'promo-result success';
+                        resultEl.textContent = `✓ ${data.message}，已应用优惠`;
+                        updatePrices(data.discount);
+                    } else {
+                        appliedPromo = null;
+                        resultEl.className = 'promo-result error';
+                        resultEl.textContent = `✗ ${data.message}`;
+                        resetPrices();
+                    }
+                } catch (error) {
+                    resultEl.className = 'promo-result error';
+                    resultEl.textContent = '✗ 网络错误，请重试';
+                }
+            }
+            
+            function updatePrices(discount) {
+                if (discount.type === 'percent') {
+                    const standardOriginal = 199;
+                    const proOriginal = 599;
+                    const standardNew = Math.floor(standardOriginal * (100 - discount.value) / 100);
+                    const proNew = Math.floor(proOriginal * (100 - discount.value) / 100);
+                    
+                    document.getElementById('standardPrice').innerHTML = 
+                        `<span class="currency">¥</span><s style="color:var(--text-tertiary);font-size:1.5rem">${standardOriginal}</s> ${standardNew}`;
+                    document.getElementById('proPrice').innerHTML = 
+                        `<span class="currency">¥</span><s style="color:var(--text-tertiary);font-size:1.5rem">${proOriginal}</s> ${proNew}`;
+                }
+            }
+            
+            function resetPrices() {
+                document.getElementById('standardPrice').innerHTML = '<span class="currency">¥</span>199';
+                document.getElementById('proPrice').innerHTML = '<span class="currency">¥</span>599';
+            }
+            
+            function subscribe(planId) {
+                const token = getToken();
+                if (!token) {
+                    alert('请先登录后再订阅');
+                    location.href = '/';
+                    return;
+                }
+                
+                // TODO: 跳转到支付页面或弹出支付弹窗
+                alert(`即将跳转到 ${planId === 'pro' ? 'Pro' : 'Standard'} 套餐支付页面...\n\n（支付功能开发中，敬请期待）`);
+            }
+        </script>
+    </body>
+</html>

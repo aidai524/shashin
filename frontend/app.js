@@ -1102,7 +1102,31 @@ async function generateImage() {
   btnLoading.style.display = "inline-flex";
   showLoading();
 
+  let jobId = null;
+
   try {
+    // 积分预检查
+    const preCheckResult = await checkPointsBeforeGeneration(selectedQuantity);
+    if (!preCheckResult.success) {
+      if (preCheckResult.error === 'insufficient_points') {
+        showToast(`积分不足：需要 ${preCheckResult.points_needed} 积分，当前余额 ${preCheckResult.points_balance} 积分`, "warning");
+        // 可选：跳转到充值页面
+        if (confirm('积分不足，是否前往充值？')) {
+          window.location.href = '/wallet';
+        }
+      } else if (preCheckResult.error === 'points_disabled') {
+        // 积分系统未启用，继续生成（兼容旧版本）
+        console.log('Points system not enabled, proceeding without points check');
+      } else {
+        showToast(preCheckResult.message || '积分检查失败', "error");
+      }
+      if (preCheckResult.error !== 'points_disabled') {
+        return;
+      }
+    } else {
+      jobId = preCheckResult.job_id;
+    }
+
     const images = await generateWithGemini(
       config,
       selectedTemplate.prompt,
@@ -1117,16 +1141,93 @@ async function generateImage() {
       displayResults(images);
       saveToHistory(selectedTemplate, selectedModel, images, genReferenceImages);
       showToast(t('toast.generate.success', { count: images.length }), "info");
+      
+      // 确认扣除积分
+      if (jobId) {
+        const confirmResult = await confirmGenerationPoints(jobId, true, images.length);
+        if (confirmResult.success) {
+          updatePointsDisplay(confirmResult.new_balance);
+        }
+      }
     }
   } catch (error) {
     console.error("Generation failed:", error);
     showError(error.message);
     showToast(t('toast.generate.failed'), "error");
+    
+    // 生成失败，取消积分扣除
+    if (jobId) {
+      await confirmGenerationPoints(jobId, false, 0);
+    }
   } finally {
     btn.disabled = false;
     btnText.style.display = "inline";
     btnLoading.style.display = "none";
     hideLoading();
+  }
+}
+
+// 生成前检查积分
+async function checkPointsBeforeGeneration(imageCount) {
+  const token = localStorage.getItem('gemini_token');
+  if (!token) return { success: false, error: 'not_logged_in' };
+
+  try {
+    const response = await fetch('/api/generation/pre-check', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ image_count: imageCount })
+    });
+
+    const data = await response.json();
+    
+    // 如果是503说明积分系统未启用
+    if (response.status === 503) {
+      return { success: false, error: 'points_disabled' };
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Points pre-check failed:', error);
+    // 网络错误时允许继续生成（降级处理）
+    return { success: false, error: 'points_disabled' };
+  }
+}
+
+// 确认生成完成，扣除或退还积分
+async function confirmGenerationPoints(jobId, success, imagesGenerated) {
+  const token = localStorage.getItem('gemini_token');
+  if (!token || !jobId) return { success: false };
+
+  try {
+    const response = await fetch('/api/generation/confirm', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        job_id: jobId,
+        success: success,
+        images_generated: imagesGenerated
+      })
+    });
+
+    return await response.json();
+  } catch (error) {
+    console.error('Points confirm failed:', error);
+    return { success: false };
+  }
+}
+
+// 更新页面上的积分显示
+function updatePointsDisplay(newBalance) {
+  const pointsEl = document.getElementById('userPointsBalance');
+  if (pointsEl) {
+    pointsEl.textContent = newBalance;
   }
 }
 
@@ -2526,10 +2627,38 @@ function updateUserUI() {
     loginBtn.onclick = toggleUserDropdown;
     userName.textContent = currentUser.nickname || currentUser.email;
     userPlanBadge.textContent = currentUser.planInfo?.name || t('plan.free');
+    
+    // 加载用户积分余额
+    loadUserPointsBalance();
   } else {
     loginBtn.innerHTML = `<i class="ph ph-user"></i><span data-i18n="auth.login">${t('auth.login')}</span>`;
     loginBtn.onclick = () => showAuthModal('login');
     userDropdown.classList.remove('show');
+    
+    // 清空积分显示
+    const pointsEl = document.getElementById('userPointsBalance');
+    if (pointsEl) pointsEl.textContent = '';
+  }
+}
+
+// 加载用户积分余额
+async function loadUserPointsBalance() {
+  const token = localStorage.getItem('gemini_token') || localStorage.getItem('auth_token');
+  if (!token) return;
+
+  try {
+    const response = await fetch('/api/generation/status', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success) {
+        updatePointsDisplay(data.points_balance);
+      }
+    }
+  } catch (error) {
+    console.log('Failed to load points balance:', error);
   }
 }
 

@@ -319,11 +319,11 @@ async function handleAuthAPI(request, env, pathname) {
   return errorResponse('Not found', 404);
 }
 
-// 注册用户
+// 注册用户（支持邀请码绑定 + 新人积分奖励）
 async function registerUser(request, env) {
   try {
     const body = await request.json();
-    const { email, password, nickname } = body;
+    const { email, password, nickname, ref } = body; // ref 为邀请码
 
     // 验证必填字段
     if (!email || !password) {
@@ -369,6 +369,40 @@ async function registerUser(request, env) {
     // 生成 JWT token
     const token = await createJWT({ userId: user.id, email: user.email }, env.JWT_SECRET);
 
+    // =========================================
+    // 积分系统集成（如果 D1 数据库可用）
+    // =========================================
+    let pointsInfo = null;
+    let referralInfo = null;
+    
+    if (env.DB) {
+      try {
+        // 1. 发放新人注册奖励（100 积分）
+        const signupResult = await grantSignupBonusPoints(env.DB, userId);
+        if (signupResult.success) {
+          pointsInfo = {
+            bonus: signupResult.delta,
+            balance: signupResult.balance,
+            message: '获得新人注册奖励 100 积分'
+          };
+        }
+
+        // 2. 绑定邀请关系（如果有邀请码）
+        if (ref) {
+          const bindResult = await bindReferralRelation(env.DB, userId, ref);
+          if (bindResult.success) {
+            referralInfo = {
+              inviterUserId: bindResult.inviterUserId,
+              message: '邀请关系绑定成功'
+            };
+          }
+        }
+      } catch (pointsError) {
+        console.error('Points system error:', pointsError);
+        // 积分系统错误不影响注册流程
+      }
+    }
+
     // 返回用户信息（不包含密码）
     const { passwordHash: _, ...safeUser } = user;
     return jsonResponse({
@@ -376,12 +410,495 @@ async function registerUser(request, env) {
       message: '注册成功',
       user: safeUser,
       token,
-      plan: USER_PLANS[user.plan]
+      plan: USER_PLANS[user.plan],
+      points: pointsInfo,
+      referral: referralInfo
     }, 201);
 
   } catch (e) {
     console.error('Register error:', e);
     return errorResponse('注册失败: ' + e.message, 500);
+  }
+}
+
+// =========================================
+// 积分系统辅助函数（内联实现，避免 ES Module 导入问题）
+// =========================================
+
+// 积分配置
+const POINTS_CONFIG = {
+  POINTS_PER_IMAGE: 10,
+  SIGNUP_BONUS_POINTS: 100,
+  REFERRAL_BONUS_POINTS: 100,
+};
+
+// 发放新人注册奖励
+async function grantSignupBonusPoints(db, userId) {
+  const idempotencyKey = `signup_bonus:${userId}`;
+  return await grantPointsInternal(db, userId, POINTS_CONFIG.SIGNUP_BONUS_POINTS, 'signup_bonus', 'user', userId, idempotencyKey);
+}
+
+// 绑定邀请关系
+async function bindReferralRelation(db, inviteeUserId, referralCode) {
+  try {
+    if (!referralCode) return { success: false };
+
+    // 获取邀请码所有者
+    const codeRecord = await db.prepare(
+      'SELECT owner_user_id FROM referral_codes WHERE code = ?'
+    ).bind(referralCode.toUpperCase()).first();
+
+    if (!codeRecord) return { success: false, message: '无效的邀请码' };
+
+    const inviterUserId = codeRecord.owner_user_id;
+    if (inviterUserId === inviteeUserId) return { success: false, message: '不能使用自己的邀请码' };
+
+    // 检查是否已绑定
+    const existing = await db.prepare(
+      'SELECT id FROM referrals WHERE invitee_user_id = ?'
+    ).bind(inviteeUserId).first();
+
+    if (existing) return { success: false, message: '已绑定过邀请关系' };
+
+    // 创建邀请关系
+    await db.prepare(`
+      INSERT INTO referrals (inviter_user_id, invitee_user_id, source_code, rewarded)
+      VALUES (?, ?, ?, 0)
+    `).bind(inviterUserId, inviteeUserId, referralCode.toUpperCase()).run();
+
+    return { success: true, inviterUserId };
+  } catch (error) {
+    console.error('bindReferralRelation error:', error);
+    return { success: false };
+  }
+}
+
+// 统一积分发放（内部实现）
+async function grantPointsInternal(db, userId, delta, reason, refType, refId, idempotencyKey) {
+  try {
+    // 幂等检查
+    if (idempotencyKey) {
+      const existing = await db.prepare(
+        'SELECT balance_after FROM points_ledger WHERE idempotency_key = ?'
+      ).bind(idempotencyKey).first();
+      if (existing) {
+        return { success: true, balance: existing.balance_after, idempotent: true };
+      }
+    }
+
+    // 获取或创建钱包
+    let wallet = await db.prepare('SELECT * FROM user_wallets WHERE user_id = ?').bind(userId).first();
+    if (!wallet) {
+      await db.prepare('INSERT INTO user_wallets (user_id, points_balance) VALUES (?, 0)').bind(userId).run();
+      wallet = { points_balance: 0 };
+    }
+
+    const newBalance = wallet.points_balance + delta;
+    if (delta < 0 && newBalance < 0) {
+      return { success: false, message: '积分余额不足' };
+    }
+
+    const now = new Date().toISOString();
+    await db.prepare('UPDATE user_wallets SET points_balance = ?, updated_at = ? WHERE user_id = ?')
+      .bind(newBalance, now, userId).run();
+    await db.prepare(`
+      INSERT INTO points_ledger (user_id, delta, balance_after, reason, ref_type, ref_id, idempotency_key, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(userId, delta, newBalance, reason, refType, refId, idempotencyKey, now).run();
+
+    return { success: true, balance: newBalance, delta };
+  } catch (error) {
+    console.error('grantPointsInternal error:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+// 套餐定义
+const SUBSCRIPTION_PLANS = {
+  standard: { id: 'standard', name: 'Standard', price: 19900, monthly_points: 1000, duration_days: 365 },
+  pro: { id: 'pro', name: 'Pro', price: 59900, monthly_points: 5000, duration_days: 365 }
+};
+
+// =========================================
+// 积分系统 API 处理
+// =========================================
+async function handlePointsAPI(request, env, pathname, user) {
+  const method = request.method;
+  const db = env.DB;
+
+  // 检查数据库是否可用
+  if (!db) {
+    return jsonResponse({ success: false, error: '积分系统未启用' }, 503);
+  }
+
+  // GET /api/wallet/me - 获取我的钱包信息
+  if (pathname === '/api/wallet/me' && method === 'GET') {
+    if (!user) return errorResponse('未登录', 401);
+    
+    let wallet = await db.prepare('SELECT * FROM user_wallets WHERE user_id = ?').bind(user.id).first();
+    if (!wallet) wallet = { user_id: user.id, points_balance: 0 };
+    
+    const subscription = await db.prepare(
+      "SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' AND end_at > datetime('now') ORDER BY end_at DESC LIMIT 1"
+    ).bind(user.id).first();
+
+    return jsonResponse({
+      success: true,
+      wallet: {
+        points_balance: wallet.points_balance,
+        subscription: subscription ? {
+          plan_id: subscription.plan_id,
+          plan_name: SUBSCRIPTION_PLANS[subscription.plan_id]?.name,
+          end_at: subscription.end_at,
+          monthly_points: SUBSCRIPTION_PLANS[subscription.plan_id]?.monthly_points
+        } : null
+      }
+    });
+  }
+
+  // GET /api/wallet/transactions - 获取积分流水
+  if (pathname === '/api/wallet/transactions' && method === 'GET') {
+    if (!user) return errorResponse('未登录', 401);
+    const url = new URL(request.url);
+    const limit = parseInt(url.searchParams.get('limit')) || 20;
+    const offset = parseInt(url.searchParams.get('offset')) || 0;
+    const transactions = await db.prepare(
+      'SELECT * FROM points_ledger WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?'
+    ).bind(user.id, limit, offset).all();
+    return jsonResponse({ success: true, transactions: transactions.results || [] });
+  }
+
+  // GET /api/referral/me - 获取我的邀请码和统计
+  if (pathname === '/api/referral/me' && method === 'GET') {
+    if (!user) return errorResponse('未登录', 401);
+    
+    // 获取或创建邀请码
+    let codeRecord = await db.prepare('SELECT code FROM referral_codes WHERE owner_user_id = ?').bind(user.id).first();
+    if (!codeRecord) {
+      const code = generateReferralCode(user.id);
+      await db.prepare('INSERT INTO referral_codes (code, owner_user_id) VALUES (?, ?)').bind(code, user.id).run();
+      codeRecord = { code };
+    }
+    
+    // 统计邀请人数
+    const stats = await db.prepare(`
+      SELECT COUNT(*) as total_invited, SUM(CASE WHEN rewarded = 1 THEN 1 ELSE 0 END) as total_rewarded
+      FROM referrals WHERE inviter_user_id = ?
+    `).bind(user.id).first();
+
+    return jsonResponse({
+      success: true,
+      code: codeRecord.code,
+      totalInvited: stats?.total_invited || 0,
+      totalRewarded: stats?.total_rewarded || 0,
+      totalPoints: (stats?.total_rewarded || 0) * POINTS_CONFIG.REFERRAL_BONUS_POINTS,
+      pointsPerReferral: POINTS_CONFIG.REFERRAL_BONUS_POINTS
+    });
+  }
+
+  // POST /api/promo/validate - 校验优惠码
+  if (pathname === '/api/promo/validate' && method === 'POST') {
+    try {
+      const body = await request.json();
+      const { code, product_type, product_id } = body;
+      
+      const promo = await db.prepare('SELECT * FROM promo_codes WHERE code = ?').bind(code?.toUpperCase()).first();
+      if (!promo) return jsonResponse({ success: true, valid: false, message: '优惠码不存在' });
+      if (promo.status !== 'active') return jsonResponse({ success: true, valid: false, message: '优惠码已失效' });
+      if (promo.expires_at && new Date(promo.expires_at) < new Date()) return jsonResponse({ success: true, valid: false, message: '优惠码已过期' });
+      if (promo.max_uses !== null && promo.used_count >= promo.max_uses) return jsonResponse({ success: true, valid: false, message: '优惠码已达使用上限' });
+
+      const product = SUBSCRIPTION_PLANS[product_id];
+      if (!product) return jsonResponse({ success: true, valid: false, message: '无效的产品' });
+
+      const discountAmount = Math.floor(product.price * promo.discount_value / 100);
+      return jsonResponse({
+        success: true,
+        valid: true,
+        discount: { type: promo.discount_type, value: promo.discount_value },
+        price: { originalAmount: product.price, discountAmount, finalAmount: product.price - discountAmount },
+        message: `优惠 ${promo.discount_value}%`
+      });
+    } catch (e) {
+      return errorResponse('请求格式错误', 400);
+    }
+  }
+
+  // POST /api/prepaid/redeem - 兑换点卡
+  if (pathname === '/api/prepaid/redeem' && method === 'POST') {
+    if (!user) return errorResponse('未登录', 401);
+    try {
+      const body = await request.json();
+      const formattedCode = body.code?.replace(/[\s-]/g, '').toUpperCase();
+      
+      const card = await db.prepare('SELECT * FROM prepaid_cards WHERE REPLACE(code, "-", "") = ?').bind(formattedCode).first();
+      if (!card) return jsonResponse({ success: false, message: '点卡码不存在' });
+      if (card.status !== 'unused') return jsonResponse({ success: false, message: card.status === 'redeemed' ? '点卡已被兑换' : '点卡已失效' });
+      if (card.expires_at && new Date(card.expires_at) < new Date()) return jsonResponse({ success: false, message: '点卡已过期' });
+
+      const now = new Date().toISOString();
+      
+      if (card.card_type === 'points') {
+        const idempotencyKey = `prepaid:${card.code}`;
+        await grantPointsInternal(db, user.id, card.points_amount, 'prepaid', 'prepaid_card', card.code, idempotencyKey);
+      } else if (card.card_type === 'subscription') {
+        // 简化版订阅发放
+        const plan = SUBSCRIPTION_PLANS[card.plan_id];
+        if (plan) {
+          const endAt = new Date(Date.now() + plan.duration_days * 24 * 60 * 60 * 1000).toISOString();
+          await db.prepare(`
+            INSERT INTO subscriptions (user_id, plan_id, status, start_at, end_at, source, source_ref_id, created_at, updated_at)
+            VALUES (?, ?, 'active', ?, ?, 'prepaid', ?, ?, ?)
+          `).bind(user.id, card.plan_id, now, endAt, card.code, now, now).run();
+          // 发放当月积分
+          await grantPointsInternal(db, user.id, plan.monthly_points, 'monthly_grant', 'subscription', card.code, `monthly:${user.id}:${now.substring(0,7)}`);
+        }
+      }
+
+      await db.prepare('UPDATE prepaid_cards SET status = ?, redeemed_by = ?, redeemed_at = ? WHERE id = ?')
+        .bind('redeemed', user.id, now, card.id).run();
+
+      return jsonResponse({
+        success: true,
+        message: card.card_type === 'subscription' ? `成功兑换 ${SUBSCRIPTION_PLANS[card.plan_id]?.name} 订阅` : `成功兑换 ${card.points_amount} 积分`
+      });
+    } catch (e) {
+      return errorResponse('兑换失败: ' + e.message, 500);
+    }
+  }
+
+  // GET /api/plans - 获取套餐列表
+  if (pathname === '/api/plans' && method === 'GET') {
+    const plans = Object.values(SUBSCRIPTION_PLANS).map(plan => ({
+      id: plan.id,
+      name: plan.name,
+      price: plan.price,
+      price_display: `¥${(plan.price / 100).toFixed(0)}/年`,
+      monthly_points: plan.monthly_points,
+      duration_days: plan.duration_days
+    }));
+    return jsonResponse({ success: true, plans, points_per_image: POINTS_CONFIG.POINTS_PER_IMAGE });
+  }
+
+  // POST /api/admin/prepaid/create_batch - 批量生成点卡（管理员）
+  if (pathname === '/api/admin/prepaid/create_batch' && method === 'POST') {
+    if (!isAdmin(request, env)) return errorResponse('无权限', 403);
+    try {
+      const body = await request.json();
+      const { card_type, plan_id, points_amount, quantity, expires_at } = body;
+      if (!card_type || !quantity || quantity < 1 || quantity > 1000) return errorResponse('参数错误');
+
+      const batchId = `BATCH-${Date.now()}`;
+      const now = new Date().toISOString();
+      const cards = [];
+
+      for (let i = 0; i < quantity; i++) {
+        const code = generatePrepaidCode();
+        cards.push(code);
+        await db.prepare(`
+          INSERT INTO prepaid_cards (code, card_type, plan_id, points_amount, status, expires_at, batch_id, created_at)
+          VALUES (?, ?, ?, ?, 'unused', ?, ?, ?)
+        `).bind(code, card_type, plan_id || null, points_amount || null, expires_at || null, batchId, now).run();
+      }
+
+      return jsonResponse({ success: true, batch_id: batchId, cards, quantity: cards.length });
+    } catch (e) {
+      return errorResponse('生成失败: ' + e.message, 500);
+    }
+  }
+
+  // POST /api/admin/promo/create - 创建优惠码（管理员）
+  if (pathname === '/api/admin/promo/create' && method === 'POST') {
+    if (!isAdmin(request, env)) return errorResponse('无权限', 403);
+    try {
+      const body = await request.json();
+      const { code, discount_type = 'percent', discount_value, max_uses, applicable_products = 'all', expires_at } = body;
+      if (!code || !discount_value) return errorResponse('缺少必填参数');
+
+      const now = new Date().toISOString();
+      await db.prepare(`
+        INSERT INTO promo_codes (code, discount_type, discount_value, max_uses, applicable_products, expires_at, status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?)
+      `).bind(code.toUpperCase(), discount_type, discount_value, max_uses || null, applicable_products, expires_at || null, now, now).run();
+
+      return jsonResponse({ success: true, message: '优惠码创建成功', code: code.toUpperCase() });
+    } catch (e) {
+      return errorResponse('创建失败: ' + e.message, 500);
+    }
+  }
+
+  // POST /api/generation/pre-check - 生成前检查积分并预扣
+  if (pathname === '/api/generation/pre-check' && method === 'POST') {
+    if (!user) return errorResponse('未登录', 401);
+    try {
+      const body = await request.json();
+      const imageCount = body.image_count || 1;
+      const pointsNeeded = imageCount * POINTS_CONFIG.POINTS_PER_IMAGE;
+
+      // 获取用户钱包
+      let wallet = await db.prepare('SELECT * FROM user_wallets WHERE user_id = ?').bind(user.id).first();
+      const currentBalance = wallet?.points_balance || 0;
+
+      if (currentBalance < pointsNeeded) {
+        return jsonResponse({
+          success: false,
+          error: 'insufficient_points',
+          message: `积分不足，需要 ${pointsNeeded} 积分，当前余额 ${currentBalance} 积分`,
+          points_needed: pointsNeeded,
+          points_balance: currentBalance
+        });
+      }
+
+      // 生成任务ID用于后续确认
+      const jobId = `gen_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const now = new Date().toISOString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10分钟过期
+
+      // 记录生成任务（预扣状态）
+      await db.prepare(`
+        INSERT INTO generation_jobs (id, user_id, points_cost, status, created_at, expires_at)
+        VALUES (?, ?, ?, 'pending', ?, ?)
+      `).bind(jobId, user.id, pointsNeeded, now, expiresAt).run();
+
+      return jsonResponse({
+        success: true,
+        job_id: jobId,
+        points_cost: pointsNeeded,
+        points_balance: currentBalance,
+        message: '积分检查通过，可以开始生成'
+      });
+    } catch (e) {
+      return errorResponse('检查失败: ' + e.message, 500);
+    }
+  }
+
+  // POST /api/generation/confirm - 确认生成完成，扣除积分
+  if (pathname === '/api/generation/confirm' && method === 'POST') {
+    if (!user) return errorResponse('未登录', 401);
+    try {
+      const body = await request.json();
+      const { job_id, success: genSuccess, images_generated } = body;
+
+      if (!job_id) return errorResponse('缺少 job_id', 400);
+
+      // 查找任务
+      const job = await db.prepare('SELECT * FROM generation_jobs WHERE id = ? AND user_id = ?').bind(job_id, user.id).first();
+      if (!job) return jsonResponse({ success: false, message: '任务不存在' });
+      if (job.status !== 'pending') return jsonResponse({ success: false, message: '任务已处理' });
+
+      const now = new Date().toISOString();
+
+      if (genSuccess && images_generated > 0) {
+        // 生成成功，扣除积分
+        const actualCost = images_generated * POINTS_CONFIG.POINTS_PER_IMAGE;
+        const idempotencyKey = `gen:${job_id}`;
+        
+        const result = await grantPointsInternal(db, user.id, -actualCost, 'consume', 'generation', job_id, idempotencyKey);
+        
+        if (result.success) {
+          // 更新任务状态
+          await db.prepare('UPDATE generation_jobs SET status = ?, completed_at = ?, images_count = ? WHERE id = ?')
+            .bind('completed', now, images_generated, job_id).run();
+
+          // 检查是否是首次生成，触发邀请奖励
+          await checkAndGrantReferralReward(db, user.id);
+
+          return jsonResponse({
+            success: true,
+            points_deducted: actualCost,
+            new_balance: result.newBalance,
+            message: `成功扣除 ${actualCost} 积分`
+          });
+        } else {
+          return jsonResponse({ success: false, message: result.message || '扣除积分失败' });
+        }
+      } else {
+        // 生成失败，取消任务
+        await db.prepare('UPDATE generation_jobs SET status = ?, completed_at = ? WHERE id = ?')
+          .bind('cancelled', now, job_id).run();
+
+        return jsonResponse({ success: true, message: '任务已取消，未扣除积分' });
+      }
+    } catch (e) {
+      return errorResponse('确认失败: ' + e.message, 500);
+    }
+  }
+
+  // GET /api/generation/status - 获取用户生成状态（积分余额等）
+  if (pathname === '/api/generation/status' && method === 'GET') {
+    if (!user) return errorResponse('未登录', 401);
+    
+    let wallet = await db.prepare('SELECT * FROM user_wallets WHERE user_id = ?').bind(user.id).first();
+    const balance = wallet?.points_balance || 0;
+    const canGenerate = balance >= POINTS_CONFIG.POINTS_PER_IMAGE;
+    const maxImages = Math.floor(balance / POINTS_CONFIG.POINTS_PER_IMAGE);
+
+    return jsonResponse({
+      success: true,
+      points_balance: balance,
+      points_per_image: POINTS_CONFIG.POINTS_PER_IMAGE,
+      can_generate: canGenerate,
+      max_images: maxImages
+    });
+  }
+
+  return errorResponse('Not found', 404);
+}
+
+// 生成邀请码
+function generateReferralCode(userId) {
+  const prefix = parseInt(userId.replace(/-/g, '').substring(0, 8), 16).toString(36).toUpperCase();
+  const suffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `${prefix}${suffix}`.substring(0, 8);
+}
+
+// 生成点卡码
+function generatePrepaidCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 16; i++) {
+    if (i > 0 && i % 4 === 0) code += '-';
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+// 检查并发放邀请奖励（被邀请人首次生成后触发）
+async function checkAndGrantReferralReward(db, userId) {
+  try {
+    // 查找邀请关系
+    const referral = await db.prepare(
+      'SELECT * FROM referrals WHERE invitee_user_id = ? AND rewarded = 0'
+    ).bind(userId).first();
+    
+    if (!referral) return; // 没有邀请关系或已发放奖励
+
+    // 检查是否是首次生成（只有一个已完成的任务）
+    const jobCount = await db.prepare(
+      "SELECT COUNT(*) as count FROM generation_jobs WHERE user_id = ? AND status = 'completed'"
+    ).bind(userId).first();
+    
+    if (jobCount?.count !== 1) return; // 不是首次生成
+
+    // 发放邀请奖励给邀请人
+    const idempotencyKey = `referral_reward:${referral.inviter_user_id}:${userId}`;
+    await grantPointsInternal(
+      db, 
+      referral.inviter_user_id, 
+      POINTS_CONFIG.REFERRAL_BONUS_POINTS, 
+      'referral_bonus', 
+      'referral', 
+      userId, 
+      idempotencyKey
+    );
+
+    // 标记为已发放奖励
+    await db.prepare('UPDATE referrals SET rewarded = 1, rewarded_at = ? WHERE id = ?')
+      .bind(new Date().toISOString(), referral.id).run();
+
+    console.log(`Referral reward granted: inviter=${referral.inviter_user_id}, invitee=${userId}`);
+  } catch (e) {
+    console.error('Failed to grant referral reward:', e);
   }
 }
 
@@ -1658,6 +2175,18 @@ export default {
     // 用户认证 API
     if (pathname.startsWith("/api/auth/")) {
       return await handleAuthAPI(request, env, pathname);
+    }
+
+    // 积分系统 API（钱包、邀请、优惠码、点卡、订单、套餐）
+    if (pathname.startsWith("/api/wallet") || 
+        pathname.startsWith("/api/referral") || 
+        pathname.startsWith("/api/promo") || 
+        pathname.startsWith("/api/prepaid") || 
+        pathname.startsWith("/api/orders") ||
+        pathname.startsWith("/api/plans") ||
+        pathname === "/api/webhook/payment") {
+      const user = await getUserFromRequest(request, env);
+      return await handlePointsAPI(request, env, pathname, user);
     }
 
     // 历史记录 API

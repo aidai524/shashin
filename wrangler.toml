@@ -28,3 +28,9 @@ id = "79e18d0705cb4736a83e4aa044b99cd5"
 [[r2_buckets]]
 bucket_name = "gemini-images"
 binding = "IMAGES_BUCKET"
+
+# D1 数据库绑定（积分系统）
+[[d1_databases]]
+binding = "DB"
+database_name = "gemini-points"
+database_id = "c2e75485-10a7-400e-a186-75fb45560627"

@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="theme-color" content="#FAFAFA" />
+        <meta name="description" content="邀请好友 - Dream Photo Studio" />
+        <title>邀请好友 - Dream Photo Studio</title>
+        <script>
+            (function() {
+                var theme = localStorage.getItem('gemini_theme') || 'light';
+                document.documentElement.setAttribute('data-theme', theme);
+                var meta = document.querySelector('meta[name="theme-color"]');
+                if (meta) meta.content = theme === 'dark' ? '#0F172A' : '#FAFAFA';
+            })();
+        </script>
+        <link rel="stylesheet" href="style.css?v=20260109" />
+        <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✨</text></svg>" />
+        <style>
+            .invite-container {
+                max-width: 700px;
+                margin: 0 auto;
+                padding: 2rem 1rem;
+            }
+            
+            .invite-header {
+                text-align: center;
+                margin-bottom: 2rem;
+            }
+            
+            .invite-header h1 {
+                font-size: 2rem;
+                font-weight: 700;
+                background: var(--gradient-primary);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                margin-bottom: 0.5rem;
+            }
+            
+            .invite-header p {
+                color: var(--text-secondary);
+            }
+            
+            .back-link {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                color: var(--text-secondary);
+                text-decoration: none;
+                font-size: 0.9rem;
+                margin-bottom: 1rem;
+                transition: color 0.2s;
+            }
+            
+            .back-link:hover {
+                color: var(--accent);
+            }
+            
+            .invite-hero {
+                background: var(--gradient-primary);
+                border-radius: 20px;
+                padding: 2.5rem;
+                text-align: center;
+                color: white;
+                margin-bottom: 2rem;
+                position: relative;
+                overflow: hidden;
+            }
+            
+            .invite-hero::before {
+                content: '';
+                position: absolute;
+                top: -50%;
+                left: -50%;
+                width: 200%;
+                height: 200%;
+                background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+                animation: pulse 4s ease-in-out infinite;
+            }
+            
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); opacity: 0.5; }
+                50% { transform: scale(1.1); opacity: 0.8; }
+            }
+            
+            .invite-hero-content {
+                position: relative;
+                z-index: 1;
+            }
+            
+            .invite-hero h2 {
+                font-size: 1.5rem;
+                font-weight: 700;
+                margin-bottom: 0.5rem;
+            }
+            
+            .invite-hero p {
+                opacity: 0.9;
+                margin-bottom: 1.5rem;
+            }
+            
+            .reward-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                background: rgba(255,255,255,0.2);
+                padding: 0.75rem 1.5rem;
+                border-radius: 30px;
+                font-size: 1.25rem;
+                font-weight: 700;
+            }
+            
+            .reward-badge i {
+                font-size: 1.5rem;
+            }
+            
+            .invite-card {
+                background: var(--bg-card);
+                border-radius: 16px;
+                padding: 1.5rem;
+                border: 1px solid var(--border-default);
+                box-shadow: var(--shadow-sm);
+                margin-bottom: 1.5rem;
+            }
+            
+            .invite-card-title {
+                font-size: 1rem;
+                font-weight: 600;
+                color: var(--text-primary);
+                margin-bottom: 1rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            
+            .invite-link-box {
+                display: flex;
+                gap: 0.75rem;
+                align-items: stretch;
+            }
+            
+            .invite-link-input {
+                flex: 1;
+                padding: 0.875rem 1rem;
+                font-size: 0.95rem;
+                border: 2px solid var(--border-default);
+                border-radius: 12px;
+                background: var(--bg-muted);
+                color: var(--text-primary);
+                font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+            }
+            
+            .invite-link-input:focus {
+                outline: none;
+                border-color: var(--accent);
+            }
+            
+            .copy-btn {
+                padding: 0 1.5rem;
+                border: none;
+                border-radius: 12px;
+                background: var(--gradient-primary);
+                color: white;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                white-space: nowrap;
+            }
+            
+            .copy-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-accent);
+            }
+            
+            .copy-btn.copied {
+                background: #22C55E;
+            }
+            
+            .stats-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 1rem;
+            }
+            
+            .stat-item {
+                text-align: center;
+                padding: 1rem;
+                background: var(--bg-muted);
+                border-radius: 12px;
+            }
+            
+            .stat-value {
+                font-size: 1.75rem;
+                font-weight: 700;
+                color: var(--accent);
+                margin-bottom: 0.25rem;
+            }
+            
+            .stat-label {
+                font-size: 0.85rem;
+                color: var(--text-secondary);
+            }
+            
+            .how-it-works {
+                margin-top: 2rem;
+            }
+            
+            .how-it-works h3 {
+                font-size: 1.1rem;
+                font-weight: 600;
+                color: var(--text-primary);
+                margin-bottom: 1rem;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            }
+            
+            .steps-list {
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .step-item {
+                display: flex;
+                gap: 1rem;
+                align-items: flex-start;
+            }
+            
+            .step-number {
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                background: var(--accent-bg);
+                color: var(--accent);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: 600;
+                flex-shrink: 0;
+            }
+            
+            .step-content h4 {
+                font-size: 0.95rem;
+                font-weight: 600;
+                color: var(--text-primary);
+                margin-bottom: 0.25rem;
+            }
+            
+            .step-content p {
+                font-size: 0.85rem;
+                color: var(--text-secondary);
+            }
+            
+            .share-buttons {
+                display: flex;
+                gap: 0.75rem;
+                margin-top: 1rem;
+                flex-wrap: wrap;
+            }
+            
+            .share-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.625rem 1rem;
+                border-radius: 10px;
+                font-size: 0.9rem;
+                font-weight: 500;
+                text-decoration: none;
+                transition: all 0.2s;
+                border: 1px solid var(--border-default);
+                background: var(--bg-card);
+                color: var(--text-primary);
+                cursor: pointer;
+            }
+            
+            .share-btn:hover {
+                background: var(--bg-hover);
+                transform: translateY(-1px);
+            }
+            
+            .share-btn.wechat {
+                color: #07C160;
+            }
+            
+            .share-btn.weibo {
+                color: #E6162D;
+            }
+            
+            .share-btn.twitter {
+                color: #1DA1F2;
+            }
+            
+            .login-prompt {
+                text-align: center;
+                padding: 4rem 2rem;
+                background: var(--bg-card);
+                border-radius: 20px;
+                border: 1px solid var(--border-default);
+            }
+            
+            .login-prompt h2 {
+                font-size: 1.5rem;
+                color: var(--text-primary);
+                margin-bottom: 1rem;
+            }
+            
+            .login-prompt p {
+                color: var(--text-secondary);
+                margin-bottom: 2rem;
+            }
+            
+            .login-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                padding: 0.75rem 2rem;
+                border-radius: 12px;
+                font-size: 1rem;
+                font-weight: 600;
+                text-decoration: none;
+                background: var(--gradient-primary);
+                color: white;
+                transition: all 0.2s;
+            }
+            
+            .login-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-accent);
+            }
+            
+            @media (max-width: 640px) {
+                .stats-grid {
+                    grid-template-columns: 1fr;
+                }
+                
+                .invite-link-box {
+                    flex-direction: column;
+                }
+                
+                .copy-btn {
+                    justify-content: center;
+                    padding: 0.875rem;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="cosmic-bg" aria-hidden="true"></div>
+        <div class="grid-overlay" aria-hidden="true"></div>
+
+        <div class="invite-container">
+            <a href="/wallet" class="back-link">
+                <i class="ph ph-arrow-left"></i> 返回钱包
+            </a>
+            
+            <div class="invite-header">
+                <h1><i class="ph ph-users-three"></i> 邀请好友</h1>
+                <p>邀请好友注册，双方都能获得积分奖励</p>
+            </div>
+
+            <!-- 未登录状态 -->
+            <div class="login-prompt" id="loginPrompt" style="display: none;">
+                <h2>请先登录</h2>
+                <p>登录后即可获取您的专属邀请链接</p>
+                <a href="/" class="login-btn">
+                    <i class="ph ph-sign-in"></i> 去登录
+                </a>
+            </div>
+
+            <!-- 已登录状态 -->
+            <div id="inviteContent" style="display: none;">
+                <!-- 奖励提示 -->
+                <div class="invite-hero">
+                    <div class="invite-hero-content">
+                        <h2>🎉 邀请好友，共享福利</h2>
+                        <p>好友完成首次生成后，你将获得</p>
+                        <div class="reward-badge">
+                            <i class="ph ph-coins"></i>
+                            <span>+100 积分</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 邀请链接 -->
+                <div class="invite-card">
+                    <div class="invite-card-title">
+                        <i class="ph ph-link"></i> 我的邀请链接
+                    </div>
+                    <div class="invite-link-box">
+                        <input type="text" class="invite-link-input" id="inviteLink" readonly>
+                        <button class="copy-btn" id="copyBtn" onclick="copyInviteLink()">
+                            <i class="ph ph-copy"></i> 复制
+                        </button>
+                    </div>
+                    
+                    <div class="share-buttons">
+                        <button class="share-btn wechat" onclick="shareToWechat()">
+                            <i class="ph ph-wechat-logo"></i> 微信
+                        </button>
+                        <button class="share-btn weibo" onclick="shareToWeibo()">
+                            <i class="ph ph-globe"></i> 微博
+                        </button>
+                        <button class="share-btn twitter" onclick="shareToTwitter()">
+                            <i class="ph ph-twitter-logo"></i> Twitter
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 邀请统计 -->
+                <div class="invite-card">
+                    <div class="invite-card-title">
+                        <i class="ph ph-chart-bar"></i> 邀请统计
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value" id="totalInvited">0</div>
+                            <div class="stat-label">已邀请人数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="totalRewarded">0</div>
+                            <div class="stat-label">已获奖励次数</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value" id="totalPoints">0</div>
+                            <div class="stat-label">累计获得积分</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 活动规则 -->
+                <div class="how-it-works">
+                    <h3><i class="ph ph-question"></i> 活动规则</h3>
+                    <div class="steps-list">
+                        <div class="step-item">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>分享邀请链接</h4>
+                                <p>复制您的专属邀请链接，分享给好友</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>好友注册账号</h4>
+                                <p>好友通过链接注册，自动绑定邀请关系</p>
+                            </div>
+                        </div>
+                        <div class="step-item">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>好友完成首次生成</h4>
+                                <p>好友成功生成第一张图片后，您将获得 100 积分奖励</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const API_BASE = '';
+            const SITE_URL = window.location.origin;
+            
+            function getToken() {
+                return localStorage.getItem('gemini_token');
+            }
+            
+            function checkAuth() {
+                const token = getToken();
+                if (!token) {
+                    document.getElementById('loginPrompt').style.display = 'block';
+                    document.getElementById('inviteContent').style.display = 'none';
+                    return false;
+                }
+                document.getElementById('loginPrompt').style.display = 'none';
+                document.getElementById('inviteContent').style.display = 'block';
+                return true;
+            }
+            
+            async function loadReferralData() {
+                if (!checkAuth()) return;
+                
+                try {
+                    const response = await fetch(`${API_BASE}/api/referral/me`, {
+                        headers: {
+                            'Authorization': `Bearer ${getToken()}`
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // 设置邀请链接
+                        const inviteLink = `${SITE_URL}/?ref=${data.code}`;
+                        document.getElementById('inviteLink').value = inviteLink;
+                        
+                        // 更新统计
+                        document.getElementById('totalInvited').textContent = data.totalInvited || 0;
+                        document.getElementById('totalRewarded').textContent = data.totalRewarded || 0;
+                        document.getElementById('totalPoints').textContent = data.totalPoints || 0;
+                    }
+                } catch (error) {
+                    console.error('加载邀请数据失败:', error);
+                }
+            }
+            
+            function copyInviteLink() {
+                const input = document.getElementById('inviteLink');
+                const btn = document.getElementById('copyBtn');
+                
+                navigator.clipboard.writeText(input.value).then(() => {
+                    btn.innerHTML = '<i class="ph ph-check"></i> 已复制';
+                    btn.classList.add('copied');
+                    
+                    setTimeout(() => {
+                        btn.innerHTML = '<i class="ph ph-copy"></i> 复制';
+                        btn.classList.remove('copied');
+                    }, 2000);
+                }).catch(() => {
+                    // 降级方案
+                    input.select();
+                    document.execCommand('copy');
+                    btn.innerHTML = '<i class="ph ph-check"></i> 已复制';
+                    btn.classList.add('copied');
+                    
+                    setTimeout(() => {
+                        btn.innerHTML = '<i class="ph ph-copy"></i> 复制';
+                        btn.classList.remove('copied');
+                    }, 2000);
+                });
+            }
+            
+            function shareToWechat() {
+                alert('请复制链接后在微信中分享给好友');
+                copyInviteLink();
+            }
+            
+            function shareToWeibo() {
+                const link = document.getElementById('inviteLink').value;
+                const text = '我在用 Dream Photo Studio 生成 AI 图片，效果超棒！快来试试吧~';
+                window.open(`https://service.weibo.com/share/share.php?url=${encodeURIComponent(link)}&title=${encodeURIComponent(text)}`, '_blank');
+            }
+            
+            function shareToTwitter() {
+                const link = document.getElementById('inviteLink').value;
+                const text = 'Check out Dream Photo Studio - Amazing AI image generator!';
+                window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`, '_blank');
+            }
+            
+            // 页面加载
+            document.addEventListener('DOMContentLoaded', loadReferralData);
+        </script>
+    </body>
+</html>
