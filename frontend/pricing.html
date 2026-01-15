@@ -64,8 +64,9 @@
                 grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
                 gap: 1.5rem;
                 margin-bottom: 3rem;
+                align-items: flex-end;
             }
-            
+
             .pricing-card {
                 background: var(--bg-card);
                 border-radius: 20px;
@@ -73,6 +74,9 @@
                 border: 2px solid var(--border-default);
                 position: relative;
                 transition: all 0.3s;
+                display: flex;
+                flex-direction: column;
+                height: 100%;
             }
             
             .pricing-card:hover {
@@ -161,8 +165,9 @@
                 list-style: none;
                 padding: 0;
                 margin: 0 0 1.5rem 0;
+                flex: 1;
             }
-            
+
             .plan-features li {
                 display: flex;
                 align-items: center;
@@ -195,6 +200,7 @@
                 align-items: center;
                 justify-content: center;
                 gap: 0.5rem;
+                margin-top: auto;
             }
             
             .plan-btn.primary {
@@ -591,16 +597,43 @@
                 document.getElementById('proPrice').innerHTML = '<span class="currency">¥</span>599';
             }
             
-            function subscribe(planId) {
+            async function subscribe(planId) {
                 const token = getToken();
                 if (!token) {
                     alert('请先登录后再订阅');
                     location.href = '/';
                     return;
                 }
-                
-                // TODO: 跳转到支付页面或弹出支付弹窗
-                alert(`即将跳转到 ${planId === 'pro' ? 'Pro' : 'Standard'} 套餐支付页面...\n\n（支付功能开发中，敬请期待）`);
+
+                const promoCode = appliedPromo ? appliedPromo.code : null;
+
+                try {
+                    // 创建订单
+                    const response = await fetch(`${API_BASE}/api/orders/create`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            product_type: 'subscription',
+                            product_id: planId,
+                            promo_code: promoCode
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // 跳转到收银台
+                        window.location.href = `/checkout?order_no=${data.order_no}`;
+                    } else {
+                        alert(data.error || '创建订单失败');
+                    }
+                } catch (error) {
+                    console.error('Create order error:', error);
+                    alert('网络错误，请重试');
+                }
             }
         </script>
     </body>

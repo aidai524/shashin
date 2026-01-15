@@ -921,22 +921,49 @@ async function generateImage() {
     const preCheckResult = await checkPointsBeforeGeneration(selectedQuantity);
     if (!preCheckResult.success) {
       if (preCheckResult.error === 'insufficient_points') {
-        showToast(`积分不足：需要 ${preCheckResult.points_needed} 积分，当前余额 ${preCheckResult.points_balance} 积分`, "warning");
-        // 可选：跳转到充值页面
-        if (confirm('积分不足，是否前往充值？')) {
-          window.location.href = '/wallet';
-        }
+        hideLoading();
+        btn.disabled = false;
+        btnText.style.display = "inline";
+        btnLoading.style.display = "none";
+
+        // 显示友好的积分不足提示
+        const pointsNeeded = preCheckResult.points_needed;
+        const pointsBalance = preCheckResult.points_balance;
+        const shortage = pointsNeeded - pointsBalance;
+
+        showToast(`积分不足！还需要 ${shortage} 积分（当前 ${pointsBalance}，需要 ${pointsNeeded}）`, "error");
+
+        // 延迟显示充值引导对话框
+        setTimeout(() => {
+          if (confirm(`您的积分不足生成 ${selectedQuantity} 张图片。\n\n当前积分：${pointsBalance}\n需要积分：${pointsNeeded}\n缺少积分：${shortage}\n\n是否前往充值？`)) {
+            window.location.href = '/wallet';
+          }
+        }, 500);
+        return;
       } else if (preCheckResult.error === 'points_disabled') {
         // 积分系统未启用，继续生成（兼容旧版本）
         console.log('Points system not enabled, proceeding without points check');
+      } else if (preCheckResult.error === 'not_logged_in') {
+        hideLoading();
+        btn.disabled = false;
+        btnText.style.display = "inline";
+        btnLoading.style.display = "none";
+        showToast('请先登录', "warning");
+        showAuthModal('login');
+        return;
       } else {
-        showToast(preCheckResult.message || '积分检查失败', "error");
-      }
-      if (preCheckResult.error !== 'points_disabled') {
+        // 其他错误，不允许继续生成
+        hideLoading();
+        btn.disabled = false;
+        btnText.style.display = "inline";
+        btnLoading.style.display = "none";
+        showToast(`积分检查失败: ${preCheckResult.message || '未知错误'}`, "error");
+        console.error('[Points] Pre-check failed with error:', preCheckResult);
         return;
       }
     } else {
       jobId = preCheckResult.job_id;
+      console.log('[Points] Job ID obtained:', jobId);
     }
 
     const images = await generateWithGemini(
@@ -953,13 +980,23 @@ async function generateImage() {
       displayResults(images);
       saveToHistory(selectedTemplate, selectedModel, images, genReferenceImages);
       showToast(t('toast.generate.success', { count: images.length }), "info");
-      
+
       // 确认扣除积分
       if (jobId) {
+        console.log('[Points] Generation successful, confirming points deduction...', { jobId, imagesGenerated: images.length });
         const confirmResult = await confirmGenerationPoints(jobId, true, images.length);
+
         if (confirmResult.success) {
+          console.log('[Points] Points deducted successfully:', confirmResult);
           updatePointsDisplay(confirmResult.new_balance);
+          // 显示积分扣除提示
+          showToast(`已扣除 ${confirmResult.points_deducted} 积分，剩余 ${confirmResult.new_balance} 积分`, "success");
+        } else {
+          console.error('[Points] Failed to deduct points:', confirmResult);
+          showToast('积分扣除失败，请联系客服', "warning");
         }
+      } else {
+        console.warn('[Points] No job ID, skipping points deduction');
       }
     }
   } catch (error) {
@@ -981,11 +1018,13 @@ async function generateImage() {
 
 // 生成前检查积分
 async function checkPointsBeforeGeneration(imageCount) {
-  const token = localStorage.getItem('gemini_token');
+  const token = localStorage.getItem('auth_token');
   if (!token) return { success: false, error: 'not_logged_in' };
 
   try {
-    const response = await fetch('/api/generation/pre-check', {
+    console.log('[Points] Checking points before generation...', { imageCount, endpoint: DEFAULT_API_ENDPOINT });
+
+    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/generation/pre-check`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -994,16 +1033,33 @@ async function checkPointsBeforeGeneration(imageCount) {
       body: JSON.stringify({ image_count: imageCount })
     });
 
+    console.log('[Points] Response status:', response.status);
+
     const data = await response.json();
-    
+    console.log('[Points] Response data:', data);
+
     // 如果是503说明积分系统未启用
     if (response.status === 503) {
+      console.warn('[Points] Points system disabled (503)');
       return { success: false, error: 'points_disabled' };
     }
-    
+
+    // 如果返回401未登录错误
+    if (response.status === 401) {
+      console.warn('[Points] Not logged in (401)');
+      return { success: false, error: 'not_logged_in', message: data.error || '请先登录' };
+    }
+
+    // 如果HTTP状态码不是200，但返回的数据格式不对
+    if (!response.ok && !data.success) {
+      console.error('[Points] API error:', response.status, data);
+      return { success: false, error: 'api_error', message: data.error || '积分检查失败' };
+    }
+
+    console.log('[Points] Check successful, job_id:', data.job_id);
     return data;
   } catch (error) {
-    console.error('Points pre-check failed:', error);
+    console.error('[Points] Pre-check failed:', error);
     // 网络错误时允许继续生成（降级处理）
     return { success: false, error: 'points_disabled' };
   }
@@ -1011,11 +1067,16 @@ async function checkPointsBeforeGeneration(imageCount) {
 
 // 确认生成完成，扣除或退还积分
 async function confirmGenerationPoints(jobId, success, imagesGenerated) {
-  const token = localStorage.getItem('gemini_token');
-  if (!token || !jobId) return { success: false };
+  const token = localStorage.getItem('auth_token');
+  if (!token || !jobId) {
+    console.error('[Points] Cannot confirm - missing token or job_id', { token: !!token, jobId });
+    return { success: false };
+  }
 
   try {
-    const response = await fetch('/api/generation/confirm', {
+    console.log('[Points] Confirming generation...', { jobId, success, imagesGenerated });
+
+    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/generation/confirm`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1028,9 +1089,12 @@ async function confirmGenerationPoints(jobId, success, imagesGenerated) {
       })
     });
 
-    return await response.json();
+    const data = await response.json();
+    console.log('[Points] Confirm response:', response.status, data);
+
+    return data;
   } catch (error) {
-    console.error('Points confirm failed:', error);
+    console.error('[Points] Confirm failed:', error);
     return { success: false };
   }
 }
@@ -2233,11 +2297,11 @@ function formatTime(isoString) {
   const now = new Date();
   const diff = now - date;
 
-  if (diff < 60000) return "刚刚";
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-  if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`;
-  return `${date.getMonth() + 1}/${date.getDate()}`;
+    if (diff < 60000) return "刚刚";
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
+    if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`;
+    return `${date.getMonth() + 1}/${date.getDate()}`;
 }
 
 function formatTimeDetailed(isoString) {
@@ -2448,7 +2512,7 @@ async function loadUserPointsBalance() {
   if (!token) return;
 
   try {
-    const response = await fetch('/api/generation/status', {
+    const response = await fetch(`${DEFAULT_API_ENDPOINT}/api/generation/status`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     

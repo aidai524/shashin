@@ -203,9 +203,19 @@ function clearUserCache() {
   cacheManager.remove(CACHE_KEYS.USER_INFO);
 }
 
-// 角色数据缓存
+// 角色数据缓存（只缓存元数据，不缓存图片以避免超出 localStorage 配额）
 function cacheCharacters(characters, limits) {
-  const success1 = cacheManager.set(CACHE_KEYS.CHARACTERS, characters, CACHE_DURATION.CHARACTERS);
+  // 移除图片数据以减少缓存大小
+  const charactersWithoutPhotos = characters.map(char => ({
+    ...char,
+    photos: char.photos ? char.photos.map(p => ({
+      id: p.id,
+      // 不缓存 base64 图片数据，只保留 URL
+      url: p.url
+    })) : []
+  }));
+  
+  const success1 = cacheManager.set(CACHE_KEYS.CHARACTERS, charactersWithoutPhotos, CACHE_DURATION.CHARACTERS);
   const success2 = cacheManager.set(CACHE_KEYS.CHARACTER_LIMITS, limits, CACHE_DURATION.CHARACTERS);
   return success1 && success2;
 }

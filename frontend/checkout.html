@@ -1,0 +1,539 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#FAFAFA" />
+    <meta name="description" content="收银台 - Dream Photo Studio" />
+    <title>收银台 - Dream Photo Studio</title>
+    <script>
+        (function() {
+            var theme = localStorage.getItem('gemini_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.content = theme === 'dark' ? '#0F172A' : '#FAFAFA';
+        })();
+    </script>
+    <link rel="stylesheet" href="style.css?v=20260115" />
+    <script src="https://unpkg.com/@phosphor-icons/web@2.1.1"></script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💳</text></svg>" />
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <style>
+        .checkout-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        .checkout-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .checkout-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .checkout-content {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .checkout-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .order-section, .payment-section {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 2rem;
+            border: 1px solid var(--border-default);
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .order-summary {
+            margin-bottom: 1.5rem;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-default);
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+
+        .summary-label {
+            color: var(--text-secondary);
+        }
+
+        .summary-value {
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .summary-total {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 2px solid var(--border-default);
+        }
+
+        .summary-total .summary-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .payment-methods {
+            margin-bottom: 1.5rem;
+        }
+
+        .payment-method {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            border: 2px solid var(--border-default);
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .payment-method:hover {
+            border-color: var(--accent);
+            background: var(--bg-hover);
+        }
+
+        .payment-method.selected {
+            border-color: var(--accent);
+            background: var(--accent-bg);
+        }
+
+        .payment-icon {
+            font-size: 2rem;
+        }
+
+        .payment-info {
+            flex: 1;
+        }
+
+        .payment-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .payment-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .pay-btn {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 12px;
+            background: var(--gradient-primary);
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .pay-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-accent);
+        }
+
+        .pay-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .qrcode-container {
+            text-align: center;
+            margin-top: 1.5rem;
+            display: none;
+        }
+
+        .qrcode-container.show {
+            display: block;
+        }
+
+        #qrcode {
+            display: inline-block;
+            padding: 1rem;
+            background: white;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+        }
+
+        #qrcode canvas {
+            display: block;
+        }
+
+        .qrcode-tips {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #DC2626;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+        }
+
+        .success-message {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #16A34A;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="cosmic-bg" aria-hidden="true"></div>
+    <div class="grid-overlay" aria-hidden="true"></div>
+
+    <div class="checkout-container">
+        <div class="checkout-header">
+            <h1>💳 收银台</h1>
+            <p>完成支付，开启您的 AI 创作之旅</p>
+        </div>
+
+        <div id="errorContainer"></div>
+        <div id="successContainer"></div>
+
+        <div class="checkout-content">
+            <!-- 订单摘要 -->
+            <div class="order-section">
+                <div class="section-title">
+                    <i class="ph ph-receipt"></i> 订单摘要
+                </div>
+                <div class="order-summary" id="orderSummary">
+                    <div class="summary-item">
+                        <span class="summary-label">套餐</span>
+                        <span class="summary-value" id="productName">加载中...</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">原价</span>
+                        <span class="summary-value" id="originalPrice">-</span>
+                    </div>
+                    <div class="summary-item" id="discountItem" style="display: none;">
+                        <span class="summary-label">优惠</span>
+                        <span class="summary-value" style="color: #22C55E;" id="discountAmount">-</span>
+                    </div>
+                    <div class="summary-total">
+                        <div class="summary-item">
+                            <span class="summary-label">应付金额</span>
+                            <span class="summary-value" id="finalPrice">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 支付方式 -->
+            <div class="payment-section">
+                <div class="section-title">
+                    <i class="ph ph-credit-card"></i> 选择支付方式
+                </div>
+
+                <div class="payment-methods">
+                    <div class="payment-method selected" onclick="selectPayment('wechat')">
+                        <div class="payment-icon" style="color: #07C160;">
+                            <i class="ph ph-wechat-logo"></i>
+                        </div>
+                        <div class="payment-info">
+                            <div class="payment-name">微信支付</div>
+                            <div class="payment-desc">扫码支付，安全便捷</div>
+                        </div>
+                        <i class="ph ph-check-circle" style="color: var(--accent); font-size: 1.5rem;"></i>
+                    </div>
+                </div>
+
+                <button class="pay-btn" id="payBtn" onclick="startPayment()" disabled>
+                    <i class="ph ph-qr-code"></i> 生成支付二维码
+                </button>
+
+                <!-- 二维码显示区域 -->
+                <div class="qrcode-container" id="qrcodeContainer">
+                    <div id="qrcode"></div>
+                    <div class="qrcode-tips">
+                        <p>请使用微信扫描二维码完成支付</p>
+                        <p style="font-size: 0.85rem; margin-top: 0.5rem;">支付完成后页面将自动跳转</p>
+                    </div>
+                    <div style="margin-top: 1rem;">
+                        <button class="pay-btn" onclick="checkPaymentStatus()" style="background: var(--bg-muted); color: var(--text-primary);">
+                            <i class="ph ph-arrows-clockwise"></i> 检查支付状态
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://iapi.sendto.you';
+        let orderNo = null;
+        let checkInterval = null;
+
+        // 获取 URL 参数
+        function getUrlParam(name) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(name);
+        }
+
+        // 获取 token
+        function getToken() {
+            return localStorage.getItem('auth_token') || localStorage.getItem('gemini_token');
+        }
+
+        // 加载订单信息
+        async function loadOrder() {
+            orderNo = getUrlParam('order_no');
+
+            if (!orderNo) {
+                showError('缺少订单号');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/orders/${orderNo}`, {
+                    headers: {
+                        'Authorization': `Bearer ${getToken()}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const order = data.order;
+                    displayOrderInfo(order);
+
+                    // 如果订单已支付，显示成功
+                    if (order.status === 'paid') {
+                        showPaymentSuccess();
+                    }
+                } else {
+                    showError(data.error || '加载订单失败');
+                }
+            } catch (error) {
+                console.error('Load order error:', error);
+                showError('网络错误，请重试');
+            }
+        }
+
+        // 显示订单信息
+        function displayOrderInfo(order) {
+            const planNames = {
+                'standard': 'Standard 年度订阅',
+                'pro': 'Pro 年度订阅'
+            };
+
+            document.getElementById('productName').textContent = planNames[order.product_id] || order.product_id;
+
+            const originalAmount = order.original_amount / 100;
+            const finalAmount = order.final_amount / 100;
+
+            document.getElementById('originalPrice').textContent = `¥${originalAmount.toFixed(2)}`;
+
+            if (order.discount_amount > 0) {
+                const discount = order.discount_amount / 100;
+                document.getElementById('discountItem').style.display = 'flex';
+                document.getElementById('discountAmount').textContent = `-¥${discount.toFixed(2)}`;
+            }
+
+            document.getElementById('finalPrice').textContent = `¥${finalAmount.toFixed(2)}`;
+
+            // 启用支付按钮
+            if (order.status === 'pending') {
+                document.getElementById('payBtn').disabled = false;
+            }
+        }
+
+        // 开始支付
+        async function startPayment() {
+            const btn = document.getElementById('payBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="loading-spinner"></div> 正在创建支付...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/payment/wechat/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getToken()}`
+                    },
+                    body: JSON.stringify({ order_no: orderNo })
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.code_url) {
+                    // 显示二维码
+                    displayQRCode(data.code_url);
+
+                    // 开始轮询支付状态
+                    startPolling();
+                } else {
+                    showError(data.error || '创建支付失败');
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="ph ph-qr-code"></i> 生成支付二维码';
+                }
+            } catch (error) {
+                console.error('Create payment error:', error);
+                showError('网络错误，请重试');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="ph ph-qr-code"></i> 生成支付二维码';
+            }
+        }
+
+        // 显示二维码
+        function displayQRCode(codeUrl) {
+            const qrcodeContainer = document.getElementById('qrcodeContainer');
+            const qrcodeDiv = document.getElementById('qrcode');
+
+            // 清除旧二维码
+            qrcodeDiv.innerHTML = '';
+
+            // 生成新二维码
+            new QRCode(qrcodeDiv, {
+                text: codeUrl,
+                width: 200,
+                height: 200,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            qrcodeContainer.classList.add('show');
+        }
+
+        // 开始轮询支付状态
+        function startPolling() {
+            // 每3秒查询一次
+            checkInterval = setInterval(checkPaymentStatus, 3000);
+        }
+
+        // 停止轮询
+        function stopPolling() {
+            if (checkInterval) {
+                clearInterval(checkInterval);
+                checkInterval = null;
+            }
+        }
+
+        // 检查支付状态
+        async function checkPaymentStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/payment/wechat/query`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${getToken()}`
+                    },
+                    body: JSON.stringify({ order_no: orderNo })
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.status === 'paid') {
+                    stopPolling();
+                    showPaymentSuccess();
+                }
+            } catch (error) {
+                console.error('Check payment status error:', error);
+            }
+        }
+
+        // 显示支付成功
+        function showPaymentSuccess() {
+            stopPolling();
+
+            const successContainer = document.getElementById('successContainer');
+            successContainer.innerHTML = `
+                <div class="success-message">
+                    <i class="ph ph-check-circle" style="font-size: 1.5rem;"></i>
+                    <div>
+                        <div style="font-weight: 600; margin-bottom: 0.5rem;">支付成功！</div>
+                        <div style="font-size: 0.9rem;">正在跳转到钱包页面...</div>
+                    </div>
+                </div>
+            `;
+
+            // 3秒后跳转到钱包
+            setTimeout(() => {
+                window.location.href = '/wallet';
+            }, 3000);
+        }
+
+        // 显示错误
+        function showError(message) {
+            const errorContainer = document.getElementById('errorContainer');
+            errorContainer.innerHTML = `
+                <div class="error-message">
+                    <i class="ph ph-x-circle" style="font-size: 1.5rem;"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+        }
+
+        // 选择支付方式
+        function selectPayment(method) {
+            // 目前只有微信支付
+            console.log('Selected payment method:', method);
+        }
+
+        // 页面加载时执行
+        window.addEventListener('DOMContentLoaded', () => {
+            loadOrder();
+
+            // 页面卸载时停止轮询
+            window.addEventListener('beforeunload', () => {
+                stopPolling();
+            });
+        });
+    </script>
+</body>
+</html>

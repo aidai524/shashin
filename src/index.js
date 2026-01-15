@@ -3,6 +3,8 @@
  * Cloudflare Workers
  */
 
+import { createWechatPayClient } from './wechat-pay/client.js';
+
 const GEMINI_API_BASE = "https://generativelanguage.googleapis.com";
 
 // CORS 头
@@ -164,7 +166,7 @@ function errorResponse(message, status = 400) {
 function isAdmin(request, env) {
   const adminKey = request.headers.get("x-admin-key");
   return adminKey && adminKey === env.ADMIN_KEY;
-    }
+}
 
 // =========================================
 // 密码加密（使用 Web Crypto API）
@@ -520,6 +522,261 @@ const SUBSCRIPTION_PLANS = {
 };
 
 // =========================================
+// 微信支付 API 处理
+// =========================================
+async function handleWechatPayAPI(request, env, pathname, user) {
+  const method = request.method;
+  const db = env.DB;
+
+  if (!db) {
+    return jsonResponse({ success: false, error: '支付系统未启用' }, 503);
+  }
+
+  // POST /api/payment/wechat/create - 创建微信支付订单
+  if (pathname === '/api/payment/wechat/create' && method === 'POST') {
+    if (!user) return errorResponse('未登录', 401);
+
+    try {
+      const body = await request.json();
+      const { order_no } = body;
+
+      if (!order_no) {
+        return jsonResponse({ success: false, error: '缺少订单号' }, 400);
+      }
+
+      // 查询订单
+      const order = await db.prepare('SELECT * FROM orders WHERE order_no = ?').bind(order_no).first();
+
+      if (!order) {
+        return jsonResponse({ success: false, error: '订单不存在' }, 404);
+      }
+
+      if (order.user_id !== user.id) {
+        return jsonResponse({ success: false, error: '无权操作此订单' }, 403);
+      }
+
+      if (order.status !== 'pending') {
+        return jsonResponse({ success: false, error: `订单状态不正确: ${order.status}` }, 400);
+      }
+
+      // 创建微信支付客户端
+      const wechatPay = createWechatPayClient(env);
+
+      // 调用微信支付 Native 下单 API
+      const payResult = await wechatPay.nativePay({
+        description: `Dream Photo Studio - ${order.product_type}`,
+        outTradeNo: order_no,
+        total: Math.round(order.final_amount), // 转换为分
+        clientIp: request.headers.get('CF-Connecting-IP') || '127.0.0.1'
+      });
+
+      if (payResult.code_url) {
+        // 更新订单，保存微信支付相关数据
+        await db.prepare(`
+          UPDATE orders
+          SET wechat_code_url = ?, wechat_pay_params = ?, updated_at = ?
+          WHERE order_no = ?
+        `).bind(
+          payResult.code_url,
+          JSON.stringify(payResult),
+          new Date().toISOString(),
+          order_no
+        ).run();
+
+        return jsonResponse({
+          success: true,
+          code_url: payResult.code_url,
+          order_no: order_no,
+          amount: order.final_amount
+        });
+      } else {
+        console.error('Wechat Pay Error:', payResult);
+        return jsonResponse({
+          success: false,
+          error: '创建支付订单失败',
+          details: payResult
+        }, 500);
+      }
+    } catch (e) {
+      console.error('Create Wechat Pay Error:', e);
+      return errorResponse('创建支付订单失败: ' + e.message, 500);
+    }
+  }
+
+  // POST /api/payment/wechat/notify - 微信支付回调
+  if (pathname === '/api/payment/wechat/notify' && method === 'POST') {
+    try {
+      const body = await request.text();
+      const data = JSON.parse(body);
+
+      // 创建微信支付客户端
+      const wechatPay = createWechatPayClient(env);
+
+      // 验证签名
+      const timestamp = request.headers.get('Wechatpay-Timestamp');
+      const nonce = request.headers.get('Wechatpay-Nonce');
+      const signature = request.headers.get('Wechatpay-Signature');
+      const serial = request.headers.get('Wechatpay-Serial');
+
+      if (!wechatPay.verifySignature(timestamp, nonce, body, signature, serial)) {
+        return jsonResponse({
+          code: 'FAIL',
+          message: '签名验证失败'
+        }, 401);
+      }
+
+      // 解密回调数据
+      const resource = data.resource;
+      const decrypted = await wechatPay.decryptCallback(
+        resource.ciphertext,
+        resource.associated_data,
+        resource.nonce
+      );
+
+      const outTradeNo = decrypted.out_trade_no;
+      const transactionId = decrypted.transaction_id;
+      const tradeState = decrypted.trade_state;
+
+      // 查询订单
+      const order = await db.prepare('SELECT * FROM orders WHERE order_no = ?').bind(outTradeNo).first();
+
+      if (!order) {
+        console.error('Order not found:', outTradeNo);
+        return jsonResponse({ code: 'FAIL', message: '订单不存在' }, 404);
+      }
+
+      // 更新订单状态
+      if (tradeState === 'SUCCESS') {
+        await db.prepare('BEGIN TRANSACTION').run();
+
+        try {
+          // 更新订单状态
+          await db.prepare(`
+            UPDATE orders
+            SET status = 'paid', paid_at = ?, provider_tx_id = ?, wechat_transaction_id = ?, updated_at = ?
+            WHERE order_no = ?
+          `).bind(
+            new Date().toISOString(),
+            transactionId,
+            transactionId,
+            new Date().toISOString(),
+            outTradeNo
+          ).run();
+
+          // 发放订阅权益
+          await grantSubscriptionBenefits(db, order);
+
+          await db.prepare('COMMIT').run();
+
+          return jsonResponse({ code: 'SUCCESS', message: '成功' });
+        } catch (error) {
+          await db.prepare('ROLLBACK').run();
+          throw error;
+        }
+      } else {
+        console.error('Payment failed:', tradeState);
+        return jsonResponse({
+          code: 'FAIL',
+          message: `支付失败: ${tradeState}`
+        }, 400);
+      }
+    } catch (e) {
+      console.error('Wechat Pay Notify Error:', e);
+      return jsonResponse({
+        code: 'FAIL',
+        message: '处理失败'
+      }, 500);
+    }
+  }
+
+  // POST /api/payment/wechat/query - 查询支付结果
+  if (pathname === '/api/payment/wechat/query' && method === 'POST') {
+    if (!user) return errorResponse('未登录', 401);
+
+    try {
+      const body = await request.json();
+      const { order_no } = body;
+
+      const order = await db.prepare('SELECT * FROM orders WHERE order_no = ? AND user_id = ?')
+        .bind(order_no, user.id)
+        .first();
+
+      if (!order) {
+        return jsonResponse({ success: false, error: '订单不存在' }, 404);
+      }
+
+      // 如果订单已支付，直接返回
+      if (order.status === 'paid') {
+        return jsonResponse({
+          success: true,
+          status: 'paid',
+          order: order
+        });
+      }
+
+      // 查询微信支付状态
+      const wechatPay = createWechatPayClient(env);
+      const result = await wechatPay.queryOrder(order_no);
+
+      if (result.trade_state === 'SUCCESS') {
+        // 更新订单状态
+        await db.prepare('BEGIN TRANSACTION').run();
+
+        try {
+          await db.prepare(`
+            UPDATE orders
+            SET status = 'paid', paid_at = ?, wechat_transaction_id = ?, updated_at = ?
+            WHERE order_no = ?
+          `).bind(
+            new Date().toISOString(),
+            result.transaction_id,
+            new Date().toISOString(),
+            order_no
+          ).run();
+
+          // 发放订阅权益
+          await grantSubscriptionBenefits(db, order);
+
+          await db.prepare('COMMIT').run();
+
+          return jsonResponse({
+            success: true,
+            status: 'paid',
+            order: { ...order, status: 'paid' }
+          });
+        } catch (error) {
+          await db.prepare('ROLLBACK').run();
+          throw error;
+        }
+      } else if (result.trade_state === 'NOTPAY') {
+        return jsonResponse({
+          success: true,
+          status: 'pending',
+          message: '等待支付'
+        });
+      } else if (result.trade_state === 'CLOSED') {
+        return jsonResponse({
+          success: true,
+          status: 'closed',
+          message: '订单已关闭'
+        });
+      } else {
+        return jsonResponse({
+          success: true,
+          status: result.trade_state,
+          message: result.trade_state_desc || '未知状态'
+        });
+      }
+    } catch (e) {
+      console.error('Query Wechat Pay Error:', e);
+      return errorResponse('查询支付状态失败: ' + e.message, 500);
+    }
+  }
+
+  return errorResponse('Not found', 404);
+}
+
+// =========================================
 // 积分系统 API 处理
 // =========================================
 async function handlePointsAPI(request, env, pathname, user) {
@@ -842,6 +1099,108 @@ async function handlePointsAPI(request, env, pathname, user) {
     });
   }
 
+  // POST /api/orders/create - 创建订单
+  if (pathname === '/api/orders/create' && method === 'POST') {
+    if (!user) return errorResponse('未登录', 401);
+
+    try {
+      const body = await request.json();
+      const { product_type, product_id, promo_code } = body;
+
+      // 验证产品
+      const plan = SUBSCRIPTION_PLANS[product_id];
+      if (!plan) {
+        return jsonResponse({ success: false, error: '产品不存在' }, 400);
+      }
+
+      let finalAmount = plan.price;
+      let originalAmount = plan.price;
+      let discountAmount = 0;
+
+      // 应用优惠码
+      if (promo_code) {
+        const promo = await db.prepare('SELECT * FROM promo_codes WHERE code = ? AND status = "active"')
+          .bind(promo_code.toUpperCase()).first();
+
+        if (!promo) {
+          return jsonResponse({ success: false, error: '优惠码无效' }, 400);
+        }
+
+        // 检查优惠码是否过期
+        if (promo.expires_at && new Date(promo.expires_at) < new Date()) {
+          return jsonResponse({ success: false, error: '优惠码已过期' }, 400);
+        }
+
+        // 检查使用次数
+        if (promo.max_uses && promo.used_count >= promo.max_uses) {
+          return jsonResponse({ success: false, error: '优惠码已用完' }, 400);
+        }
+
+        // 计算折扣
+        if (promo.discount_type === 'percent') {
+          discountAmount = Math.floor(plan.price * promo.discount_value / 100);
+        } else if (promo.discount_type === 'fixed') {
+          discountAmount = promo.discount_value;
+        }
+
+        finalAmount = plan.price - discountAmount;
+        if (finalAmount < 0) finalAmount = 0;
+      }
+
+      // 生成订单号
+      const orderNo = `ORD${Date.now()}${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+      // 创建订单
+      await db.prepare(`
+        INSERT INTO orders (
+          order_no, user_id, product_type, product_id,
+          original_amount, discount_amount, final_amount,
+          promo_code, status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+      `).bind(
+        orderNo, user.id, product_type, product_id,
+        originalAmount, discountAmount, finalAmount,
+        promo_code ? promo_code.toUpperCase() : null,
+        new Date().toISOString(),
+        new Date().toISOString()
+      ).run();
+
+      return jsonResponse({
+        success: true,
+        order_no: orderNo,
+        amount: finalAmount
+      });
+    } catch (e) {
+      console.error('Create order error:', e);
+      return errorResponse('创建订单失败: ' + e.message, 500);
+    }
+  }
+
+  // GET /api/orders/:orderNo - 查询订单详情
+  if (pathname.startsWith('/api/orders/') && method === 'GET') {
+    if (!user) return errorResponse('未登录', 401);
+
+    const orderNo = pathname.split('/').pop();
+
+    try {
+      const order = await db.prepare('SELECT * FROM orders WHERE order_no = ? AND user_id = ?')
+        .bind(orderNo, user.id)
+        .first();
+
+      if (!order) {
+        return jsonResponse({ success: false, error: '订单不存在' }, 404);
+      }
+
+      return jsonResponse({
+        success: true,
+        order: order
+      });
+    } catch (e) {
+      console.error('Query order error:', e);
+      return errorResponse('查询订单失败: ' + e.message, 500);
+    }
+  }
+
   return errorResponse('Not found', 404);
 }
 
@@ -1063,7 +1422,92 @@ async function handleUsersAdminAPI(request, env, pathname) {
     return await updateUserPlan(request, env, planMatch[1]);
   }
   
+  // POST /api/admin/grant-points-all - 给所有用户充值积分
+  if (pathname === '/api/admin/grant-points-all' && method === 'POST') {
+    return await grantPointsToAllUsers(request, env);
+  }
+
   return errorResponse('Not found', 404);
+}
+
+// 给所有用户充值积分
+async function grantPointsToAllUsers(request, env) {
+  try {
+    const body = await request.json();
+    const amount = body.amount || 10000;
+    const reason = body.reason || 'admin_grant';
+    
+    const db = env.DB;
+    const results = {
+      total: 0,
+      success: 0,
+      failed: 0,
+      skipped: 0,
+      details: []
+    };
+    
+    // 获取所有用户
+    const list = await env.USERS_KV.list({ prefix: 'user:' });
+    results.total = list.keys.length;
+    
+    for (const key of list.keys) {
+      const userData = await env.USERS_KV.get(key.name);
+      if (!userData) continue;
+      
+      const user = JSON.parse(userData);
+      const userId = user.id;
+      const idempotencyKey = `admin_grant:${userId}:${Date.now()}`;
+      
+      try {
+        const grantResult = await grantPointsInternal(
+          db, 
+          userId, 
+          amount, 
+          reason, 
+          'admin', 
+          'batch_grant', 
+          idempotencyKey
+        );
+        
+        if (grantResult.success) {
+          results.success++;
+          results.details.push({
+            userId,
+            email: user.email,
+            status: 'success',
+            newBalance: grantResult.balance
+          });
+        } else {
+          results.failed++;
+          results.details.push({
+            userId,
+            email: user.email,
+            status: 'failed',
+            error: grantResult.message
+          });
+        }
+      } catch (e) {
+        results.failed++;
+        results.details.push({
+          userId,
+          email: user.email,
+          status: 'error',
+          error: e.message
+        });
+      }
+    }
+    
+    return jsonResponse({
+      success: true,
+      message: `充值完成: ${results.success} 成功, ${results.failed} 失败`,
+      amount,
+      results
+    });
+    
+  } catch (e) {
+    console.error('Grant points to all users error:', e);
+    return errorResponse('批量充值失败: ' + e.message, 500);
+  }
 }
 
 // 列出所有用户
@@ -1519,7 +1963,7 @@ async function handleGeminiProxy(request, env, url) {
 
     if (!apiKey) {
     return errorResponse("API key is required", 401);
-    }
+  }
 
     const targetUrl = new URL(url.pathname + url.search, GEMINI_API_BASE);
     targetUrl.searchParams.set("key", apiKey);
@@ -1596,7 +2040,7 @@ async function handleGeminiProxy(request, env, url) {
               message: `Google API 检测到请求来自不支持的地区。当前数据中心: ${colo} (${country})`,
               suggestion: "请尝试使用 VPN 或等待 Cloudflare 路由到其他数据中心",
             }, 403);
-            }
+          }
             return new Response(retryText, {
               status: response.status,
             headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -1895,7 +2339,7 @@ async function addCharacterPhoto(request, env, user, characterId) {
   } catch (e) {
     console.error('Add photo error:', e);
     return errorResponse('上传照片失败: ' + e.message, 500);
-    }
+  }
 }
 
 // 删除角色的照片
@@ -2177,16 +2621,23 @@ export default {
       return await handleAuthAPI(request, env, pathname);
     }
 
-    // 积分系统 API（钱包、邀请、优惠码、点卡、订单、套餐）
-    if (pathname.startsWith("/api/wallet") || 
-        pathname.startsWith("/api/referral") || 
-        pathname.startsWith("/api/promo") || 
-        pathname.startsWith("/api/prepaid") || 
+    // 积分系统 API（钱包、邀请、优惠码、点卡、订单、套餐、生成积分检查）
+    if (pathname.startsWith("/api/wallet") ||
+        pathname.startsWith("/api/referral") ||
+        pathname.startsWith("/api/promo") ||
+        pathname.startsWith("/api/prepaid") ||
         pathname.startsWith("/api/orders") ||
         pathname.startsWith("/api/plans") ||
+        pathname.startsWith("/api/generation") ||
         pathname === "/api/webhook/payment") {
       const user = await getUserFromRequest(request, env);
       return await handlePointsAPI(request, env, pathname, user);
+    }
+
+    // 微信支付 API
+    if (pathname.startsWith("/api/payment/wechat")) {
+      const user = await getUserFromRequest(request, env);
+      return await handleWechatPayAPI(request, env, pathname, user);
     }
 
     // 历史记录 API

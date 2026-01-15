@@ -140,14 +140,18 @@ CREATE INDEX IF NOT EXISTS idx_orders_provider_tx ON orders(provider_tx_id);
 
 -- 生成任务表（用于追踪首次生成，触发邀请奖励）
 CREATE TABLE IF NOT EXISTS generation_jobs (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
   job_type TEXT DEFAULT 'image',
   status TEXT DEFAULT 'pending',
   points_consumed INTEGER DEFAULT 0,
   created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  completed_at TEXT
+  completed_at TEXT,
+  points_cost INTEGER DEFAULT 0,
+  expires_at TEXT,
+  images_count INTEGER DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS idx_generation_jobs_user ON generation_jobs(user_id);
 CREATE INDEX IF NOT EXISTS idx_generation_jobs_status ON generation_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_generation_jobs_expires ON generation_jobs(expires_at);

@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>积分系统测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        #logs {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .log-item {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #ddd;
+            padding-left: 10px;
+        }
+        .log-success { border-left-color: #22c55e; background: #f0fdf4; }
+        .log-error { border-left-color: #ef4444; background: #fef2f2; }
+        .log-info { border-left-color: #3b82f6; background: #eff6ff; }
+        .log-warn { border-left-color: #f59e0b; background: #fffbeb; }
+    </style>
+</head>
+<body>
+    <h1>积分系统测试页面</h1>
+
+    <div class="section">
+        <h3>1. 检查 Token</h3>
+        <button onclick="checkToken()">检查当前 Token</button>
+        <div id="tokenStatus"></div>
+    </div>
+
+    <div class="section">
+        <h3>2. 测试积分预检查</h3>
+        <button onclick="testPreCheck()">调用 pre-check API</button>
+        <div id="preCheckResult"></div>
+    </div>
+
+    <div class="section">
+        <h3>3. 查看钱包余额</h3>
+        <button onclick="checkWallet()">获取钱包信息</button>
+        <div id="walletInfo"></div>
+    </div>
+
+    <div class="section">
+        <h3>4. 日志输出</h3>
+        <button onclick="clearLogs()">清空日志</button>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://iapi.sendto.you';
+
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const time = new Date().toLocaleTimeString();
+            const item = document.createElement('div');
+            item.className = `log-item log-${type}`;
+            item.textContent = `[${time}] ${message}`;
+            logsDiv.appendChild(item);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            console.log(`[${type.toUpperCase()}]`, message);
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+
+        function getToken() {
+            return localStorage.getItem('auth_token') || localStorage.getItem('gemini_token');
+        }
+
+        function checkToken() {
+            const token = getToken();
+            const statusDiv = document.getElementById('tokenStatus');
+
+            if (token) {
+                const preview = token.substring(0, 20) + '...';
+                statusDiv.innerHTML = `
+                    <p><strong>✅ Token 存在</strong></p>
+                    <p>预览: ${preview}</p>
+                    <p>长度: ${token.length} 字符</p>
+                `;
+                log(`找到 token: ${preview}`, 'success');
+            } else {
+                statusDiv.innerHTML = '<p><strong>❌ 没有 Token</strong></p><p>请先登录主页面</p>';
+                log('没有找到 token，请先登录', 'error');
+            }
+        }
+
+        async function testPreCheck() {
+            const token = getToken();
+            const resultDiv = document.getElementById('preCheckResult');
+
+            if (!token) {
+                resultDiv.innerHTML = '<p style="color: red;">请先登录</p>';
+                log('预检查失败：没有 token', 'error');
+                return;
+            }
+
+            log('开始测试 pre-check API...', 'info');
+            resultDiv.innerHTML = '<p>请求中...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/generation/pre-check`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ image_count: 1 })
+                });
+
+                log(`响应状态: ${response.status} ${response.statusText}`, 'info');
+
+                const data = await response.json();
+                log(`响应数据: ${JSON.stringify(data, null, 2)}`, 'info');
+
+                if (response.ok && data.success) {
+                    resultDiv.innerHTML = `
+                        <p style="color: green;"><strong>✅ 成功</strong></p>
+                        <p>Job ID: ${data.job_id}</p>
+                        <p>需要积分: ${data.points_cost}</p>
+                        <p>当前余额: ${data.points_balance}</p>
+                    `;
+                    log(`预检查成功！Job ID: ${data.job_id}`, 'success');
+                } else {
+                    resultDiv.innerHTML = `
+                        <p style="color: red;"><strong>❌ 失败</strong></p>
+                        <p>错误: ${data.error || data.message || '未知错误'}</p>
+                    `;
+                    log(`预检查失败: ${data.error || data.message}`, 'error');
+                }
+            } catch (error) {
+                log(`请求异常: ${error.message}`, 'error');
+                resultDiv.innerHTML = `<p style="color: red;">请求失败: ${error.message}</p>`;
+            }
+        }
+
+        async function checkWallet() {
+            const token = getToken();
+            const infoDiv = document.getElementById('walletInfo');
+
+            if (!token) {
+                infoDiv.innerHTML = '<p style="color: red;">请先登录</p>';
+                log('获取钱包失败：没有 token', 'error');
+                return;
+            }
+
+            log('开始获取钱包信息...', 'info');
+            infoDiv.innerHTML = '<p>请求中...</p>';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/wallet/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                log(`响应状态: ${response.status}`, 'info');
+
+                const data = await response.json();
+                log(`钱包数据: ${JSON.stringify(data, null, 2)}`, 'info');
+
+                if (response.ok && data.success) {
+                    infoDiv.innerHTML = `
+                        <p style="color: green;"><strong>✅ 钱包信息</strong></p>
+                        <p>积分余额: <strong>${data.wallet.points_balance}</strong></p>
+                        <p>创建时间: ${data.wallet.created_at}</p>
+                    `;
+                    log(`钱包余额: ${data.wallet.points_balance}`, 'success');
+                } else {
+                    infoDiv.innerHTML = `<p style="color: red;">获取失败: ${data.error || '未知错误'}</p>`;
+                    log(`获取钱包失败: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                log(`请求异常: ${error.message}`, 'error');
+                infoDiv.innerHTML = `<p style="color: red;">请求失败: ${error.message}</p>`;
+            }
+        }
+
+        // 页面加载时自动检查
+        window.addEventListener('DOMContentLoaded', () => {
+            log('测试页面已加载', 'info');
+            log(`API 地址: ${API_BASE}`, 'info');
+            checkToken();
+        });
+    </script>
+</body>
+</html>

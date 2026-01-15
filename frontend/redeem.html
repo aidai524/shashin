@@ -65,47 +65,7 @@
                 border: 1px solid var(--border-default);
                 box-shadow: var(--shadow-md);
             }
-            
-            .redeem-tabs {
-                display: flex;
-                gap: 0.5rem;
-                margin-bottom: 1.5rem;
-                background: var(--bg-muted);
-                padding: 0.25rem;
-                border-radius: 12px;
-            }
-            
-            .redeem-tab {
-                flex: 1;
-                padding: 0.75rem 1rem;
-                border: none;
-                background: transparent;
-                border-radius: 10px;
-                font-size: 0.95rem;
-                font-weight: 500;
-                color: var(--text-secondary);
-                cursor: pointer;
-                transition: all 0.2s;
-            }
-            
-            .redeem-tab.active {
-                background: var(--bg-card);
-                color: var(--accent);
-                box-shadow: var(--shadow-sm);
-            }
-            
-            .redeem-tab:hover:not(.active) {
-                color: var(--text-primary);
-            }
-            
-            .tab-content {
-                display: none;
-            }
-            
-            .tab-content.active {
-                display: block;
-            }
-            
+
             .input-group {
                 margin-bottom: 1.5rem;
             }
@@ -295,14 +255,14 @@
             </a>
             
             <div class="redeem-header">
-                <h1><i class="ph ph-gift"></i> 兑换中心</h1>
-                <p>输入点卡码或优惠码，获取积分或订阅</p>
+                <h1><i class="ph ph-gift"></i> 兑换点卡</h1>
+                <p>输入点卡码，获取积分或订阅</p>
             </div>
 
             <!-- 未登录状态 -->
             <div class="redeem-card login-prompt" id="loginPrompt" style="display: none;">
                 <h2>请先登录</h2>
-                <p>登录后即可兑换点卡和优惠码</p>
+                <p>登录后即可兑换点卡</p>
                 <a href="/" class="login-btn">
                     <i class="ph ph-sign-in"></i> 去登录
                 </a>
@@ -310,79 +270,39 @@
 
             <!-- 已登录状态 -->
             <div class="redeem-card" id="redeemContent" style="display: none;">
-                <!-- 标签切换 -->
-                <div class="redeem-tabs">
-                    <button class="redeem-tab active" data-tab="prepaid" onclick="switchTab('prepaid')">
-                        <i class="ph ph-credit-card"></i> 点卡兑换
-                    </button>
-                    <button class="redeem-tab" data-tab="promo" onclick="switchTab('promo')">
-                        <i class="ph ph-tag"></i> 优惠码
-                    </button>
+                <div class="input-group">
+                    <label class="input-label">点卡码</label>
+                    <input type="text"
+                           class="code-input"
+                           id="prepaidCode"
+                           placeholder="XXXX-XXXX-XXXX-XXXX"
+                           maxlength="19"
+                           autocomplete="off"
+                           spellcheck="false">
                 </div>
+                <button class="redeem-btn" id="redeemPrepaidBtn" onclick="redeemPrepaid()">
+                    <i class="ph ph-check-circle"></i> 立即兑换
+                </button>
+                <div class="result-message" id="prepaidResult"></div>
 
-                <!-- 点卡兑换 -->
-                <div class="tab-content active" id="prepaidTab">
-                    <div class="input-group">
-                        <label class="input-label">点卡码</label>
-                        <input type="text" 
-                               class="code-input" 
-                               id="prepaidCode" 
-                               placeholder="XXXX-XXXX-XXXX-XXXX"
-                               maxlength="19"
-                               autocomplete="off"
-                               spellcheck="false">
-                    </div>
-                    <button class="redeem-btn" id="redeemPrepaidBtn" onclick="redeemPrepaid()">
-                        <i class="ph ph-check-circle"></i> 立即兑换
-                    </button>
-                    <div class="result-message" id="prepaidResult"></div>
-                    
-                    <div class="help-text">
-                        <h4>点卡说明</h4>
-                        <ul>
-                            <li><i class="ph ph-check"></i> 点卡码格式：XXXX-XXXX-XXXX-XXXX</li>
-                            <li><i class="ph ph-check"></i> 支持订阅卡和积分卡</li>
-                            <li><i class="ph ph-check"></i> 每张点卡只能使用一次</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <!-- 优惠码 -->
-                <div class="tab-content" id="promoTab">
-                    <div class="input-group">
-                        <label class="input-label">优惠码</label>
-                        <input type="text" 
-                               class="code-input" 
-                               id="promoCode" 
-                               placeholder="输入优惠码"
-                               maxlength="20"
-                               autocomplete="off"
-                               spellcheck="false">
-                    </div>
-                    <button class="redeem-btn" id="validatePromoBtn" onclick="validatePromo()">
-                        <i class="ph ph-magnifying-glass"></i> 验证优惠码
-                    </button>
-                    <div class="result-message" id="promoResult"></div>
-                    
-                    <div class="help-text">
-                        <h4>优惠码说明</h4>
-                        <ul>
-                            <li><i class="ph ph-check"></i> 优惠码可在购买套餐时使用</li>
-                            <li><i class="ph ph-check"></i> 部分优惠码有使用次数限制</li>
-                            <li><i class="ph ph-check"></i> 优惠码可能有有效期限制</li>
-                        </ul>
-                    </div>
+                <div class="help-text">
+                    <h4>点卡说明</h4>
+                    <ul>
+                        <li><i class="ph ph-check"></i> 点卡码格式：XXXX-XXXX-XXXX-XXXX</li>
+                        <li><i class="ph ph-check"></i> 支持订阅卡和积分卡</li>
+                        <li><i class="ph ph-check"></i> 每张点卡只能使用一次</li>
+                    </ul>
                 </div>
             </div>
         </div>
 
         <script>
             const API_BASE = 'https://iapi.sendto.you';
-            
+
             function getToken() {
                 return localStorage.getItem('auth_token') || localStorage.getItem('gemini_token');
             }
-            
+
             function checkAuth() {
                 const token = getToken();
                 if (!token) {
@@ -394,44 +314,39 @@
                 document.getElementById('redeemContent').style.display = 'block';
                 return true;
             }
-            
-            function switchTab(tab) {
-                document.querySelectorAll('.redeem-tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                
-                document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
-                document.getElementById(`${tab}Tab`).classList.add('active');
-                
-                // 清除结果
-                document.getElementById('prepaidResult').className = 'result-message';
-                document.getElementById('promoResult').className = 'result-message';
-            }
-            
+
             // 格式化点卡码输入
-            document.getElementById('prepaidCode').addEventListener('input', function(e) {
-                let value = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-                let formatted = '';
-                for (let i = 0; i < value.length && i < 16; i++) {
-                    if (i > 0 && i % 4 === 0) formatted += '-';
-                    formatted += value[i];
+            document.addEventListener('DOMContentLoaded', function() {
+                checkAuth();
+
+                const prepaidInput = document.getElementById('prepaidCode');
+                if (prepaidInput) {
+                    prepaidInput.addEventListener('input', function(e) {
+                        let value = e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+                        let formatted = '';
+                        for (let i = 0; i < value.length && i < 16; i++) {
+                            if (i > 0 && i % 4 === 0) formatted += '-';
+                            formatted += value[i];
+                        }
+                        e.target.value = formatted;
+                    });
                 }
-                e.target.value = formatted;
             });
-            
+
             // 兑换点卡
             async function redeemPrepaid() {
                 if (!checkAuth()) return;
-                
+
                 const code = document.getElementById('prepaidCode').value.trim();
                 if (!code) {
                     showResult('prepaidResult', false, '请输入点卡码');
                     return;
                 }
-                
+
                 const btn = document.getElementById('redeemPrepaidBtn');
                 btn.innerHTML = '<div class="spinner"></div> 兑换中...';
                 btn.disabled = true;
-                
+
                 try {
                     const response = await fetch(`${API_BASE}/api/prepaid/redeem`, {
                         method: 'POST',
@@ -441,9 +356,9 @@
                         },
                         body: JSON.stringify({ code })
                     });
-                    
+
                     const data = await response.json();
-                    
+
                     if (data.success) {
                         showResult('prepaidResult', true, data.message || '兑换成功！');
                         document.getElementById('prepaidCode').value = '';
@@ -457,48 +372,7 @@
                     btn.disabled = false;
                 }
             }
-            
-            // 验证优惠码
-            async function validatePromo() {
-                const code = document.getElementById('promoCode').value.trim();
-                if (!code) {
-                    showResult('promoResult', false, '请输入优惠码');
-                    return;
-                }
-                
-                const btn = document.getElementById('validatePromoBtn');
-                btn.innerHTML = '<div class="spinner"></div> 验证中...';
-                btn.disabled = true;
-                
-                try {
-                    const response = await fetch(`${API_BASE}/api/promo/validate`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ 
-                            code,
-                            product_type: 'subscription',
-                            product_id: 'standard'
-                        })
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (data.valid) {
-                        const msg = `优惠码有效！${data.message}`;
-                        showResult('promoResult', true, msg);
-                    } else {
-                        showResult('promoResult', false, data.message || '优惠码无效');
-                    }
-                } catch (error) {
-                    showResult('promoResult', false, '网络错误，请重试');
-                } finally {
-                    btn.innerHTML = '<i class="ph ph-magnifying-glass"></i> 验证优惠码';
-                    btn.disabled = false;
-                }
-            }
-            
+
             function showResult(elementId, success, message) {
                 const el = document.getElementById(elementId);
                 el.className = `result-message ${success ? 'success' : 'error'}`;
@@ -507,9 +381,6 @@
                     <span>${message}</span>
                 `;
             }
-            
-            // 页面加载
-            document.addEventListener('DOMContentLoaded', checkAuth);
         </script>
     </body>
 </html>
