@@ -1,94 +1,146 @@
 
-.container {
-  padding: 40rpx;
-  background-color: #fff;
+/* ========== Page Container ========== */
+.page.data-v-baa094d5 {
   min-height: 100vh;
+  background-color: #FFFFFF;
 }
-.header {
-  margin-bottom: 60rpx;
+
+/* ========== Header ========== */
+.header.data-v-baa094d5 {
+  padding: 48rpx 32rpx 32rpx;
 }
-.title {
-  font-size: 48rpx;
-  font-weight: bold;
+.title.data-v-baa094d5 {
   display: block;
-  margin-bottom: 10rpx;
+  font-size: 44rpx;
+  font-weight: 600;
+  color: #111111;
+  line-height: 1.3;
+  margin-bottom: 12rpx;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
 }
-.subtitle {
+.subtitle.data-v-baa094d5 {
+  display: block;
   font-size: 28rpx;
-  color: #666;
+  color: #666666;
+  opacity: 0.7;
+  line-height: 1.4;
 }
-.section {
-  margin-bottom: 60rpx;
+
+/* ========== Content Scroll ========== */
+.content-scroll.data-v-baa094d5 {
+  height: calc(100vh - 200rpx);
+  padding: 0 32rpx 32rpx;
 }
-.section-title {
-  font-size: 32rpx;
-  font-weight: bold;
-  margin-bottom: 30rpx;
+
+/* ========== Section ========== */
+.section.data-v-baa094d5 {
+  margin-bottom: 48rpx;
+}
+.section-title.data-v-baa094d5 {
   display: block;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #111111;
+  margin-bottom: 24rpx;
 }
-.char-scroll {
+
+/* ========== Character Scroll ========== */
+.char-scroll.data-v-baa094d5 {
+  width: 100%;
   white-space: nowrap;
 }
-.char-list {
+.char-list.data-v-baa094d5 {
   display: inline-flex;
+  gap: 24rpx;
 }
-.char-item {
+.char-item.data-v-baa094d5 {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-right: 40rpx;
-  opacity: 0.5;
-  transition: opacity 0.3s;
+  opacity: 0.4;
+  transition: all 0.3s ease;
 }
-.char-item.active {
+.char-item.active.data-v-baa094d5 {
   opacity: 1;
   transform: scale(1.05);
 }
-.char-avatar {
+.char-avatar.data-v-baa094d5 {
   width: 140rpx;
   height: 140rpx;
   border-radius: 70rpx;
   border: 4rpx solid transparent;
+  background-color: #F0F0F0;
+  transition: border-color 0.3s ease;
 }
-.char-item.active .char-avatar {
-  border-color: #FFEB3B;
+.char-item.active .char-avatar.data-v-baa094d5 {
+  border-color: #111111;
 }
-.char-name {
+.char-name.data-v-baa094d5 {
   font-size: 26rpx;
   margin-top: 16rpx;
-  color: #333;
+  color: #111111;
+  font-weight: 500;
 }
-.generate-btn {
-  background-color: #FFEB3B;
-  color: #333;
-  border-radius: 60rpx;
-  font-weight: bold;
-  font-size: 36rpx;
-  box-shadow: 0 8rpx 20rpx rgba(255, 235, 59, 0.3);
+
+/* ========== Action Section ========== */
+.action-section.data-v-baa094d5 {
+  margin-bottom: 48rpx;
 }
-.generate-btn[disabled] {
-  background-color: #f0f0f0;
-  color: #ccc;
+.generate-btn.data-v-baa094d5 {
+  width: 100%;
+  height: 96rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #111111;
+  border-radius: 48rpx;
+  transition: all 0.2s ease;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
+}
+.generate-btn.pressed.data-v-baa094d5 {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+.generate-btn.loading.data-v-baa094d5 {
+  opacity: 0.6;
+}
+.generate-btn.disabled.data-v-baa094d5 {
+  opacity: 0.3;
   box-shadow: none;
 }
-.result-area {
-  margin-top: 60rpx;
-  border-top: 1px solid #eee;
-  padding-top: 40rpx;
-}
-.result-title {
+.btn-text.data-v-baa094d5 {
   font-size: 32rpx;
-  font-weight: bold;
+  font-weight: 600;
+  color: #FFFFFF;
+  letter-spacing: 0.5rpx;
+}
+
+/* ========== Result Section ========== */
+.result-section.data-v-baa094d5 {
+  padding: 32rpx;
+  background-color: #F6F7F9;
+  border-radius: 32rpx;
+}
+.result-title.data-v-baa094d5 {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #111111;
+  margin-bottom: 24rpx;
+}
+.result-img.data-v-baa094d5 {
+  width: 100%;
+  border-radius: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.10);
+  display: block;
   margin-bottom: 20rpx;
 }
-.result-img {
-  width: 100%;
-  border-radius: 20rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.1);
-}
-.tips {
+.tips.data-v-baa094d5 {
+  display: block;
   font-size: 24rpx;
-  color: #999;
+  color: #666666;
+  opacity: 0.7;
   text-align: center;
-  margin-top: 20rpx;
+  line-height: 1.6;
 }

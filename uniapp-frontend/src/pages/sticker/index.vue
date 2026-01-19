@@ -1,43 +1,61 @@
 <template>
-  <view class="container">
+  <view class="page">
+    <!-- Header -->
     <view class="header">
       <text class="title">AI 表情包制作</text>
       <text class="subtitle">选择角色，生成专属 Q 版表情包</text>
     </view>
 
-    <!-- Character Selection -->
-    <view class="section">
-      <text class="section-title">选择主角</text>
-      <scroll-view scroll-x class="char-scroll" :show-scrollbar="false">
-        <view class="char-list">
-          <view 
-            v-for="char in characters" 
-            :key="char.id"
-            :class="['char-item', selectedCharId === char.id ? 'active' : '']"
-            @click="selectedCharId = char.id"
-          >
-            <image :src="getCharacterAvatar(char)" mode="aspectFill" class="char-avatar" />
-            <text class="char-name">{{ char.name }}</text>
+    <!-- Content -->
+    <scroll-view scroll-y class="content-scroll">
+      <!-- Character Selection Section -->
+      <view class="section">
+        <text class="section-title">选择主角</text>
+        <scroll-view scroll-x class="char-scroll" :show-scrollbar="false">
+          <view class="char-list">
+            <view
+              v-for="char in characters"
+              :key="char.id"
+              :class="['char-item', { active: selectedCharId === char.id }]"
+              @tap="selectedCharId = char.id"
+            >
+              <image
+                :src="getCharacterAvatar(char)"
+                mode="aspectFill"
+                class="char-avatar"
+              />
+              <text class="char-name">{{ char.name }}</text>
+            </view>
           </view>
+        </scroll-view>
+      </view>
+
+      <!-- Generate Button Section -->
+      <view class="action-section">
+        <view
+          :class="['generate-btn', { pressed: isButtonPressed, loading: generating, disabled: !selectedCharId }]"
+          @tap="handleGenerate"
+          @touchstart="isButtonPressed = true"
+          @touchend="isButtonPressed = false"
+          @touchcancel="isButtonPressed = false"
+        >
+          <text v-if="!generating" class="btn-text">生成表情包 (一套9个)</text>
+          <text v-else class="btn-text">AI 正在绘制中...</text>
         </view>
-      </scroll-view>
-    </view>
+      </view>
 
-    <!-- Generate Button -->
-    <button 
-      class="generate-btn" 
-      :disabled="generating || !selectedCharId" 
-      @click="generateStickers"
-    >
-      {{ generating ? 'AI 正在绘制中...' : '生成表情包 (一套9个)' }}
-    </button>
-
-    <!-- Result Area -->
-    <view v-if="resultImage" class="result-area">
-      <view class="result-title">生成结果</view>
-      <image :src="resultImage" mode="widthFix" class="result-img" @click="previewResult" />
-      <view class="tips">提示：长按图片保存到相册，或使用截屏工具裁剪使用</view>
-    </view>
+      <!-- Result Area -->
+      <view v-if="resultImage" class="result-section">
+        <text class="result-title">生成结果</text>
+        <image
+          :src="resultImage"
+          mode="widthFix"
+          class="result-img"
+          @tap="previewResult"
+        />
+        <text class="tips">提示：长按图片保存到相册，或使用截屏工具裁剪使用</text>
+      </view>
+    </scroll-view>
   </view>
 </template>
 
@@ -51,6 +69,7 @@ const characters = ref([])
 const selectedCharId = ref('')
 const generating = ref(false)
 const resultImage = ref('')
+const isButtonPressed = ref(false)
 
 onMounted(() => {
   fetchCharacters()
@@ -60,11 +79,13 @@ const fetchCharacters = async () => {
   if (!userStore.isLoggedIn) return
   try {
     const res = await request({ url: '/api/characters' })
-    characters.value = res.characters
+    characters.value = res.characters || []
     if (characters.value.length > 0) {
       selectedCharId.value = characters.value[0].id
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error('获取角色失败:', e)
+  }
 }
 
 const getCharacterAvatar = (char) => {
@@ -74,33 +95,22 @@ const getCharacterAvatar = (char) => {
   return '/static/default-avatar.png'
 }
 
-const generateStickers = async () => {
+const handleGenerate = async () => {
   if (!userStore.isLoggedIn) {
     return uni.showToast({ title: '请先登录', icon: 'none' })
   }
-  
+  if (!selectedCharId.value) {
+    return uni.showToast({ title: '请选择角色', icon: 'none' })
+  }
+
   generating.value = true
-  resultImage.value = ''
-  
+
   try {
-    // We reuse the generate API but with specific sticker prompt
-    // Note: In a real app, we might need a specific endpoint or handle this in backend
-    // For now, we simulate by sending a sticker template ID (which we'd need to create in backend or mock here)
-    // Or we can just send a custom prompt if backend supported it.
-    // Assuming backend 'handleGenerate' uses a template, we need a sticker template.
-    // Let's assume there is a 'sticker-pack' template or we fallback to a default one.
-    
-    // Actually, looking at backend code, it requires a valid templateId. 
-    // We should probably add a 'sticker-pack' template to backend defaultTemplates.
-    // But since I can't modify backend easily in this step without restarting context,
-    // I will try to use an existing template but maybe 'anime-style' is closest.
-    // Ideally, we should have added a 'sticker' template.
-    
     const res = await request({
       url: '/api/generate',
       method: 'POST',
       data: {
-        templateId: 'anime-style', // Fallback for now, ideally 'sticker-pack'
+        templateId: 'anime-style',
         characterId: selectedCharId.value,
         ratio: '1:1',
         model: 'gemini-1.5-pro'
@@ -108,9 +118,9 @@ const generateStickers = async () => {
     })
 
     uni.showToast({ title: '生成指令已发送', icon: 'success' })
-    // In real implementation, we would poll for result or get it directly.
-    
+
   } catch (e) {
+    console.error('生成失败:', e)
     uni.showToast({ title: '生成失败', icon: 'none' })
   } finally {
     generating.value = false
@@ -124,55 +134,73 @@ const previewResult = () => {
 }
 </script>
 
-<style>
-.container {
-  padding: 40rpx;
-  background-color: #fff;
+<style scoped>
+/* ========== Page Container ========== */
+.page {
   min-height: 100vh;
+  background-color: #FFFFFF;
 }
 
+/* ========== Header ========== */
 .header {
-  margin-bottom: 60rpx;
+  padding: 48rpx 32rpx 32rpx;
 }
 
 .title {
-  font-size: 48rpx;
-  font-weight: bold;
   display: block;
-  margin-bottom: 10rpx;
+  font-size: 44rpx;
+  font-weight: 600;
+  color: #111111;
+  line-height: 1.3;
+  margin-bottom: 12rpx;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
 }
 
 .subtitle {
+  display: block;
   font-size: 28rpx;
-  color: #666;
+  color: #666666;
+  opacity: 0.7;
+  line-height: 1.4;
 }
 
+/* ========== Content Scroll ========== */
+.content-scroll {
+  height: calc(100vh - 200rpx);
+  padding: 0 32rpx 32rpx;
+}
+
+/* ========== Section ========== */
 .section {
-  margin-bottom: 60rpx;
+  margin-bottom: 48rpx;
 }
 
 .section-title {
-  font-size: 32rpx;
-  font-weight: bold;
-  margin-bottom: 30rpx;
   display: block;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #111111;
+  margin-bottom: 24rpx;
 }
 
+/* ========== Character Scroll ========== */
 .char-scroll {
+  width: 100%;
   white-space: nowrap;
 }
 
 .char-list {
   display: inline-flex;
+  gap: 24rpx;
 }
 
 .char-item {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-right: 40rpx;
-  opacity: 0.5;
-  transition: opacity 0.3s;
+  opacity: 0.4;
+  transition: all 0.3s ease;
 }
 
 .char-item.active {
@@ -185,55 +213,88 @@ const previewResult = () => {
   height: 140rpx;
   border-radius: 70rpx;
   border: 4rpx solid transparent;
+  background-color: #F0F0F0;
+  transition: border-color 0.3s ease;
 }
 
 .char-item.active .char-avatar {
-  border-color: #FFEB3B;
+  border-color: #111111;
 }
 
 .char-name {
   font-size: 26rpx;
   margin-top: 16rpx;
-  color: #333;
+  color: #111111;
+  font-weight: 500;
+}
+
+/* ========== Action Section ========== */
+.action-section {
+  margin-bottom: 48rpx;
 }
 
 .generate-btn {
-  background-color: #FFEB3B;
-  color: #333;
-  border-radius: 60rpx;
-  font-weight: bold;
-  font-size: 36rpx;
-  box-shadow: 0 8rpx 20rpx rgba(255, 235, 59, 0.3);
+  width: 100%;
+  height: 96rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #111111;
+  border-radius: 48rpx;
+  transition: all 0.2s ease;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
 }
 
-.generate-btn[disabled] {
-  background-color: #f0f0f0;
-  color: #ccc;
+.generate-btn.pressed {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+.generate-btn.loading {
+  opacity: 0.6;
+}
+
+.generate-btn.disabled {
+  opacity: 0.3;
   box-shadow: none;
 }
 
-.result-area {
-  margin-top: 60rpx;
-  border-top: 1px solid #eee;
-  padding-top: 40rpx;
+.btn-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #FFFFFF;
+  letter-spacing: 0.5rpx;
+}
+
+/* ========== Result Section ========== */
+.result-section {
+  padding: 32rpx;
+  background-color: #F6F7F9;
+  border-radius: 32rpx;
 }
 
 .result-title {
+  display: block;
   font-size: 32rpx;
-  font-weight: bold;
-  margin-bottom: 20rpx;
+  font-weight: 600;
+  color: #111111;
+  margin-bottom: 24rpx;
 }
 
 .result-img {
   width: 100%;
-  border-radius: 20rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.1);
+  border-radius: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.10);
+  display: block;
+  margin-bottom: 20rpx;
 }
 
 .tips {
+  display: block;
   font-size: 24rpx;
-  color: #999;
+  color: #666666;
+  opacity: 0.7;
   text-align: center;
-  margin-top: 20rpx;
+  line-height: 1.6;
 }
 </style>

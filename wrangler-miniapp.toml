@@ -1,0 +1,38 @@
+# 小程序专用的 Cloudflare Worker 配置
+# 与主分支的网页版 Worker 分开部署
+
+name = "gemini-proxy-miniapp"
+main = "src-miniapp/index.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# 强制部署到美国地区
+[placement]
+mode = "smart"
+
+# KV 存储绑定（与主 Worker 共享）
+[[kv_namespaces]]
+binding = "TEMPLATES_KV"
+id = "8e3e6c03ce7c4cee9df74663b8a4cce7"
+
+[[kv_namespaces]]
+binding = "USERS_KV"
+id = "631bb0f9c32e4202ba7fe0f2bb17cb5a"
+
+[[kv_namespaces]]
+binding = "CHARACTERS_KV"
+id = "ab353bdfd25145fdaa8e2fb375182da9"
+
+[[kv_namespaces]]
+binding = "HISTORY_KV"
+id = "79e18d0705cb4736a83e4aa044b99cd5"
+
+# R2 存储绑定（与主 Worker 共享）
+[[r2_buckets]]
+bucket_name = "gemini-images"
+binding = "IMAGES_BUCKET"
+
+# 环境变量（如果需要）
+[vars]
+# 小程序特定的环境变量
+APP_TYPE = "miniapp"

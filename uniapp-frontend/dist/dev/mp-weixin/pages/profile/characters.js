@@ -13,8 +13,9 @@ const _sfc_main = {
           url: "/api/characters",
           method: "GET"
         });
-        characters.value = res.characters;
+        characters.value = res.characters || [];
       } catch (e) {
+        console.error("加载角色失败:", e);
         common_vendor.index.showToast({ title: "加载失败", icon: "none" });
       } finally {
         loading.value = false;
@@ -37,7 +38,15 @@ const _sfc_main = {
     });
     return (_ctx, _cache) => {
       return common_vendor.e({
-        a: common_vendor.f(characters.value, (char, k0, i0) => {
+        a: loading.value
+      }, loading.value ? {
+        b: common_vendor.f(3, (n, k0, i0) => {
+          return {
+            a: n
+          };
+        })
+      } : {
+        c: common_vendor.f(characters.value, (char, k0, i0) => {
           return {
             a: getCharacterAvatar(char),
             b: common_vendor.t(char.name),
@@ -46,12 +55,12 @@ const _sfc_main = {
             e: common_vendor.o(($event) => editCharacter(char.id), char.id)
           };
         }),
-        b: common_vendor.o(addCharacter),
-        c: loading.value
-      }, loading.value ? {} : characters.value.length === 0 ? {} : {}, {
-        d: characters.value.length === 0
-      });
+        d: common_vendor.o(addCharacter)
+      }, {
+        e: !loading.value && characters.value.length === 0
+      }, !loading.value && characters.value.length === 0 ? {} : {});
     };
   }
 };
-wx.createPage(_sfc_main);
+const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-541d7813"]]);
+wx.createPage(MiniProgramPage);

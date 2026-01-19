@@ -1,27 +1,45 @@
 <template>
-  <view class="container">
-    <view class="history-grid">
-      <view 
-        v-for="item in historyList" 
-        :key="item.id" 
-        class="history-item"
-        @click="previewImage(item)"
-      >
-        <image 
-          :src="getImageUrl(item)" 
-          mode="aspectFill" 
-          class="history-img"
-        />
-        <view class="history-info">
-          <text class="history-time">{{ formatDate(item.createdAt) }}</text>
+  <view class="page">
+    <!-- Page Header -->
+    <view class="page-header">
+      <text class="page-title">History</text>
+      <text class="page-subtitle">Your generated images</text>
+    </view>
+
+    <!-- History Grid -->
+    <scroll-view scroll-y class="content-scroll">
+      <view v-if="loading" class="skeleton-grid">
+        <view v-for="n in 6" :key="n" class="skeleton-item">
+          <view class="skeleton-image">
+            <view class="shimmer"></view>
+          </view>
+          <view class="skeleton-text"></view>
         </view>
       </view>
-    </view>
-    
-    <view v-if="loading" class="loading">加载中...</view>
-    <view v-else-if="historyList.length === 0" class="empty">
-      <text>暂无生成记录</text>
-    </view>
+
+      <view v-else class="history-grid">
+        <view
+          v-for="item in historyList"
+          :key="item.id"
+          class="history-item"
+          @tap="previewImage(item)"
+        >
+          <image
+            :src="getImageUrl(item)"
+            mode="aspectFill"
+            class="history-img"
+          />
+          <view class="history-info">
+            <text class="history-time">{{ formatDate(item.createdAt) }}</text>
+          </view>
+        </view>
+      </view>
+
+      <view v-if="!loading && historyList.length === 0" class="empty-state">
+        <text class="empty-icon">📷</text>
+        <text class="empty-text">暂无生成记录</text>
+      </view>
+    </scroll-view>
   </view>
 </template>
 
@@ -38,8 +56,9 @@ const fetchHistory = async () => {
   loading.value = true
   try {
     const res = await request({ url: '/api/history' })
-    historyList.value = res.records
+    historyList.value = res.records || []
   } catch (e) {
+    console.error('加载历史失败:', e)
     uni.showToast({ title: '加载失败', icon: 'none' })
   } finally {
     loading.value = false
@@ -47,13 +66,9 @@ const fetchHistory = async () => {
 }
 
 const getImageUrl = (item) => {
-  // 优先使用缩略图 keys (R2)，如果没有则尝试 base64 (旧数据)
   if (item.thumbKeys && item.thumbKeys.length > 0) {
-    // 假设后端有一个代理接口或者 R2 是公开的
-    // 根据后端代码：GET /api/history/image/:key
     return `${config.API_BASE_URL}/api/history/image/${encodeURIComponent(item.thumbKeys[0])}`
   }
-  // 兼容旧数据
   if (item.thumbnails && item.thumbnails.length > 0) {
     return item.thumbnails[0].data
   }
@@ -87,46 +102,149 @@ onShow(() => {
 })
 </script>
 
-<style>
-.container {
-  padding: 20rpx;
-  background-color: #f8f8f8;
+<style scoped>
+/* ========== Page Container ========== */
+.page {
   min-height: 100vh;
+  background-color: #F6F7F9;
 }
 
-.history-grid {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
+/* ========== Page Header ========== */
+.page-header {
+  padding: 32rpx 32rpx 24rpx;
 }
 
-.history-item {
-  width: 48%;
-  background-color: #fff;
-  border-radius: 12rpx;
+.page-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #111111;
+  line-height: 1.3;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+}
+
+.page-subtitle {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 400;
+  color: #111111;
+  opacity: 0.6;
+  margin-top: 4rpx;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+}
+
+/* ========== Content Scroll ========== */
+.content-scroll {
+  height: calc(100vh - 140rpx);
+  padding: 0 32rpx 32rpx;
+}
+
+/* ========== Skeleton Grid ========== */
+.skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20rpx;
+}
+
+.skeleton-item {
+  background-color: #FFFFFF;
+  border-radius: 32rpx;
   overflow: hidden;
-  margin-bottom: 20rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.05);
+  padding: 16rpx;
+}
+
+.skeleton-image {
+  width: 100%;
+  height: 340rpx;
+  background-color: #F0F0F0;
+  border-radius: 24rpx;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 16rpx;
+}
+
+.shimmer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #F0F0F0 25%, #E0E0E0 50%, #F0F0F0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton-text {
+  width: 60%;
+  height: 32rpx;
+  background-color: #F0F0F0;
+  border-radius: 8rpx;
+}
+
+/* ========== History Grid ========== */
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20rpx;
+}
+
+/* ========== History Item ========== */
+.history-item {
+  background-color: #FFFFFF;
+  border-radius: 32rpx;
+  overflow: hidden;
+  box-shadow: 0 12rpx 36rpx rgba(0, 0, 0, 0.10);
+  transition: all 0.2s ease;
+}
+
+.history-item:active {
+  transform: scale(0.98);
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.08);
 }
 
 .history-img {
   width: 100%;
   height: 340rpx;
-  background-color: #eee;
+  background-color: #F0F0F0;
+  display: block;
 }
 
 .history-info {
-  padding: 16rpx;
+  padding: 24rpx;
 }
 
 .history-time {
   font-size: 24rpx;
-  color: #999;
+  color: #666666;
+  opacity: 0.7;
+  font-weight: 500;
 }
 
-.loading, .empty {
-  text-align: center;
-  padding: 40rpx;
-  color: #999;
+/* ========== Empty State ========== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 120rpx 0;
+}
+
+.empty-icon {
+  font-size: 100rpx;
+  margin-bottom: 24rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #999999;
 }
 </style>

@@ -11,13 +11,23 @@ const _sfc_main = {
         await userStore.login();
         common_vendor.index.showToast({ title: "登录成功", icon: "success" });
       } catch (e) {
+        console.error("登录失败:", e);
         common_vendor.index.showToast({ title: "登录失败", icon: "none" });
       } finally {
         common_vendor.index.hideLoading();
       }
     };
     const handleLogout = () => {
-      userStore.logout();
+      common_vendor.index.showModal({
+        title: "提示",
+        content: "确定要退出登录吗？",
+        success: (res) => {
+          if (res.confirm) {
+            userStore.logout();
+            common_vendor.index.showToast({ title: "已退出登录", icon: "success" });
+          }
+        }
+      });
     };
     const navigateToCharacters = () => {
       common_vendor.index.navigateTo({ url: "/pages/profile/characters" });
@@ -41,4 +51,5 @@ const _sfc_main = {
     };
   }
 };
-wx.createPage(_sfc_main);
+const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-f97f9319"]]);
+wx.createPage(MiniProgramPage);

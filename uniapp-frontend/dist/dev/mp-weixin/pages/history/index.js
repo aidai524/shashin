@@ -11,8 +11,9 @@ const _sfc_main = {
       loading.value = true;
       try {
         const res = await utils_request.request({ url: "/api/history" });
-        historyList.value = res.records;
+        historyList.value = res.records || [];
       } catch (e) {
+        console.error("加载历史失败:", e);
         common_vendor.index.showToast({ title: "加载失败", icon: "none" });
       } finally {
         loading.value = false;
@@ -51,19 +52,27 @@ const _sfc_main = {
     });
     return (_ctx, _cache) => {
       return common_vendor.e({
-        a: common_vendor.f(historyList.value, (item, k0, i0) => {
+        a: loading.value
+      }, loading.value ? {
+        b: common_vendor.f(6, (n, k0, i0) => {
+          return {
+            a: n
+          };
+        })
+      } : {
+        c: common_vendor.f(historyList.value, (item, k0, i0) => {
           return {
             a: getImageUrl(item),
             b: common_vendor.t(formatDate(item.createdAt)),
             c: item.id,
             d: common_vendor.o(($event) => previewImage(item), item.id)
           };
-        }),
-        b: loading.value
-      }, loading.value ? {} : historyList.value.length === 0 ? {} : {}, {
-        c: historyList.value.length === 0
-      });
+        })
+      }, {
+        d: !loading.value && historyList.value.length === 0
+      }, !loading.value && historyList.value.length === 0 ? {} : {});
     };
   }
 };
-wx.createPage(_sfc_main);
+const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-530ef1ab"]]);
+wx.createPage(MiniProgramPage);

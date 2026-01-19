@@ -10,6 +10,7 @@ const _sfc_main = {
     const selectedCharId = common_vendor.ref("");
     const generating = common_vendor.ref(false);
     const resultImage = common_vendor.ref("");
+    const isButtonPressed = common_vendor.ref(false);
     common_vendor.onMounted(() => {
       fetchCharacters();
     });
@@ -17,11 +18,12 @@ const _sfc_main = {
       if (!userStore.isLoggedIn) return;
       try {
         const res = await utils_request.request({ url: "/api/characters" });
-        characters.value = res.characters;
+        characters.value = res.characters || [];
         if (characters.value.length > 0) {
           selectedCharId.value = characters.value[0].id;
         }
       } catch (e) {
+        console.error("获取角色失败:", e);
       }
     };
     const getCharacterAvatar = (char) => {
@@ -30,19 +32,20 @@ const _sfc_main = {
       }
       return "/static/default-avatar.png";
     };
-    const generateStickers = async () => {
+    const handleGenerate = async () => {
       if (!userStore.isLoggedIn) {
         return common_vendor.index.showToast({ title: "请先登录", icon: "none" });
       }
+      if (!selectedCharId.value) {
+        return common_vendor.index.showToast({ title: "请选择角色", icon: "none" });
+      }
       generating.value = true;
-      resultImage.value = "";
       try {
         const res = await utils_request.request({
           url: "/api/generate",
           method: "POST",
           data: {
             templateId: "anime-style",
-            // Fallback for now, ideally 'sticker-pack'
             characterId: selectedCharId.value,
             ratio: "1:1",
             model: "gemini-1.5-pro"
@@ -50,6 +53,7 @@ const _sfc_main = {
         });
         common_vendor.index.showToast({ title: "生成指令已发送", icon: "success" });
       } catch (e) {
+        console.error("生成失败:", e);
         common_vendor.index.showToast({ title: "生成失败", icon: "none" });
       } finally {
         generating.value = false;
@@ -67,19 +71,30 @@ const _sfc_main = {
             a: getCharacterAvatar(char),
             b: common_vendor.t(char.name),
             c: char.id,
-            d: common_vendor.n(selectedCharId.value === char.id ? "active" : ""),
+            d: common_vendor.n({
+              active: selectedCharId.value === char.id
+            }),
             e: common_vendor.o(($event) => selectedCharId.value = char.id, char.id)
           };
         }),
-        b: common_vendor.t(generating.value ? "AI 正在绘制中..." : "生成表情包 (一套9个)"),
-        c: generating.value || !selectedCharId.value,
-        d: common_vendor.o(generateStickers),
-        e: resultImage.value
+        b: !generating.value
+      }, !generating.value ? {} : {}, {
+        c: common_vendor.n({
+          pressed: isButtonPressed.value,
+          loading: generating.value,
+          disabled: !selectedCharId.value
+        }),
+        d: common_vendor.o(handleGenerate),
+        e: common_vendor.o(($event) => isButtonPressed.value = true),
+        f: common_vendor.o(($event) => isButtonPressed.value = false),
+        g: common_vendor.o(($event) => isButtonPressed.value = false),
+        h: resultImage.value
       }, resultImage.value ? {
-        f: resultImage.value,
-        g: common_vendor.o(previewResult)
+        i: resultImage.value,
+        j: common_vendor.o(previewResult)
       } : {});
     };
   }
 };
-wx.createPage(_sfc_main);
+const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-baa094d5"]]);
+wx.createPage(MiniProgramPage);

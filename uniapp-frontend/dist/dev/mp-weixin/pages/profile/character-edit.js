@@ -31,9 +31,9 @@ const _sfc_main = {
         photos.value = res.photos.map((p) => ({
           ...p,
           uploaded: true
-          // Mark as already uploaded
         }));
       } catch (e) {
+        console.error("获取详情失败:", e);
         common_vendor.index.showToast({ title: "获取详情失败", icon: "none" });
       }
     };
@@ -89,9 +89,7 @@ const _sfc_main = {
           method: "POST",
           data: {
             photoData: base64,
-            // Thumbnail
             originalData: base64,
-            // Original (For now same, in real app should compress on client)
             mimeType: "image/jpeg"
           }
         });
@@ -101,7 +99,7 @@ const _sfc_main = {
           uploaded: true
         });
       } catch (e) {
-        console.error(e);
+        console.error("上传失败:", e);
         photoItem.uploading = false;
         common_vendor.index.showToast({ title: "图片上传失败", icon: "none" });
         const index = photos.value.indexOf(photoItem);
@@ -132,6 +130,13 @@ const _sfc_main = {
         photos.value.splice(index, 1);
       }
     };
+    const previewPhoto = (index) => {
+      const urls = photos.value.map((p) => p.tempFilePath || p.data);
+      common_vendor.index.previewImage({
+        urls,
+        current: index
+      });
+    };
     const createCharacter = async () => {
       saving.value = true;
       try {
@@ -156,7 +161,7 @@ const _sfc_main = {
           method: "PUT",
           data: form
         });
-        common_vendor.index.showToast({ title: "保存成功" });
+        common_vendor.index.showToast({ title: "保存成功", icon: "success" });
         setTimeout(() => common_vendor.index.navigateBack(), 1500);
       } catch (e) {
         common_vendor.index.showToast({ title: "保存失败", icon: "none" });
@@ -173,7 +178,7 @@ const _sfc_main = {
       } else {
         try {
           await createCharacter();
-          common_vendor.index.showToast({ title: "创建成功" });
+          common_vendor.index.showToast({ title: "创建成功", icon: "success" });
           setTimeout(() => common_vendor.index.navigateBack(), 1500);
         } catch (e) {
         }
@@ -183,7 +188,7 @@ const _sfc_main = {
       common_vendor.index.showModal({
         title: "警告",
         content: "确定要删除这个角色吗？此操作无法撤销。",
-        confirmColor: "#e64340",
+        confirmColor: "#FF6B6B",
         success: async (res) => {
           if (res.confirm) {
             try {
@@ -191,7 +196,8 @@ const _sfc_main = {
                 url: `/api/characters/${characterId.value}`,
                 method: "DELETE"
               });
-              common_vendor.index.navigateBack();
+              common_vendor.index.showToast({ title: "删除成功", icon: "success" });
+              setTimeout(() => common_vendor.index.navigateBack(), 1500);
             } catch (e) {
               common_vendor.index.showToast({ title: "删除失败", icon: "none" });
             }
@@ -201,33 +207,40 @@ const _sfc_main = {
     };
     return (_ctx, _cache) => {
       return common_vendor.e({
-        a: form.name,
-        b: common_vendor.o(($event) => form.name = $event.detail.value),
-        c: form.description,
-        d: common_vendor.o(($event) => form.description = $event.detail.value),
-        e: common_vendor.t(photos.value.length),
-        f: common_vendor.t(maxPhotos.value),
-        g: common_vendor.f(photos.value, (photo, index, i0) => {
+        a: common_vendor.t(isEdit.value ? "编辑角色" : "新建角色"),
+        b: common_vendor.t(isEdit.value ? "修改角色信息" : "创建新的AI角色"),
+        c: form.name,
+        d: common_vendor.o(($event) => form.name = $event.detail.value),
+        e: form.description,
+        f: common_vendor.o(($event) => form.description = $event.detail.value),
+        g: common_vendor.t(photos.value.length),
+        h: common_vendor.t(maxPhotos.value),
+        i: common_vendor.f(photos.value, (photo, index, i0) => {
           return common_vendor.e({
             a: photo.tempFilePath || photo.data,
-            b: common_vendor.o(($event) => _ctx.previewPhoto(index), index),
+            b: common_vendor.o(($event) => previewPhoto(index), index),
             c: common_vendor.o(($event) => deletePhoto(index), index),
             d: photo.uploading
           }, photo.uploading ? {} : {}, {
             e: index
           });
         }),
-        h: photos.value.length < maxPhotos.value
+        j: photos.value.length < maxPhotos.value
       }, photos.value.length < maxPhotos.value ? {
-        i: common_vendor.o(chooseImage)
+        k: common_vendor.o(chooseImage)
       } : {}, {
-        j: common_vendor.o(saveCharacter),
-        k: saving.value,
-        l: isEdit.value
+        l: !saving.value
+      }, !saving.value ? {} : {}, {
+        m: common_vendor.n({
+          loading: saving.value
+        }),
+        n: common_vendor.o(saveCharacter),
+        o: isEdit.value
       }, isEdit.value ? {
-        m: common_vendor.o(deleteCharacter)
+        p: common_vendor.o(deleteCharacter)
       } : {});
     };
   }
 };
-wx.createPage(_sfc_main);
+const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-6a9b2529"]]);
+wx.createPage(MiniProgramPage);

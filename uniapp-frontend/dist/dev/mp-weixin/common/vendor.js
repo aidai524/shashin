@@ -1,4 +1,11 @@
 "use strict";
+const _export_sfc = (sfc, props) => {
+  const target = sfc.__vccOpts || sfc;
+  for (const [key, val] of props) {
+    target[key] = val;
+  }
+  return target;
+};
 /**
 * @vue/shared v3.4.21
 * (c) 2018-present Yuxi (Evan) You and Vue contributors
@@ -8375,6 +8382,7 @@ const createHook = (lifecycle) => (hook, target = getCurrentInstance()) => {
 const onShow = /* @__PURE__ */ createHook(ON_SHOW);
 const onLoad = /* @__PURE__ */ createHook(ON_LOAD);
 exports.Pinia = Pinia;
+exports._export_sfc = _export_sfc;
 exports.computed = computed;
 exports.createPinia = createPinia;
 exports.createSSRApp = createSSRApp;
