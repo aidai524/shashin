@@ -2,9 +2,9 @@
   "setting": {
     "es6": true,
     "postcss": true,
-    "minified": true,
+    "minified": false,
     "uglifyFileName": false,
-    "enhance": true,
+    "enhance": false,
     "packNpmRelationList": [],
     "babelSetting": {
       "ignore": [],
@@ -12,11 +12,11 @@
       "outputPath": ""
     },
     "useCompilerPlugins": false,
-    "minifyWXML": true,
+    "minifyWXML": false,
     "compileWorklet": false,
     "uploadWithSourceMap": true,
     "packNpmManually": false,
-    "minifyWXSS": true,
+    "minifyWXSS": false,
     "localPlugins": false,
     "disableUseStrict": false,
     "condition": false,
@@ -31,5 +31,5 @@
   },
   "appid": "wxeaf370c55994cfcc",
   "editorSetting": {},
-  "libVersion": "3.14.0"
+  "libVersion": "3.0.0"
 }

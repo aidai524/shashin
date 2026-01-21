@@ -1810,6 +1810,16 @@ async function handleGenerate(request, env) {
     const body = await request.json();
     const { model, templateId, characterId, ratio, width, height } = body;
 
+    // 🔍 打印请求入参
+    console.log('=== Generate Request ===');
+    console.log('User ID:', user.id);
+    console.log('Request body:', JSON.stringify(body));
+    console.log('model:', model);
+    console.log('templateId:', templateId);
+    console.log('characterId:', characterId);
+    console.log('ratio:', ratio);
+    console.log('width:', width, 'height:', height);
+
     // 1. 获取模板信息
     let template;
     if (env.TEMPLATES_KV) {
@@ -1825,6 +1835,8 @@ async function handleGenerate(request, env) {
     if (!template) {
       return errorResponse('模板不存在', 404);
     }
+
+    console.log('Template found:', template.id, template.name?.zh || template.name);
 
     // 2. 获取角色信息 (如果有)
     let characterPrompt = '';
@@ -1849,67 +1861,79 @@ async function handleGenerate(request, env) {
       }
     }
 
-    // 3. 构建 Imagen API 请求
+    // 3. 构建 Gemini 请求
     // 合并 Prompt: 角色描述 + 模板 Prompt
     const finalPrompt = `${characterPrompt}${template.prompt}. Aspect ratio ${ratio || '1:1'}. High quality, detailed.`;
 
-    // 使用 Imagen 3 API 生成图片
-    // 注意：Imagen 不支持图片输入，所以如果有 characterImage，需要在 prompt 中描述
-    const imagenUrl = `${GEMINI_API_BASE}/v1beta/models/imagen-3.0-generate-001:predict?key=${env.GEMINI_API_KEY}`;
+    console.log('Final prompt:', finalPrompt);
+    console.log('Has character image:', !!characterImage);
 
-    const imagenResp = await fetch(imagenUrl, {
+    // 调用 Gemini API
+    const geminiUrl = `${GEMINI_API_BASE}/v1beta/models/${model || 'gemini-3-pro-image-preview'}:generateContent?key=${env.GEMINI_API_KEY}`;
+
+    console.log('Gemini URL:', geminiUrl.replace(env.GEMINI_API_KEY, '***REDACTED***'));
+
+    const contents = [];
+    const parts = [{ text: finalPrompt }];
+
+    // 如果有参考图，添加到请求中
+    if (characterImage) {
+      // 移除 data:image/jpeg;base64, 前缀
+      const base64Data = characterImage.replace(/^data:image\/\w+;base64,/, "");
+      console.log('Character image base64 length:', base64Data.length);
+      parts.push({
+        inlineData: {  // 使用驼峰命名
+          mimeType: "image/jpeg",
+          data: base64Data
+        }
+      });
+    }
+
+    contents.push({ parts });
+
+    const requestBody = { contents };
+    console.log('Request to Gemini:', JSON.stringify(requestBody, null, 2));
+
+    const geminiResp = await fetch(geminiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        instances: [{
-          prompt: finalPrompt
-        }],
-        parameters: {
-          sampleCount: 1,  // 生成图片数量
-          aspectRatio: ratio === '16:9' ? '16:9' : ratio === '3:4' ? '3:4' : '1:1',
-          // 如果指定了宽高，可以设置具体的尺寸
-          ...(width && height ? {
-            imageWidth: width,
-            imageHeight: height
-          } : {})
-        }
-      })
+      body: JSON.stringify(requestBody)
     });
 
-    const imagenData = await imagenResp.json();
+    console.log('Gemini response status:', geminiResp.status);
 
-    // 添加调试日志
-    console.log('Imagen API Response:', JSON.stringify(imagenData));
+    const geminiData = await geminiResp.json();
 
-    if (imagenData.error) {
-      throw new Error(imagenData.error.message);
-    }
+    // 🔍 详细打印 Gemini 响应
+    console.log('=== Gemini API Response ===');
+    console.log('Full response:', JSON.stringify(geminiData, null, 2));
 
-    // 4. 解析 Imagen 返回结果
-    // Imagen API 返回格式: { predictions: [{ bytes: base64_data }] }
-    if (!imagenData.predictions || imagenData.predictions.length === 0) {
-      throw new Error('Imagen 未返回任何图片');
-    }
-
-    // 转换为前端期望的格式
-    const images = imagenData.predictions.map(pred => ({
-      mimeType: 'image/png',  // Imagen 默认返回 PNG
-      data: pred.bytes  // base64 字符串
-    }));
-
-    // 返回前端期望的格式（与 Gemini 格式兼容）
-    return jsonResponse({
-      candidates: [{
-        content: {
-          parts: images.map(img => ({
-            inline_data: {
-              mime_type: img.mimeType,
-              data: img.data
+    // 检查响应结构
+    if (geminiData.candidates) {
+      console.log('Has candidates:', geminiData.candidates.length);
+      geminiData.candidates.forEach((candidate, idx) => {
+        console.log(`Candidate ${idx}:`, JSON.stringify(candidate, null, 2));
+        if (candidate.content?.parts) {
+          console.log(`Parts count:`, candidate.content.parts.length);
+          candidate.content.parts.forEach((part, pIdx) => {
+            console.log(`Part ${pIdx}:`, Object.keys(part));
+            if (part.inlineData) {
+              console.log(`  Has inlineData: YES, mimeType=${part.inlineData.mimeType}, data length=${part.inlineData.data?.length}`);
+            } else if (part.text) {
+              console.log(`  Has text: YES, length=${part.text.length}, preview=${part.text.substring(0, 100)}`);
             }
-          }))
+          });
         }
-      }]
-    });
+      });
+    }
+
+    if (geminiData.error) {
+      throw new Error(geminiData.error.message);
+    }
+
+    // 4. 直接返回 Gemini 的原始响应
+    console.log('=== Returning response to frontend ===');
+    return jsonResponse(geminiData);
 
   } catch (e) {
     console.error('Generate error:', e);

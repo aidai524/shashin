@@ -104,7 +104,7 @@ Page({
       url: '/api/generate',
       method: 'POST',
       data: {
-        model: 'gemini-2.0-flash-exp-image-generation',
+        model: 'gemini-3-pro-image-preview',  // 使用高级模式
         templateId: this.data.templateId,
         characterId: this.data.selectedCharacter?.id || null,
         ratio: this.data.ratio,
@@ -114,20 +114,39 @@ Page({
     }).then(res => {
       wx.hideLoading()
 
+      // 🔍 打印完整响应
+      console.log('=== API Response ===')
+      console.log('Full response:', res)
+      console.log('Typeof response:', typeof res)
+      console.log('Has candidates:', !!res.candidates)
+
       // 处理 Gemini 返回的结果
       // Gemini 2.0 Flash Image Generation 返回图片数据
       if (res.candidates && res.candidates[0]?.content?.parts) {
         const parts = res.candidates[0].content.parts
+        console.log('Parts count:', parts.length)
+        console.log('Parts:', parts)
+
         const images = []
 
         for (const part of parts) {
-          if (part.inline_data) {
+          console.log('Processing part:', JSON.stringify(part, null, 2))
+          console.log('Has inlineData:', !!part.inlineData)
+          console.log('Has text:', !!part.text)
+
+          if (part.inlineData) {
+            console.log('Found inlineData!')
+            console.log('  mimeType:', part.inlineData.mimeType)
+            console.log('  data length:', part.inlineData.data?.length)
+
             images.push({
-              mimeType: part.inline_data.mime_type,
-              data: part.inline_data.data
+              mimeType: part.inlineData.mimeType || 'image/png',
+              data: part.inlineData.data
             })
           }
         }
+
+        console.log('Total images found:', images.length)
 
         if (images.length > 0) {
           this.saveToHistory(images)
