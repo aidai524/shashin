@@ -1733,6 +1733,7 @@ export default {
 
     const url = new URL(request.url);
     const pathname = url.pathname;
+    const method = request.method;
 
     // 健康检查
     if (pathname === "/" || pathname === "/health") {
@@ -1848,58 +1849,67 @@ async function handleGenerate(request, env) {
       }
     }
 
-    // 3. 构建 Gemini 请求
+    // 3. 构建 Imagen API 请求
     // 合并 Prompt: 角色描述 + 模板 Prompt
     const finalPrompt = `${characterPrompt}${template.prompt}. Aspect ratio ${ratio || '1:1'}. High quality, detailed.`;
-    
-    // 调用 Gemini API
-    const geminiUrl = `${GEMINI_API_BASE}/v1beta/models/${model || 'gemini-1.5-flash'}:generateContent?key=${env.GEMINI_API_KEY}`;
-    
-    const contents = [];
-    const parts = [{ text: finalPrompt }];
-    
-    // 如果有参考图，添加到请求中
-    if (characterImage) {
-      // 移除 data:image/jpeg;base64, 前缀
-      const base64Data = characterImage.replace(/^data:image\/\w+;base64,/, "");
-      parts.push({
-        inline_data: {
-          mime_type: "image/jpeg",
-          data: base64Data
-        }
-      });
-    }
-    
-    contents.push({ parts });
 
-    const geminiResp = await fetch(geminiUrl, {
+    // 使用 Imagen 3 API 生成图片
+    // 注意：Imagen 不支持图片输入，所以如果有 characterImage，需要在 prompt 中描述
+    const imagenUrl = `${GEMINI_API_BASE}/v1beta/models/imagen-3.0-generate-001:predict?key=${env.GEMINI_API_KEY}`;
+
+    const imagenResp = await fetch(imagenUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents })
+      body: JSON.stringify({
+        instances: [{
+          prompt: finalPrompt
+        }],
+        parameters: {
+          sampleCount: 1,  // 生成图片数量
+          aspectRatio: ratio === '16:9' ? '16:9' : ratio === '3:4' ? '3:4' : '1:1',
+          // 如果指定了宽高，可以设置具体的尺寸
+          ...(width && height ? {
+            imageWidth: width,
+            imageHeight: height
+          } : {})
+        }
+      })
     });
 
-    const geminiData = await geminiResp.json();
+    const imagenData = await imagenResp.json();
 
-    if (geminiData.error) {
-      throw new Error(geminiData.error.message);
+    // 添加调试日志
+    console.log('Imagen API Response:', JSON.stringify(imagenData));
+
+    if (imagenData.error) {
+      throw new Error(imagenData.error.message);
     }
 
-    // 4. 解析返回结果
-    // 注意：Gemini 此时返回的可能是文本描述或者图片数据，取决于模型能力
-    // 假设是直接生成图片 (Imagen 3 / Gemini Pro Vision 能力)
-    // 如果是纯文本模型，这里需要对接绘图模型。
-    // *重要*：目前的 Gemini 1.5 Flash 主要生成文本，生图能力需要特定模型版本 (如 imagen-3)。
-    // 这里假设调用的是支持生图的端点，或者我们仅仅是模拟流程。
-    // 如果是标准 Gemini 文本模型，它返回的是 candidates[0].content.parts[0].text
-    
-    // 为了演示闭环，如果 Gemini 返回的是文本，我们将其作为“生成结果”返回
-    // 实际项目中，这里应该调用 Imagen API 或者 Stable Diffusion
-    
-    // 简化处理：假设 Gemini 返回了图片数据 (Mock for now if not actual image model)
-    // 实际对接 Imagen 3 时，响应结构不同。
-    
-    // 暂时返回 Gemini 的原始响应，前端负责解析
-    return jsonResponse(geminiData);
+    // 4. 解析 Imagen 返回结果
+    // Imagen API 返回格式: { predictions: [{ bytes: base64_data }] }
+    if (!imagenData.predictions || imagenData.predictions.length === 0) {
+      throw new Error('Imagen 未返回任何图片');
+    }
+
+    // 转换为前端期望的格式
+    const images = imagenData.predictions.map(pred => ({
+      mimeType: 'image/png',  // Imagen 默认返回 PNG
+      data: pred.bytes  // base64 字符串
+    }));
+
+    // 返回前端期望的格式（与 Gemini 格式兼容）
+    return jsonResponse({
+      candidates: [{
+        content: {
+          parts: images.map(img => ({
+            inline_data: {
+              mime_type: img.mimeType,
+              data: img.data
+            }
+          }))
+        }
+      }]
+    });
 
   } catch (e) {
     console.error('Generate error:', e);
