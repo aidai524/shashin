@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "mcp__zai-mcp-server__analyze_image"
+      "mcp__zai-mcp-server__analyze_image",
+      "Bash(npm run dev:*)",
+      "Bash(npx wrangler secret put:*)",
+      "Bash(grep:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

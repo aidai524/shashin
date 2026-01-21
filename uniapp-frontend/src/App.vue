@@ -1,3 +1,9 @@
+<template>
+  <view>
+    <!-- 页面内容 -->
+  </view>
+</template>
+
 <script>
 export default {
   onLaunch: function () {
@@ -8,7 +14,7 @@ export default {
   },
   onHide: function () {
     console.log('App Hide')
-  },
+  }
 }
 </script>
 

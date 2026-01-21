@@ -1,0 +1,71 @@
+<!--pages/index/index.wxml-->
+<view class="page">
+  <!-- 页面头部 -->
+  <view class="page-header">
+    <text class="page-title">Templates</text>
+    <text class="page-subtitle">Choose a style</text>
+  </view>
+
+  <!-- 分类标签 -->
+  <scroll-view class="category-tabs" scroll-x="{{true}}" show-scrollbar="{{false}}">
+    <view class="category-list">
+      <view
+        wx:for="{{categories}}"
+        wx:key="id"
+        class="category-tab {{currentCat === item.id ? 'active' : ''}} {{pressedCat === item.id ? 'pressed' : ''}}"
+        bindtap="handleCategoryTap"
+        data-id="{{item.id}}"
+      >
+        {{item.name}}
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 模板网格 -->
+  <scroll-view class="content-scroll" scroll-y="{{true}}" bindscrolltolower="loadMore" lower-threshold="100">
+    <!-- 加载中 -->
+    <view wx:if="{{loading}}" class="skeleton-container">
+      <view wx:for="{{[1,2,3,4,5,6,7,8,9]}}" wx:key="*n" class="skeleton-item {{getSkeletonType(n)}}">
+        <view class="skeleton-inner">
+          <view class="shimmer"></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 模板列表 -->
+    <view wx:else class="mixed-grid">
+      <view
+        wx:for="{{filteredTemplates}}"
+        wx:key="id"
+        class="grid-item {{item.size || 'small'}} {{pressedCard === item.id ? 'pressed' : ''}}"
+        bindtap="handleCardTap"
+        data-id="{{item.id}}"
+        bindtouchstart="pressedCardStart"
+        bindtouchend="pressedCardEnd"
+        bindtouchcancel="pressedCardEnd"
+      >
+        <view class="card-wrapper">
+          <image
+            class="card-image"
+            src="{{item.thumbnail}}"
+            mode="aspectFill"
+          />
+          <view wx:if="{{item.badge}}" class="card-badge {{item.badgeType}}">
+            {{item.badge}}
+          </view>
+          <view wx:if="{{item.showTitleOverlay}}" class="card-title-overlay">
+            <text class="overlay-title">{{item.name.zh || item.name}}</text>
+          </view>
+        </view>
+        <view wx:if="{{!item.showTitleOverlay}}" class="card-info">
+          <text class="card-title">{{item.name.zh || item.name}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view wx:if="{{!loading && filteredTemplates.length === 0}}" class="empty-state">
+      <text class="empty-text">暂无模板</text>
+    </view>
+  </scroll-view>
+</view>

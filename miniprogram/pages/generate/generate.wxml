@@ -1,0 +1,92 @@
+<!--pages/generate/generate.wxml-->
+<view class="page">
+  <!-- 模板信息 -->
+  <view class="template-section">
+    <view class="template-card">
+      <image class="template-thumb" src="{{template.thumbnail}}" mode="aspectFill" />
+      <view class="template-info">
+        <text class="template-name">{{template.name.zh || template.name}}</text>
+        <text class="template-desc">{{template.description.zh || template.description}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 角色选择 -->
+  <view class="section">
+    <view class="section-title">选择角色（可选）</view>
+    <scroll-view class="character-scroll" scroll-x="{{true}}" show-scrollbar="{{false}}">
+      <view class="character-list">
+        <view
+          wx:for="{{characters}}"
+          wx:key="id"
+          class="character-item {{selectedCharacter.id === item.id ? 'selected' : ''}}"
+          bindtap="selectCharacter"
+          data-id="{{item.id}}"
+        >
+          <view class="character-avatar">
+            <image
+              wx:if="{{item.photos && item.photos.length > 0}}"
+              class="avatar-img"
+              src="{{item.photos[0].data}}"
+              mode="aspectFill"
+            />
+            <text wx:else class="avatar-placeholder">{{item.name.charAt(0)}}</text>
+          </view>
+          <text class="character-name">{{item.name}}</text>
+        </view>
+        <view wx:if="{{characters.length === 0}}" class="empty-characters">
+          <text>暂无角色，去创建</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 比例选择 -->
+  <view class="section">
+    <view class="section-title">选择比例</view>
+    <view class="ratio-list">
+      <view
+        wx:for="{{ratios}}"
+        wx:key="value"
+        class="ratio-item {{ratio === item.value ? 'active' : ''}}"
+        bindtap="selectRatio"
+        data-value="{{item.value}}"
+      >
+        <view class="ratio-preview {{item.className}}"></view>
+        <text class="ratio-label">{{item.label}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 生成的图片 -->
+  <view wx:if="{{generatedImages.length > 0}}" class="generated-section">
+    <view class="section-title">生成结果</view>
+    <view class="generated-grid">
+      <view
+        wx:for="{{generatedImages}}"
+        wx:key="index"
+        class="generated-item"
+        bindtap="previewImage"
+        data-index="{{index}}"
+      >
+        <image
+          class="generated-img"
+          src="data:{{item.mimeType}};base64,{{item.data}}"
+          mode="aspectFill"
+        />
+      </view>
+    </view>
+  </view>
+
+  <!-- 生成按钮 -->
+  <view class="action-section">
+    <button
+      class="generate-btn {{generating ? 'generating' : ''}}"
+      bindtap="handleGenerate"
+      disabled="{{generating}}"
+    >
+      <text wx:if="{{generating}}">生成中...</text>
+      <text wx:else>开始生成</text>
+    </button>
+  </view>
+</view>

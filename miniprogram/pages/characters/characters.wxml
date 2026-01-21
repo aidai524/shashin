@@ -1,0 +1,93 @@
+<!--pages/characters/characters.wxml-->
+<view class="page">
+  <!-- 页面头部 -->
+  <view class="page-header">
+    <text class="page-title">我的角色</text>
+    <text class="page-subtitle">{{limits.currentCount}}/{{limits.maxCharacters}}</text>
+  </view>
+
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="loading-container">
+    <view class="spinner"></view>
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 角色列表 -->
+  <scroll-view wx:else class="content-scroll" scroll-y="{{true}}">
+    <!-- 有角色 -->
+    <view wx:if="{{characters.length > 0}}" class="character-list">
+      <view
+        wx:for="{{characters}}"
+        wx:key="id"
+        class="character-card"
+      >
+        <!-- 照片预览 -->
+        <view
+          class="photo-preview"
+          bindtap="previewPhotos"
+          data-photos="{{item.photos}}"
+        >
+          <view wx:if="{{item.photos && item.photos.length > 0}}" class="photo-grid">
+            <image
+              wx:for="{{item.photos}}"
+              wx:for-item="photo"
+              wx:for-index="photoIndex"
+              wx:key="id"
+              wx:if="{{photoIndex < 4}}"
+              class="photo-img"
+              src="{{photo.data}}"
+              mode="aspectFill"
+            />
+            <view wx:if="{{item.photos.length > 4}}" class="photo-more">
+              +{{item.photos.length - 4}}
+            </view>
+          </view>
+          <view wx:else class="photo-empty">
+            <text class="empty-icon">📷</text>
+            <text class="empty-text">暂无照片</text>
+          </view>
+        </view>
+
+        <!-- 角色信息 -->
+        <view class="character-info">
+          <view class="info-left">
+            <text class="character-name">{{item.name}}</text>
+            <text class="photo-count">{{item.photos.length}}/{{limits.maxPhotosPerCharacter}} 张照片</text>
+          </view>
+          <view class="action-buttons">
+            <view
+              class="action-btn edit-btn"
+              bindtap="handleEdit"
+              data-id="{{item.id}}"
+            >
+              <text class="btn-icon">✏️</text>
+            </view>
+            <view
+              class="action-btn delete-btn"
+              bindtap="handleDelete"
+              data-id="{{item.id}}"
+              data-index="{{index}}"
+            >
+              <text class="btn-icon">🗑️</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view wx:else class="empty-state">
+      <view class="empty-icon">👤</view>
+      <text class="empty-title">还没有角色</text>
+      <text class="empty-desc">创建角色后，可以用它生成各种风格的照片</text>
+    </view>
+  </scroll-view>
+
+  <!-- 添加按钮 -->
+  <view class="add-btn-container">
+    <button class="add-btn" bindtap="handleAdd">
+      <text class="add-icon">+</text>
+      <text class="add-text">添加角色</text>
+    </button>
+  </view>
+</view>

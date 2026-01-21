@@ -1,0 +1,74 @@
+<!--pages/characters/edit.wxml-->
+<view class="page">
+  <!-- 表单区域 -->
+  <view class="form-section">
+    <!-- 角色名称 -->
+    <view class="form-item">
+      <view class="form-label">角色名称 <text class="required">*</text></view>
+      <input
+        class="form-input"
+        placeholder="给角色起个名字"
+        value="{{name}}"
+        bindinput="onNameInput"
+        maxlength="20"
+      />
+    </view>
+
+    <!-- 角色描述 -->
+    <view class="form-item">
+      <view class="form-label">角色描述</view>
+      <textarea
+        class="form-textarea"
+        placeholder="描述角色的特征、风格等"
+        value="{{description}}"
+        bindinput="onDescInput"
+        maxlength="200"
+        auto-height
+      />
+    </view>
+
+    <!-- 角色照片 -->
+    <view class="form-item">
+      <view class="form-label">角色照片 ({{photos.length}}/{{maxPhotos}})</view>
+      <view class="photos-grid">
+        <!-- 已有照片 -->
+        <view
+          wx:for="{{photos}}"
+          wx:key="*index"
+          class="photo-item"
+        >
+          <image
+            class="photo-img"
+            src="{{item.data}}"
+            mode="aspectFill"
+            bindtap="previewPhoto"
+            data-index="{{index}}"
+          />
+          <view
+            class="photo-delete"
+            catchtap="deletePhoto"
+            data-index="{{index}}"
+          >
+            <text class="delete-icon">×</text>
+          </view>
+        </view>
+
+        <!-- 添加按钮 -->
+        <view
+          wx:if="{{photos.length < maxPhotos}}"
+          class="photo-add"
+          bindtap="handleAddPhoto"
+        >
+          <text class="add-icon">+</text>
+          <text class="add-text">添加</text>
+        </view>
+      </view>
+      <view class="form-tip">建议上传正面、侧面照片各3-5张，效果更好</view>
+    </view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="action-section">
+    <button class="save-btn" bindtap="handleSave">保存</button>
+  </view>
+</view>

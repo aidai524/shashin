@@ -1,0 +1,75 @@
+<!--pages/history/history.wxml-->
+<view class="page">
+  <!-- 页面头部 -->
+  <view class="page-header">
+    <text class="page-title">History</text>
+    <text class="page-subtitle">Your creations</text>
+  </view>
+
+  <!-- 加载中 -->
+  <view wx:if="{{loading}}" class="loading-container">
+    <view class="spinner"></view>
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 历史记录列表 -->
+  <scroll-view wx:else class="content-scroll" scroll-y="{{true}}" enable-back-to-top="{{true}}">
+    <!-- 有记录 -->
+    <view wx:if="{{records.length > 0}}" class="history-list">
+      <view
+        wx:for="{{records}}"
+        wx:key="id"
+        class="history-card"
+        bindtap="handleRecordTap"
+        data-record="{{item}}"
+      >
+        <!-- 图片网格 -->
+        <view class="image-grid">
+          <view
+            wx:for="{{item.thumbKeys}}"
+            wx:for-item="thumbKey"
+            wx:for-index="imgIndex"
+            wx:key="*index"
+            class="image-item"
+          >
+            <image
+              class="history-image"
+              src="{{apiBaseUrl}}/api/history/image/{{thumbKey}}"
+              mode="aspectFill"
+              lazy-load="{{true}}"
+            />
+          </view>
+        </view>
+
+        <!-- 卡片信息 -->
+        <view class="card-info">
+          <view class="info-left">
+            <text class="template-name">{{item.templateName || '生成记录'}}</text>
+            <text class="create-time">{{item.createdAt}}</text>
+          </view>
+          <view
+            class="delete-btn"
+            catchtap="handleDelete"
+            data-id="{{item.id}}"
+            data-index="{{index}}"
+          >
+            <text class="delete-icon">×</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view wx:else class="empty-state">
+      <view class="empty-icon">📷</view>
+      <text class="empty-title">暂无历史记录</text>
+      <text class="empty-desc">去首页生成你的第一张照片吧</text>
+      <button class="goto-create-btn" bindtap="gotoCreate">开始创作</button>
+    </view>
+  </scroll-view>
+
+  <!-- 清空按钮 -->
+  <view wx:if="{{!loading && records.length > 0}}" class="clear-btn-container">
+    <button class="clear-btn" bindtap="handleClearAll">清空历史</button>
+  </view>
+</view>

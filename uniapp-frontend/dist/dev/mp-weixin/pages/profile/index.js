@@ -1,55 +1,19 @@
 "use strict";
 const common_vendor = require("../../common/vendor.js");
-const stores_user = require("../../stores/user.js");
 const _sfc_main = {
-  __name: "index",
-  setup(__props) {
-    const userStore = stores_user.useUserStore();
-    const handleLogin = async () => {
-      try {
-        common_vendor.index.showLoading({ title: "登录中..." });
-        await userStore.login();
-        common_vendor.index.showToast({ title: "登录成功", icon: "success" });
-      } catch (e) {
-        console.error("登录失败:", e);
-        common_vendor.index.showToast({ title: "登录失败", icon: "none" });
-      } finally {
-        common_vendor.index.hideLoading();
-      }
-    };
-    const handleLogout = () => {
-      common_vendor.index.showModal({
-        title: "提示",
-        content: "确定要退出登录吗？",
-        success: (res) => {
-          if (res.confirm) {
-            userStore.logout();
-            common_vendor.index.showToast({ title: "已退出登录", icon: "success" });
-          }
-        }
-      });
-    };
-    const navigateToCharacters = () => {
-      common_vendor.index.navigateTo({ url: "/pages/profile/characters" });
-    };
-    return (_ctx, _cache) => {
-      var _a;
-      return common_vendor.e({
-        a: common_vendor.unref(userStore).isLoggedIn
-      }, common_vendor.unref(userStore).isLoggedIn ? {
-        b: common_vendor.unref(userStore).userInfo.avatar || "/static/default-avatar.png",
-        c: common_vendor.t(common_vendor.unref(userStore).userInfo.nickname),
-        d: common_vendor.t(((_a = common_vendor.unref(userStore).plan) == null ? void 0 : _a.name) || "免费版")
-      } : {
-        e: common_vendor.o(handleLogin)
-      }, {
-        f: common_vendor.unref(userStore).isLoggedIn
-      }, common_vendor.unref(userStore).isLoggedIn ? {
-        g: common_vendor.o(navigateToCharacters),
-        h: common_vendor.o(handleLogout)
-      } : {});
-    };
+  data() {
+    return {};
+  },
+  methods: {
+    handleLogin() {
+      common_vendor.index.showToast({ title: "登录功能开发中", icon: "none" });
+    }
   }
 };
-const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-f97f9319"]]);
+function _sfc_render(_ctx, _cache, $props, $setup, $data, $options) {
+  return {
+    a: common_vendor.o((...args) => $options.handleLogin && $options.handleLogin(...args))
+  };
+}
+const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["render", _sfc_render], ["__scopeId", "data-v-f97f9319"]]);
 wx.createPage(MiniProgramPage);
