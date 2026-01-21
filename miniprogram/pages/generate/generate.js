@@ -87,6 +87,37 @@ Page({
     })
   },
 
+  // 获取模板和角色信息
+  getTemplateAndCharacter() {
+    return Promise.all([
+      // 获取模板
+      new Promise((resolve) => {
+        if (this.data.template) {
+          resolve(this.data.template)
+        } else {
+          request({
+            url: `/api/templates/${this.data.templateId}`,
+            method: 'GET'
+          }).then(res => resolve(res))
+        }
+      }),
+      // 获取角色
+      new Promise((resolve) => {
+        if (!this.data.selectedCharacter) {
+          resolve(null)
+          return
+        }
+        request({
+          url: `/api/characters`,
+          method: 'GET'
+        }).then(res => {
+          const character = res.characters.find(c => c.id === this.data.selectedCharacter.id)
+          resolve(character || null)
+        })
+      })
+    ]).then(([template, character]) => ({ template, character }))
+  },
+
   // 开始生成
   handleGenerate() {
     if (this.data.generating) return
@@ -100,75 +131,109 @@ Page({
 
     const selectedRatio = this.data.ratios.find(r => r.value === this.data.ratio)
 
-    request({
-      url: '/api/generate',
-      method: 'POST',
-      data: {
-        model: 'gemini-3-pro-image-preview',  // 使用高级模式
-        templateId: this.data.templateId,
-        characterId: this.data.selectedCharacter?.id || null,
-        ratio: this.data.ratio,
-        width: selectedRatio.width,
-        height: selectedRatio.height
+    // 获取模板和角色信息
+    this.getTemplateAndCharacter().then(({ template, character }) => {
+      // 构建 Prompt
+      let prompt = template.prompt
+      if (character) {
+        prompt = `Subject is a specific person: ${character.name}. ${character.description || ''}. ${template.prompt}`
       }
-    }).then(res => {
-      wx.hideLoading()
+      prompt += `. Aspect ratio ${this.data.ratio || '1:1'}. High quality, detailed.`
 
-      // 🔍 打印完整响应
-      console.log('=== API Response ===')
-      console.log('Full response:', res)
-      console.log('Typeof response:', typeof res)
-      console.log('Has candidates:', !!res.candidates)
+      // 构建请求体（与网页端完全一致）
+      const requestBody = {
+        contents: [{
+          parts: [{ text: prompt }]
+        }]
+      }
 
-      // 处理 Gemini 返回的结果
-      // Gemini 2.0 Flash Image Generation 返回图片数据
-      if (res.candidates && res.candidates[0]?.content?.parts) {
-        const parts = res.candidates[0].content.parts
-        console.log('Parts count:', parts.length)
-        console.log('Parts:', parts)
+      // 如果有角色图片，添加到请求中
+      if (character && character.photos && character.photos.length > 0) {
+        const photo = character.photos[0]
+        const base64Data = photo.originalData ? photo.originalData.replace(/^data:image\/\w+;base64,/, '') : photo.data.replace(/^data:image\/\w+;base64,/, '')
 
-        const images = []
+        requestBody.contents[0].parts.push({
+          inlineData: {
+            mimeType: "image/jpeg",
+            data: base64Data
+          }
+        })
+      }
 
-        for (const part of parts) {
-          console.log('Processing part:', JSON.stringify(part, null, 2))
-          console.log('Has inlineData:', !!part.inlineData)
-          console.log('Has text:', !!part.text)
+      // 添加生成配置
+      requestBody.generationConfig = {
+        responseModalities: ["IMAGE"],
+        imageConfig: {
+          aspectRatio: this.data.ratio === '16:9' ? '16:9' : this.data.ratio === '3:4' ? '3:4' : '1:1'
+        }
+      }
 
-          if (part.inlineData) {
-            console.log('Found inlineData!')
-            console.log('  mimeType:', part.inlineData.mimeType)
-            console.log('  data length:', part.inlineData.data?.length)
+      console.log('Request body:', JSON.stringify(requestBody, null, 2))
 
-            images.push({
-              mimeType: part.inlineData.mimeType || 'image/png',
-              data: part.inlineData.data
+      // 直接调用 Gemini API 代理（高级模式）
+      request({
+        url: `/v1beta/models/gemini-3-pro-image-preview:generateContent`,
+        method: 'POST',
+        data: requestBody
+      }).then(res => {
+        wx.hideLoading()
+
+        // 🔍 打印完整响应
+        console.log('=== API Response ===')
+        console.log('Full response:', res)
+        console.log('Typeof response:', typeof res)
+        console.log('Has candidates:', !!res.candidates)
+
+        // 处理 Gemini 返回的结果
+        // Gemini 2.0 Flash Image Generation 返回图片数据
+        if (res.candidates && res.candidates[0]?.content?.parts) {
+          const parts = res.candidates[0].content.parts
+          console.log('Parts count:', parts.length)
+          console.log('Parts:', parts)
+
+          const images = []
+
+          for (const part of parts) {
+            console.log('Processing part:', JSON.stringify(part, null, 2))
+            console.log('Has inlineData:', !!part.inlineData)
+            console.log('Has text:', !!part.text)
+
+            if (part.inlineData) {
+              console.log('Found inlineData!')
+              console.log('  mimeType:', part.inlineData.mimeType)
+              console.log('  data length:', part.inlineData.data?.length)
+
+              images.push({
+                mimeType: part.inlineData.mimeType || 'image/png',
+                data: part.inlineData.data
+              })
+            }
+          }
+
+          console.log('Total images found:', images.length)
+
+          if (images.length > 0) {
+            this.saveToHistory(images)
+          } else {
+            // 没有图片数据，显示错误
+            wx.showModal({
+              title: '生成失败',
+              content: '模型未返回图片数据',
+              showCancel: false
             })
           }
         }
 
-        console.log('Total images found:', images.length)
-
-        if (images.length > 0) {
-          this.saveToHistory(images)
-        } else {
-          // 没有图片数据，显示错误
-          wx.showModal({
-            title: '生成失败',
-            content: '模型未返回图片数据',
-            showCancel: false
-          })
-        }
-      }
-
-      this.setData({ generating: false })
-    }).catch(e => {
-      wx.hideLoading()
-      this.setData({ generating: false })
-      console.error('生成失败:', e)
-      wx.showModal({
-        title: '生成失败',
-        content: e.error || '生成失败，请重试',
-        showCancel: false
+        this.setData({ generating: false })
+      }).catch(e => {
+        wx.hideLoading()
+        this.setData({ generating: false })
+        console.error('生成失败:', e)
+        wx.showModal({
+          title: '生成失败',
+          content: e.error || '生成失败，请重试',
+          showCancel: false
+        })
       })
     })
   },

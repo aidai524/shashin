@@ -1084,16 +1084,21 @@ function delay(ms) {
 }
 
 async function handleGeminiProxy(request, env, url) {
+    console.log('=== Gemini Proxy ===');
+    console.log('Request URL:', url.pathname);
+
+    // 优先从 x-goog-api-key header 获取（用于直接调用）
     let apiKey = request.headers.get("x-goog-api-key");
-    if (!apiKey) {
-      const authHeader = request.headers.get("Authorization");
-      if (authHeader && authHeader.startsWith("Bearer ")) {
-        apiKey = authHeader.substring(7);
-      }
-    }
+    console.log('API key from x-goog-api-key header:', apiKey ? 'Yes' : 'No');
+
+    // 如果没有，直接使用环境变量中的 API key（小程序场景）
+    // 不再尝试从 Authorization header 提取，因为那是给 JWT token 用的
     if (!apiKey && env.GEMINI_API_KEY) {
       apiKey = env.GEMINI_API_KEY;
+      console.log('API key from env.GEMINI_API_KEY:', apiKey ? 'Yes (' + apiKey.substring(0, 10) + '...)' : 'No');
     }
+
+    console.log('Final API key:', apiKey ? 'Set (' + apiKey.substring(0, 10) + '...)' : 'Not set');
 
     if (!apiKey) {
     return errorResponse("API key is required", 401);
@@ -1610,18 +1615,24 @@ async function saveHistoryRecord(request, env, user) {
       for (let i = 0; i < originalImages.length; i++) {
         const img = originalImages[i];
         const r2Key = `history/${user.id}/${record.id}/original_${i}.${img.mimeType.split('/')[1] || 'jpg'}`;
-        
+
+        // 清理 base64 数据（移除可能的 data URI 前缀）
+        let base64Data = img.base64;
+        if (base64Data.includes(',')) {
+          base64Data = base64Data.split(',')[1];
+        }
+
         // 将 base64 转换为 ArrayBuffer 并存储到 R2
-        const binaryString = atob(img.base64);
+        const binaryString = atob(base64Data);
         const bytes = new Uint8Array(binaryString.length);
         for (let j = 0; j < binaryString.length; j++) {
           bytes[j] = binaryString.charCodeAt(j);
         }
-        
+
         await env.IMAGES_BUCKET.put(r2Key, bytes.buffer, {
           httpMetadata: { contentType: img.mimeType }
         });
-        
+
         imageKeys.push(r2Key);
       }
       // 在 record 中存储 R2 原图 keys
@@ -1634,18 +1645,24 @@ async function saveHistoryRecord(request, env, user) {
       for (let i = 0; i < record.thumbnails.length; i++) {
         const thumb = record.thumbnails[i];
         const r2Key = `history/${user.id}/${record.id}/thumb_${i}.${thumb.mimeType.split('/')[1] || 'jpg'}`;
-        
+
+        // 清理 base64 数据（移除可能的 data URI 前缀）
+        let base64Data = thumb.base64;
+        if (base64Data.includes(',')) {
+          base64Data = base64Data.split(',')[1];
+        }
+
         // 将 base64 转换为 ArrayBuffer 并存储到 R2
-        const binaryString = atob(thumb.base64);
+        const binaryString = atob(base64Data);
         const bytes = new Uint8Array(binaryString.length);
         for (let j = 0; j < binaryString.length; j++) {
           bytes[j] = binaryString.charCodeAt(j);
         }
-        
+
         await env.IMAGES_BUCKET.put(r2Key, bytes.buffer, {
           httpMetadata: { contentType: thumb.mimeType }
         });
-        
+
         thumbKeys.push(r2Key);
       }
       // 在 record 中存储 R2 缩略图 keys，删除原始 base64 数据

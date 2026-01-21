@@ -7,6 +7,7 @@ const request = (options) => {
       url: app.globalData.API_BASE_URL + options.url,
       method: options.method || 'GET',
       data: options.data,
+      timeout: 300000, // 5分钟超时（针对图片生成接口）
       header: {
         'Authorization': app.globalData.token ? `Bearer ${app.globalData.token}` : '',
         'Content-Type': 'application/json',
