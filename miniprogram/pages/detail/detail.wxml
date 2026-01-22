@@ -1,0 +1,66 @@
+<!--pages/detail/detail.wxml-->
+<view class="page">
+  <!-- 主图片展示区域 -->
+  <view class="main-image-container">
+    <image
+      class="main-image"
+      src="{{currentImage.fullUrl}}"
+      mode="aspectFit"
+      bindtap="handleImageTap"
+    />
+
+    <!-- 加载状态 -->
+    <view wx:if="{{loading}}" class="image-loading">
+      <view class="spinner"></view>
+    </view>
+  </view>
+
+  <!-- 底部预览列表 -->
+  <view class="thumbnail-list-container">
+    <scroll-view class="thumbnail-scroll" scroll-x="{{true}}" scroll-into-view="{{thumbScrollId}}">
+      <view class="thumbnail-list">
+        <view
+          wx:for="{{images}}"
+          wx:key="index"
+          id="thumb-{{index}}"
+          class="thumbnail-item {{currentImageIndex === index ? 'active' : ''}}"
+          bindtap="handleThumbnailTap"
+          data-index="{{index}}"
+        >
+          <image
+            class="thumbnail-image"
+            src="{{item.thumbUrl}}"
+            mode="aspectFill"
+            lazy-load="{{true}}"
+          />
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 右上角操作按钮 -->
+  <view class="action-buttons">
+    <!-- 分享按钮 -->
+    <view class="action-btn share-btn" bindtap="handleShare">
+      <text class="btn-icon">↗</text>
+    </view>
+    <!-- 更多按钮 -->
+    <view class="action-btn more-btn" bindtap="toggleMoreMenu">
+      <text class="btn-icon">⋯</text>
+    </view>
+  </view>
+
+  <!-- 更多操作菜单 -->
+  <view wx:if="{{showMoreMenu}}" class="more-menu-mask" bindtap="toggleMoreMenu">
+    <view class="more-menu" catchtap="">
+      <view class="menu-item" bindtap="handleDownload">
+        <text class="menu-icon">⬇</text>
+        <text class="menu-text">下载图片</text>
+      </view>
+      <view class="menu-item" bindtap="handleDelete">
+        <text class="menu-icon">🗑</text>
+        <text class="menu-text">删除</text>
+      </view>
+    </view>
+  </view>
+</view>

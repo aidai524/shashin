@@ -55,13 +55,22 @@ Page({
       url: '/api/history',
       method: 'GET'
     }).then(res => {
-      // 为每个缩略图key生成完整的URL（包含token参数），用于图片加载认证
-      const records = (res.records || []).map(record => ({
-        ...record,
-        thumbUrls: record.thumbKeys.map(key =>
-          `${app.globalData.API_BASE_URL}/api/history/image/${encodeURIComponent(key)}?token=${token}`
-        )
-      }))
+      // 为每个缩略图key和完整图片key生成完整的URL（包含token参数）
+      const records = (res.records || []).map(record => {
+        // 格式化日期标签
+        const dateLabel = this.formatDateLabel(record.createdAt)
+
+        return {
+          ...record,
+          thumbUrls: record.thumbKeys.map(key =>
+            `${app.globalData.API_BASE_URL}/api/history/image/${encodeURIComponent(key)}?token=${token}`
+          ),
+          fullUrls: record.fullKeys.map(key =>
+            `${app.globalData.API_BASE_URL}/api/history/image/${encodeURIComponent(key)}?token=${token}`
+          ),
+          dateLabel: dateLabel
+        }
+      })
 
       this.setData({
         records: records,
@@ -94,15 +103,12 @@ Page({
   handleRecordTap(e) {
     const record = e.currentTarget.dataset.record
 
-    // 预览图片，使用已生成的完整 URL（包含 token 参数）
-    const urls = record.thumbUrls || []
+    // 将记录数据序列化后传递给详情页面
+    const recordData = encodeURIComponent(JSON.stringify(record))
 
-    if (urls.length > 0) {
-      wx.previewImage({
-        current: urls[0],
-        urls: urls
-      })
-    }
+    wx.navigateTo({
+      url: `/pages/detail/detail?recordData=${recordData}&imageIndex=0`
+    })
   },
 
   // 删除单条记录
@@ -173,6 +179,31 @@ Page({
         icon: 'none'
       })
     })
+  },
+
+  // 格式化日期标签（中文格式）
+  formatDateLabel(timestamp) {
+    const date = new Date(timestamp)
+    const now = new Date()
+    const diff = now - date
+
+    // 今天
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const recordDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    const dayDiff = Math.floor((today - recordDate) / (1000 * 60 * 60 * 24))
+
+    if (dayDiff === 0) {
+      return '今天'
+    } else if (dayDiff === 1) {
+      return '昨天'
+    } else if (dayDiff === 2) {
+      return '前天'
+    } else if (dayDiff < 7) {
+      return `${dayDiff}天前`
+    } else {
+      // 返回完整日期格式：2025年1月22日
+      return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
+    }
   },
 
   // 格式化时间

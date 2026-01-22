@@ -1,11 +1,5 @@
 <!--pages/history/history.wxml-->
 <view class="page">
-  <!-- 页面头部 -->
-  <view class="page-header">
-    <text class="page-title">History</text>
-    <text class="page-subtitle">Your creations</text>
-  </view>
-
   <!-- 加载中 -->
   <view wx:if="{{loading}}" class="loading-container">
     <view class="spinner"></view>
@@ -23,6 +17,11 @@
         bindtap="handleRecordTap"
         data-record="{{item}}"
       >
+        <!-- 日期标签 -->
+        <view class="date-badge">
+          <text>{{item.dateLabel}}</text>
+        </view>
+
         <!-- 图片网格 -->
         <view class="image-grid">
           <view
@@ -41,20 +40,14 @@
           </view>
         </view>
 
-        <!-- 卡片信息 -->
-        <view class="card-info">
-          <view class="info-left">
-            <text class="template-name">{{item.templateName || '生成记录'}}</text>
-            <text class="create-time">{{item.createdAt}}</text>
-          </view>
-          <view
-            class="delete-btn"
-            catchtap="handleDelete"
-            data-id="{{item.id}}"
-            data-index="{{index}}"
-          >
-            <text class="delete-icon">×</text>
-          </view>
+        <!-- 删除按钮 -->
+        <view
+          class="delete-btn"
+          catchtap="handleDelete"
+          data-id="{{item.id}}"
+          data-index="{{index}}"
+        >
+          <text class="delete-icon">🗑</text>
         </view>
       </view>
     </view>

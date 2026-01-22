@@ -1551,6 +1551,12 @@ async function handleHistoryAPI(request, env, pathname) {
     return await getHistoryImage(env, user, decodeURIComponent(imageMatch[1]));
   }
 
+  // GET /api/history/:id - 获取单条历史记录详情
+  const detailMatch = pathname.match(/^\/api\/history\/([^\/]+)$/);
+  if (detailMatch && method === 'GET') {
+    return await getHistoryRecordDetail(env, user, detailMatch[1]);
+  }
+
   // DELETE /api/history/:id - 删除单条历史记录
   const deleteMatch = pathname.match(/^\/api\/history\/([^\/]+)$/);
   if (deleteMatch && method === 'DELETE') {
@@ -1603,6 +1609,28 @@ async function getUserHistory(env, user) {
   } catch (e) {
     console.error('Get history error:', e);
     return errorResponse('Failed to get history', 500);
+  }
+}
+
+// 获取单条历史记录详情
+async function getHistoryRecordDetail(env, user, recordId) {
+  try {
+    const key = `history:${user.id}`;
+    const data = await env.HISTORY_KV.get(key, 'json');
+
+    if (!data || !data.records) {
+      return errorResponse('Record not found', 404);
+    }
+
+    const record = data.records.find(r => r.id === recordId);
+    if (!record) {
+      return errorResponse('Record not found', 404);
+    }
+
+    return jsonResponse(record);
+  } catch (e) {
+    console.error('Get history record detail error:', e);
+    return errorResponse('Failed to get record detail', 500);
   }
 }
 
