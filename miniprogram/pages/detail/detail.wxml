@@ -42,7 +42,7 @@
   <view class="action-buttons">
     <!-- 分享按钮 -->
     <view class="action-btn share-btn" bindtap="handleShare">
-      <text class="btn-icon">↗</text>
+      <text class="btn-icon">📤</text>
     </view>
     <!-- 更多按钮 -->
     <view class="action-btn more-btn" bindtap="toggleMoreMenu">

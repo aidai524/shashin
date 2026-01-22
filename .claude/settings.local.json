@@ -5,7 +5,9 @@
       "Bash(npm run dev:*)",
       "Bash(npx wrangler secret put:*)",
       "Bash(grep:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "mcp__web-search-prime__webSearchPrime",
+      "mcp__web-reader__webReader"
     ],
     "deny": [],
     "ask": []

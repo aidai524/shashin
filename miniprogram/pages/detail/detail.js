@@ -96,15 +96,48 @@ Page({
   handleShare() {
     const { currentImage } = this.data
 
-    wx.showShareMenu({
-      withShareTicket: true,
-      menus: ['shareAppMessage', 'shareTimeline']
+    wx.showLoading({
+      title: '加载中...'
     })
 
-    wx.showToast({
-      title: '请点击右上角分享',
-      icon: 'none'
+    // 先下载图片到本地临时路径
+    wx.downloadFile({
+      url: currentImage.fullUrl,
+      success: (res) => {
+        wx.hideLoading()
+        if (res.statusCode === 200) {
+          // 调用图片分享 API
+          wx.showShareImageMenu({
+            path: res.tempFilePath,
+            success: () => {
+              console.log('分享成功')
+            },
+            fail: (err) => {
+              console.error('分享失败:', err)
+              wx.showToast({
+                title: '分享失败',
+                icon: 'none'
+              })
+            }
+          })
+        } else {
+          wx.showToast({
+            title: '图片加载失败',
+            icon: 'none'
+          })
+        }
+      },
+      fail: (err) => {
+        wx.hideLoading()
+        console.error('下载图片失败:', err)
+        wx.showToast({
+          title: '图片加载失败',
+          icon: 'none'
+        })
+      }
     })
+
+    this.toggleMoreMenu()
   },
 
   // 下载图片
