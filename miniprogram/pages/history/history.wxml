@@ -26,15 +26,15 @@
         <!-- 图片网格 -->
         <view class="image-grid">
           <view
-            wx:for="{{item.thumbKeys}}"
-            wx:for-item="thumbKey"
+            wx:for="{{item.thumbUrls}}"
+            wx:for-item="thumbUrl"
             wx:for-index="imgIndex"
             wx:key="*index"
             class="image-item"
           >
             <image
               class="history-image"
-              src="{{apiBaseUrl}}/api/history/image/{{thumbKey}}"
+              src="{{thumbUrl}}"
               mode="aspectFill"
               lazy-load="{{true}}"
             />

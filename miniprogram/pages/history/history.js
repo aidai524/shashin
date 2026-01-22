@@ -49,13 +49,22 @@ Page({
   // 获取历史记录
   fetchHistory() {
     const app = getApp()
+    const token = app.getToken()
 
     request({
       url: '/api/history',
       method: 'GET'
     }).then(res => {
+      // 为每个缩略图key生成完整的URL（包含token参数），用于图片加载认证
+      const records = (res.records || []).map(record => ({
+        ...record,
+        thumbUrls: record.thumbKeys.map(key =>
+          `${app.globalData.API_BASE_URL}/api/history/image/${encodeURIComponent(key)}?token=${token}`
+        )
+      }))
+
       this.setData({
-        records: res.records || [],
+        records: records,
         loading: false,
         refreshing: false
       })
@@ -84,11 +93,9 @@ Page({
   // 点击查看历史记录详情
   handleRecordTap(e) {
     const record = e.currentTarget.dataset.record
-    // 预览图片
-    const urls = record.thumbKeys.map(key => {
-      const app = getApp()
-      return `${app.globalData.API_BASE_URL}/api/history/image/${encodeURIComponent(key)}`
-    })
+
+    // 预览图片，使用已生成的完整 URL（包含 token 参数）
+    const urls = record.thumbUrls || []
 
     if (urls.length > 0) {
       wx.previewImage({

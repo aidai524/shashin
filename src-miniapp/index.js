@@ -263,14 +263,24 @@ async function verifyJWT(token, secret) {
 
 // 从请求中获取用户
 async function getUserFromRequest(request, env) {
+  let token = null;
+
+  // 优先从 Authorization 头获取 token
   const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  } else {
+    // 如果没有 Authorization 头，尝试从 URL 查询参数获取 token（用于图片加载）
+    const url = new URL(request.url);
+    token = url.searchParams.get('token');
+  }
+
+  if (!token) {
     return null;
   }
 
-  const token = authHeader.substring(7);
   const payload = await verifyJWT(token, env.JWT_SECRET);
-  
+
   if (!payload || !payload.userId) {
     return null;
   }
