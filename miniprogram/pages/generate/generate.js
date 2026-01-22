@@ -9,9 +9,31 @@ Page({
     selectedCharacter: null,
     ratio: '1:1',
     ratios: [
-      { value: '1:1', label: '1:1', className: '1-1', width: 512, height: 512 },
-      { value: '3:4', label: '3:4', className: '3-4', width: 512, height: 682 },
-      { value: '16:9', label: '16:9', className: '16-9', width: 768, height: 432 }
+      { value: '1:1', label: '1:1', className: 'ratio-1-1' },
+      { value: '16:9', label: '16:9', className: 'ratio-16-9' },
+      { value: '9:16', label: '9:16', className: 'ratio-9-16' },
+      { value: '4:3', label: '4:3', className: 'ratio-4-3' },
+      { value: '3:4', label: '3:4', className: 'ratio-3-4' },
+      { value: '3:2', label: '3:2', className: 'ratio-3-2' },
+      { value: '2:3', label: '2:3', className: 'ratio-2-3' },
+      { value: '21:9', label: '21:9', className: 'ratio-21-9' }
+    ],
+    quality: 'premium', // premium（高级）, fast（快速）
+    qualities: [
+      { value: 'premium', label: '高级', desc: '4K 高清' },
+      { value: 'fast', label: '快速', desc: '标准画质' }
+    ],
+    count: 1, // 生成数量
+    counts: [
+      { value: 1, label: '1张', desc: '~30秒' },
+      { value: 2, label: '2张', desc: '~60秒' },
+      { value: 4, label: '4张', desc: '~2分钟' }
+    ],
+    resolution: '4K', // 1K, 2K, 4K
+    resolutions: [
+      { value: '1K', label: '标准', desc: '1K' },
+      { value: '2K', label: '高清', desc: '2K' },
+      { value: '4K', label: '超清', desc: '4K' }
     ],
     generating: false,
     generatedImages: []
@@ -78,6 +100,24 @@ Page({
     this.setData({ ratio })
   },
 
+  // 选择生成质量
+  selectQuality(e) {
+    const quality = e.currentTarget.dataset.value
+    this.setData({ quality })
+  },
+
+  // 选择生成数量
+  selectCount(e) {
+    const count = parseInt(e.currentTarget.dataset.value)
+    this.setData({ count })
+  },
+
+  // 选择画质
+  selectResolution(e) {
+    const resolution = e.currentTarget.dataset.value
+    this.setData({ resolution })
+  },
+
   // 选择角色
   selectCharacter(e) {
     const id = e.currentTarget.dataset.id
@@ -129,102 +169,97 @@ Page({
 
     this.setData({ generating: true })
 
-    const selectedRatio = this.data.ratios.find(r => r.value === this.data.ratio)
+    // 根据质量和数量决定模型和API调用次数
+    const isPremium = this.data.quality === 'premium'
+    const model = isPremium ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image'
+    const count = this.data.count
 
     // 获取模板和角色信息
     this.getTemplateAndCharacter().then(({ template, character }) => {
-      // 构建 Prompt
-      let prompt = template.prompt
-      if (character) {
-        prompt = `Subject is a specific person: ${character.name}. ${character.description || ''}. ${template.prompt}`
-      }
-      prompt += `. Aspect ratio ${this.data.ratio || '1:1'}. High quality, detailed.`
+      // 构建所有生成请求
+      const requests = []
 
-      // 构建请求体（与网页端完全一致）
-      const requestBody = {
-        contents: [{
-          parts: [{ text: prompt }]
-        }]
-      }
-
-      // 如果有角色图片，添加到请求中
-      if (character && character.photos && character.photos.length > 0) {
-        const photo = character.photos[0]
-        const base64Data = photo.originalData ? photo.originalData.replace(/^data:image\/\w+;base64,/, '') : photo.data.replace(/^data:image\/\w+;base64,/, '')
-
-        requestBody.contents[0].parts.push({
-          inlineData: {
-            mimeType: "image/jpeg",
-            data: base64Data
-          }
-        })
-      }
-
-      // 添加生成配置
-      requestBody.generationConfig = {
-        responseModalities: ["IMAGE"],
-        imageConfig: {
-          aspectRatio: this.data.ratio === '16:9' ? '16:9' : this.data.ratio === '3:4' ? '3:4' : '1:1'
+      for (let i = 0; i < count; i++) {
+        // 构建 Prompt
+        let prompt = template.prompt
+        if (character) {
+          prompt = `Subject is a specific person: ${character.name}. ${character.description || ''}. ${template.prompt}`
         }
+        prompt += `. Aspect ratio ${this.data.ratio}. High quality, detailed.`
+
+        // 构建请求体
+        const requestBody = {
+          contents: [{
+            parts: [{ text: prompt }]
+          }]
+        }
+
+        // 如果有角色图片，添加到请求中
+        if (character && character.photos && character.photos.length > 0) {
+          const photo = character.photos[0]
+          const base64Data = photo.originalData ? photo.originalData.replace(/^data:image\/\w+;base64,/, '') : photo.data.replace(/^data:image\/\w+;base64,/, '')
+
+          requestBody.contents[0].parts.push({
+            inlineData: {
+              mimeType: "image/jpeg",
+              data: base64Data
+            }
+          })
+        }
+
+        // 添加生成配置
+        requestBody.generationConfig = {
+          responseModalities: ["IMAGE"],
+          imageConfig: {
+            aspectRatio: this.data.ratio
+          }
+        }
+
+        requests.push(
+          request({
+            url: `/v1beta/models/${model}:generateContent`,
+            method: 'POST',
+            data: requestBody
+          })
+        )
       }
 
-      console.log('Request body:', JSON.stringify(requestBody, null, 2))
-
-      // 直接调用 Gemini API 代理（高级模式）
-      request({
-        url: `/v1beta/models/gemini-3-pro-image-preview:generateContent`,
-        method: 'POST',
-        data: requestBody
-      }).then(res => {
+      // 并发执行所有请求
+      Promise.all(requests).then(responses => {
         wx.hideLoading()
 
-        // 🔍 打印完整响应
-        console.log('=== API Response ===')
-        console.log('Full response:', res)
-        console.log('Typeof response:', typeof res)
-        console.log('Has candidates:', !!res.candidates)
+        const allImages = []
 
-        // 处理 Gemini 返回的结果
-        // Gemini 2.0 Flash Image Generation 返回图片数据
-        if (res.candidates && res.candidates[0]?.content?.parts) {
-          const parts = res.candidates[0].content.parts
-          console.log('Parts count:', parts.length)
-          console.log('Parts:', parts)
+        // 收集所有响应中的图片
+        responses.forEach((res, index) => {
+          console.log(`Response ${index + 1}:`, res)
 
-          const images = []
+          if (res.candidates && res.candidates[0]?.content?.parts) {
+            const parts = res.candidates[0].content.parts
 
-          for (const part of parts) {
-            console.log('Processing part:', JSON.stringify(part, null, 2))
-            console.log('Has inlineData:', !!part.inlineData)
-            console.log('Has text:', !!part.text)
-
-            if (part.inlineData) {
-              console.log('Found inlineData!')
-              console.log('  mimeType:', part.inlineData.mimeType)
-              console.log('  data length:', part.inlineData.data?.length)
-
-              images.push({
-                mimeType: part.inlineData.mimeType || 'image/png',
-                data: part.inlineData.data
-              })
+            for (const part of parts) {
+              if (part.inlineData) {
+                allImages.push({
+                  mimeType: part.inlineData.mimeType || 'image/png',
+                  data: part.inlineData.data
+                })
+              }
             }
           }
+        })
 
-          console.log('Total images found:', images.length)
+        console.log(`Total images generated: ${allImages.length}`)
 
-          if (images.length > 0) {
-            this.saveToHistory(images)
-          } else {
-            // 没有图片数据，显示错误
-            wx.showModal({
-              title: '生成失败',
-              content: '模型未返回图片数据',
-              showCancel: false
-            })
-          }
+        if (allImages.length > 0) {
+          this.saveToHistory(allImages)
+        } else {
+          wx.showModal({
+            title: '生成失败',
+            content: '模型未返回图片数据',
+            showCancel: false
+          })
+          this.setData({ generating: false })
         }
-
-        this.setData({ generating: false })
       }).catch(e => {
         wx.hideLoading()
         this.setData({ generating: false })

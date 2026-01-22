@@ -43,17 +43,70 @@
 
   <!-- 比例选择 -->
   <view class="section">
-    <view class="section-title">选择比例</view>
-    <view class="ratio-list">
+    <view class="section-title">宽高比</view>
+    <scroll-view class="ratio-scroll" scroll-x="{{true}}" show-scrollbar="{{false}}">
+      <view class="ratio-list">
+        <view
+          wx:for="{{ratios}}"
+          wx:key="value"
+          class="ratio-item {{ratio === item.value ? 'active' : ''}}"
+          bindtap="selectRatio"
+          data-value="{{item.value}}"
+        >
+          <view class="ratio-preview {{item.className}}"></view>
+          <text class="ratio-label">{{item.label}}</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 生成质量 -->
+  <view class="section">
+    <view class="section-title">生成质量</view>
+    <view class="quality-list">
       <view
-        wx:for="{{ratios}}"
+        wx:for="{{qualities}}"
         wx:key="value"
-        class="ratio-item {{ratio === item.value ? 'active' : ''}}"
-        bindtap="selectRatio"
+        class="quality-item {{quality === item.value ? 'active' : ''}}"
+        bindtap="selectQuality"
         data-value="{{item.value}}"
       >
-        <view class="ratio-preview {{item.className}}"></view>
-        <text class="ratio-label">{{item.label}}</text>
+        <text class="quality-label">{{item.label}}</text>
+        <text class="quality-desc">{{item.desc}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 生成数量 -->
+  <view class="section">
+    <view class="section-title">生成数量</view>
+    <view class="count-list">
+      <view
+        wx:for="{{counts}}"
+        wx:key="value"
+        class="count-item {{count === item.value ? 'active' : ''}}"
+        bindtap="selectCount"
+        data-value="{{item.value}}"
+      >
+        <text class="count-label">{{item.label}}</text>
+        <text class="count-desc">{{item.desc}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 画质 -->
+  <view class="section">
+    <view class="section-title">画质</view>
+    <view class="resolution-list">
+      <view
+        wx:for="{{resolutions}}"
+        wx:key="value"
+        class="resolution-item {{resolution === item.value ? 'active' : ''}}"
+        bindtap="selectResolution"
+        data-value="{{item.value}}"
+      >
+        <text class="resolution-label">{{item.label}}</text>
+        <text class="resolution-desc">{{item.desc}}</text>
       </view>
     </view>
   </view>

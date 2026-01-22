@@ -55,17 +55,18 @@ Page({
       url: '/api/history',
       method: 'GET'
     }).then(res => {
-      // 为每个缩略图key和完整图片key生成完整的URL（包含token参数）
+      // 为每个缩略图key生成完整的URL（包含token参数）
       const records = (res.records || []).map(record => {
         // 格式化日期标签
         const dateLabel = this.formatDateLabel(record.createdAt)
 
         return {
           ...record,
-          thumbUrls: record.thumbKeys.map(key =>
+          thumbUrls: (record.thumbKeys || []).map(key =>
             `${app.globalData.API_BASE_URL}/api/history/image/${encodeURIComponent(key)}?token=${token}`
           ),
-          fullUrls: record.fullKeys.map(key =>
+          // fullKeys 可能不存在，使用 thumbKeys 作为备用
+          fullUrls: (record.fullKeys || record.thumbKeys || []).map(key =>
             `${app.globalData.API_BASE_URL}/api/history/image/${encodeURIComponent(key)}?token=${token}`
           ),
           dateLabel: dateLabel
