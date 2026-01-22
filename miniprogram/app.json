@@ -21,15 +21,21 @@
     "list": [
       {
         "pagePath": "pages/index/index",
-        "text": "创作"
+        "text": "创作",
+        "iconPath": "images/tabbar/create.png",
+        "selectedIconPath": "images/tabbar/create-active.png"
       },
       {
         "pagePath": "pages/history/history",
-        "text": "历史"
+        "text": "历史",
+        "iconPath": "images/tabbar/history.png",
+        "selectedIconPath": "images/tabbar/history-active.png"
       },
       {
         "pagePath": "pages/profile/profile",
-        "text": "我的"
+        "text": "我的",
+        "iconPath": "images/tabbar/profile.png",
+        "selectedIconPath": "images/tabbar/profile-active.png"
       }
     ]
   },
