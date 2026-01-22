@@ -25,47 +25,124 @@
   <scroll-view class="content-scroll" scroll-y="{{true}}" bindscrolltolower="loadMore" lower-threshold="100">
     <!-- 加载中 -->
     <view wx:if="{{loading}}" class="skeleton-container">
-      <view wx:for="{{[1,2,3,4,5,6,7,8,9]}}" wx:key="*n" class="skeleton-item {{getSkeletonType(n)}}">
-        <view class="skeleton-inner">
-          <view class="shimmer"></view>
-        </view>
+      <!-- 第一行：三个 9:16 -->
+      <view class="skeleton-row">
+        <view class="skeleton-item portrait-skeleton"></view>
+        <view class="skeleton-item portrait-skeleton"></view>
+        <view class="skeleton-item portrait-skeleton"></view>
+      </view>
+      <!-- 第二行：一个 16:9 -->
+      <view class="skeleton-row">
+        <view class="skeleton-item landscape-skeleton"></view>
+      </view>
+      <!-- 第三行：左3:4 右5:3 -->
+      <view class="skeleton-row">
+        <view class="skeleton-item left-skeleton"></view>
+        <view class="skeleton-item right-skeleton"></view>
       </view>
     </view>
 
-    <!-- 模板列表 -->
-    <view wx:else class="mixed-grid">
-      <view
-        wx:for="{{filteredTemplates}}"
-        wx:key="id"
-        class="grid-item {{item.size || 'small'}} {{pressedCard === item.id ? 'pressed' : ''}}"
-        bindtap="handleCardTap"
-        data-id="{{item.id}}"
-        bindtouchstart="pressedCardStart"
-        bindtouchend="pressedCardEnd"
-        bindtouchcancel="pressedCardEnd"
-      >
-        <view class="card-wrapper">
+    <!-- 模板列表 - 固定三行布局 -->
+    <view wx:else class="fixed-layout">
+      <!-- 第一行：三个 9:16 竖屏图片 -->
+      <view wx:if="{{filteredTemplates.length >= 3}}" class="layout-row row-portraits">
+        <view
+          wx:for="{{[0,1,2]}}"
+          wx:key="*this"
+          class="grid-item portrait-item {{pressedCard === filteredTemplates[item].id ? 'pressed' : ''}}"
+          bindtap="handleCardTap"
+          data-id="{{filteredTemplates[item].id}}"
+          bindtouchstart="pressedCardStart"
+          bindtouchend="pressedCardEnd"
+          bindtouchcancel="pressedCardEnd"
+        >
+          <image
+            class="card-image"
+            src="{{filteredTemplates[item].thumbnail}}"
+            mode="aspectFill"
+          />
+          <view wx:if="{{filteredTemplates[item].badge}}" class="card-badge {{filteredTemplates[item].badgeType}}">
+            {{filteredTemplates[item].badge}}
+          </view>
+        </view>
+      </view>
+
+      <!-- 第二行：一个 16:9 横屏图片，占满宽度 -->
+      <view wx:if="{{filteredTemplates.length >= 4}}" class="layout-row row-landscape">
+        <view
+          class="grid-item landscape-item {{pressedCard === filteredTemplates[3].id ? 'pressed' : ''}}"
+          bindtap="handleCardTap"
+          data-id="{{filteredTemplates[3].id}}"
+          bindtouchstart="pressedCardStart"
+          bindtouchend="pressedCardEnd"
+          bindtouchcancel="pressedCardEnd"
+        >
+          <image
+            class="card-image"
+            src="{{filteredTemplates[3].thumbnail}}"
+            mode="aspectFill"
+          />
+        </view>
+      </view>
+
+      <!-- 第三行：左边 3:4，右边 5:3 -->
+      <view wx:if="{{filteredTemplates.length >= 5}}" class="layout-row row-mixed">
+        <view
+          class="grid-item left-item {{pressedCard === filteredTemplates[4].id ? 'pressed' : ''}}"
+          bindtap="handleCardTap"
+          data-id="{{filteredTemplates[4].id}}"
+          bindtouchstart="pressedCardStart"
+          bindtouchend="pressedCardEnd"
+          bindtouchcancel="pressedCardEnd"
+        >
+          <image
+            class="card-image"
+            src="{{filteredTemplates[4].thumbnail}}"
+            mode="aspectFill"
+          />
+        </view>
+        <view
+          wx:if="{{filteredTemplates.length >= 6}}"
+          class="grid-item right-item {{pressedCard === filteredTemplates[5].id ? 'pressed' : ''}}"
+          bindtap="handleCardTap"
+          data-id="{{filteredTemplates[5].id}}"
+          bindtouchstart="pressedCardStart"
+          bindtouchend="pressedCardEnd"
+          bindtouchcancel="pressedCardEnd"
+        >
+          <image
+            class="card-image"
+            src="{{filteredTemplates[5].thumbnail}}"
+            mode="aspectFill"
+          />
+        </view>
+      </view>
+
+      <!-- 更多模板：使用网格布局 -->
+      <view wx:if="{{filteredTemplates.length > 6}}" class="more-templates">
+        <view
+          wx:for="{{filteredTemplates}}"
+          wx:key="id"
+          wx:if="{{index >= 6}}"
+          class="grid-item extra-item {{pressedCard === item.id ? 'pressed' : ''}}"
+          bindtap="handleCardTap"
+          data-id="{{item.id}}"
+          bindtouchstart="pressedCardStart"
+          bindtouchend="pressedCardEnd"
+          bindtouchcancel="pressedCardEnd"
+        >
           <image
             class="card-image"
             src="{{item.thumbnail}}"
             mode="aspectFill"
           />
-          <view wx:if="{{item.badge}}" class="card-badge {{item.badgeType}}">
-            {{item.badge}}
-          </view>
-          <view wx:if="{{item.showTitleOverlay}}" class="card-title-overlay">
-            <text class="overlay-title">{{item.name.zh || item.name}}</text>
-          </view>
-        </view>
-        <view wx:if="{{!item.showTitleOverlay}}" class="card-info">
-          <text class="card-title">{{item.name.zh || item.name}}</text>
         </view>
       </view>
-    </view>
 
-    <!-- 空状态 -->
-    <view wx:if="{{!loading && filteredTemplates.length === 0}}" class="empty-state">
-      <text class="empty-text">暂无模板</text>
+      <!-- 空状态 -->
+      <view wx:if="{{!loading && filteredTemplates.length === 0}}" class="empty-state">
+        <text class="empty-text">暂无模板</text>
+      </view>
     </view>
   </scroll-view>
 </view>

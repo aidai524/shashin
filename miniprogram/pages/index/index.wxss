@@ -65,14 +65,20 @@
 /* 内容滚动区 */
 .content-scroll {
   height: calc(100vh - 180rpx);
-  padding: 0 32rpx 32rpx;
+  padding: 0 0 32rpx 0;
 }
 
 /* 骨架屏 */
 .skeleton-container {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 12rpx;
+}
+
+.skeleton-row {
+  display: flex;
+  gap: 12rpx;
+  width: 100%;
 }
 
 .skeleton-item {
@@ -80,37 +86,11 @@
   border-radius: 24rpx;
   overflow: hidden;
   box-shadow: 0 12rpx 36rpx rgba(0, 0, 0, 0.10);
-}
-
-.skeleton-item.small {
-  width: calc((100% - 24rpx) / 3);
-  aspect-ratio: 1 / 1;
-}
-
-.skeleton-item.medium {
-  width: calc((100% - 24rpx) / 3);
-  aspect-ratio: 3 / 4;
-}
-
-.skeleton-item.large {
-  width: calc((100% - 12rpx) / 3 * 2);
-  aspect-ratio: 16 / 9;
-}
-
-.skeleton-item.xlarge {
-  width: 100%;
-  aspect-ratio: 16 / 9;
-}
-
-.skeleton-inner {
-  width: 100%;
-  height: 100%;
-  background-color: #F0F0F0;
   position: relative;
-  overflow: hidden;
 }
 
-.shimmer {
+.skeleton-item::after {
+  content: '';
   position: absolute;
   top: 0;
   left: 0;
@@ -119,6 +99,29 @@
   background: linear-gradient(90deg, #F0F0F0 25%, #E0E0E0 50%, #F0F0F0 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
+}
+
+/* 第一行：三个 9:16 */
+.portrait-skeleton {
+  flex: 1;
+  aspect-ratio: 9 / 16;
+}
+
+/* 第二行：一个 16:9 */
+.landscape-skeleton {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+/* 第三行：左边 3:4，右边 5:3 */
+.left-skeleton {
+  width: calc((100% - 12rpx) / 3);
+  aspect-ratio: 3 / 4;
+}
+
+.right-skeleton {
+  width: calc((100% - 12rpx) / 3 * 2);
+  aspect-ratio: 5 / 3;
 }
 
 @keyframes shimmer {
@@ -130,30 +133,66 @@
   }
 }
 
-/* 模板网格 */
-.mixed-grid {
+/* 固定布局 */
+.fixed-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  padding: 0 12rpx;
+}
+
+.layout-row {
+  display: flex;
+  gap: 12rpx;
+  width: 100%;
+}
+
+/* 第一行：三个 9:16 竖屏图片 */
+.row-portraits {
+  justify-content: space-between;
+}
+
+.portrait-item {
+  flex: 1;
+  aspect-ratio: 9 / 16;
+  min-width: 0;
+}
+
+/* 第二行：一个 16:9 横屏图片 */
+.row-landscape {
+  width: 100%;
+}
+
+.landscape-item {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+/* 第三行：左边 3:4，右边 5:3 */
+.row-mixed {
+  width: 100%;
+}
+
+.left-item {
+  width: calc((100% - 12rpx) / 3);
+  aspect-ratio: 3 / 4;
+}
+
+.right-item {
+  width: calc((100% - 12rpx) / 3 * 2);
+  aspect-ratio: 5 / 3;
+}
+
+/* 更多模板网格 */
+.more-templates {
   display: flex;
   flex-wrap: wrap;
   gap: 12rpx;
 }
 
-.grid-item.small {
+.extra-item {
   width: calc((100% - 24rpx) / 3);
-}
-
-.grid-item.medium {
-  width: calc((100% - 24rpx) / 3);
-  aspect-ratio: 3 / 4;
-}
-
-.grid-item.large {
-  width: calc((100% - 12rpx) / 3 * 2);
-  aspect-ratio: 16 / 9;
-}
-
-.grid-item.xlarge {
-  width: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 1 / 1;
 }
 
 /* 卡片样式 */
@@ -164,8 +203,6 @@
   box-shadow: 0 12rpx 36rpx rgba(0, 0, 0, 0.10);
   transition: all 0.2s ease;
   position: relative;
-  display: flex;
-  flex-direction: column;
 }
 
 .grid-item.pressed {
@@ -173,18 +210,9 @@
   box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.08);
 }
 
-.card-wrapper {
-  width: 100%;
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-  border-radius: 24rpx;
-}
-
 .card-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
   display: block;
 }
 
@@ -208,41 +236,6 @@
 .badge-hot {
   background-color: #FFA500;
   color: #FFFFFF;
-}
-
-/* 标题覆盖 */
-.card-title-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 32rpx 24rpx 24rpx;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
-}
-
-.overlay-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #FFFFFF;
-  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.3);
-}
-
-/* 卡片信息 */
-.card-info {
-  padding: 16rpx;
-  text-align: center;
-}
-
-.card-title {
-  font-size: 24rpx;
-  font-weight: 500;
-  color: #111111;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 /* 空状态 */

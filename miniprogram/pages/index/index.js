@@ -36,7 +36,16 @@ Page({
       method: 'GET'
     }).then(res => {
       const templates = (res || []).map((tpl, index) => {
-        return this.assignSmartLayout(tpl, index)
+        // 为前几个模板添加 badge
+        let result = { ...tpl }
+        if (index === 0) {
+          result.badge = 'NEW'
+          result.badgeType = 'badge-new'
+        } else if (index === 3) {
+          result.badge = 'HOT'
+          result.badgeType = 'badge-hot'
+        }
+        return result
       })
       this.setData({
         templates,
@@ -64,47 +73,6 @@ Page({
     this.setData({ filteredTemplates: filtered })
   },
 
-  // 智能分配布局
-  assignSmartLayout(tpl, index) {
-    const patterns = [
-      ['small', 'small', 'small'],
-      ['large'],
-      ['xlarge'],
-      ['small', 'large'],
-      ['medium', 'medium', 'small']
-    ]
-
-    const patternIndex = Math.floor(index / 3) % patterns.length
-    const pattern = patterns[patternIndex]
-    const sizeIndex = index % pattern.length
-    const size = pattern[sizeIndex]
-
-    const result = {
-      ...tpl,
-      size
-    }
-
-    if (size === 'small') {
-      result.ratio = '1:1'
-      result.badge = index === 0 ? 'NEW' : null
-    } else if (size === 'medium') {
-      result.ratio = '3:4'
-    } else if (size === 'large') {
-      result.ratio = '16:9'
-      result.showTitleOverlay = true
-      result.badge = index === 3 ? 'HOT' : null
-    } else if (size === 'xlarge') {
-      result.ratio = '16:9'
-      result.showTitleOverlay = true
-    }
-
-    if (result.badge) {
-      result.badgeType = result.badge === 'NEW' ? 'badge-new' : 'badge-hot'
-    }
-
-    return result
-  },
-
   // 生成模拟数据
   generateMockTemplates() {
     const mockData = []
@@ -117,25 +85,17 @@ Page({
         thumbnail: 'https://via.placeholder.com/300x400/FF6B6B/FFFFFF?text=Template',
         category: categories[i % categories.length]
       }
-      mockData.push(this.assignSmartLayout(tpl, i))
+      // 添加 badge
+      if (i === 0) {
+        tpl.badge = 'NEW'
+        tpl.badgeType = 'badge-new'
+      } else if (i === 3) {
+        tpl.badge = 'HOT'
+        tpl.badgeType = 'badge-hot'
+      }
+      mockData.push(tpl)
     }
     return mockData
-  },
-
-  // 获取骨架屏类型
-  getSkeletonType(index) {
-    const patterns = [
-      ['small', 'small', 'small'],
-      ['large'],
-      ['xlarge'],
-      ['small', 'large'],
-      ['medium', 'medium', 'small']
-    ]
-
-    const patternIndex = Math.floor((index - 1) / 3) % patterns.length
-    const pattern = patterns[patternIndex]
-    const sizeIndex = (index - 1) % pattern.length
-    return pattern[sizeIndex]
   },
 
   // 点击分类
