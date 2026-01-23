@@ -1687,14 +1687,14 @@ async function compressImageForDownload(file) {
   });
 }
 
-// 角色照片智能压缩 - 限制分辨率1024px，文件大小500KB以内
+// 角色照片智能压缩 - 限制分辨率800px，文件大小100KB以内
 async function compressCharacterPhoto(file) {
-  const MAX_RESOLUTION = 1024; // 最长边不超过1024px
-  const MAX_SIZE_KB = 500; // 目标文件大小500KB
+  const MAX_RESOLUTION = 800; // 最长边不超过800px（降低分辨率）
+  const MAX_SIZE_KB = 100; // 目标文件大小100KB（大幅降低）
   const MAX_SIZE_BYTES = MAX_SIZE_KB * 1024;
-  
+
   console.log('[CharacterPhoto] Processing:', (file.size / 1024).toFixed(0), 'KB');
-  
+
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -1703,13 +1703,13 @@ async function compressCharacterPhoto(file) {
         try {
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
-          
+
           let width = img.width;
           let height = img.height;
-          
+
           console.log('[CharacterPhoto] Original dimensions:', width + 'x' + height);
-          
-          // 步骤1: 限制分辨率到1024px（最长边）
+
+          // 步骤1: 限制分辨率到800px（最长边）
           if (width > MAX_RESOLUTION || height > MAX_RESOLUTION) {
             if (width > height) {
               height = Math.round((height * MAX_RESOLUTION) / width);
