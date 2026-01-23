@@ -1421,13 +1421,79 @@ async function handleUsersAdminAPI(request, env, pathname) {
   if (planMatch && method === 'PUT') {
     return await updateUserPlan(request, env, planMatch[1]);
   }
-  
+
+  // POST /api/admin/users/:id/grant-points - 给单个用户添加积分
+  const grantMatch = pathname.match(/^\/api\/admin\/users\/([^\/]+)\/grant-points$/);
+  if (grantMatch && method === 'POST') {
+    return await grantPointsToUser(request, env, grantMatch[1]);
+  }
+
   // POST /api/admin/grant-points-all - 给所有用户充值积分
   if (pathname === '/api/admin/grant-points-all' && method === 'POST') {
     return await grantPointsToAllUsers(request, env);
   }
 
   return errorResponse('Not found', 404);
+}
+
+// 给单个用户添加积分
+async function grantPointsToUser(request, env, userId) {
+  try {
+    const body = await request.json();
+    const { amount, reason } = body;
+
+    if (!amount || amount <= 0) {
+      return errorResponse('积分数量必须大于0');
+    }
+
+    const db = env.DB;
+    if (!db) {
+      return jsonResponse({ success: false, error: '积分系统未启用' }, 503);
+    }
+
+    // 验证用户存在
+    const userData = await env.USERS_KV.get(`user:${userId}`);
+    if (!userData) {
+      return errorResponse('用户不存在', 404);
+    }
+
+    const user = JSON.parse(userData);
+    const idempotencyKey = `admin_grant:${userId}:${Date.now()}`;
+
+    // 调用积分发放函数
+    const result = await grantPointsInternal(
+      db,
+      userId,
+      amount,
+      reason || 'admin_grant',
+      'admin',
+      'manual_grant',
+      idempotencyKey
+    );
+
+    if (result.success) {
+      return jsonResponse({
+        success: true,
+        message: `成功为用户 ${user.email || user.nickname} 添加 ${amount} 积分`,
+        userId,
+        amount,
+        newBalance: result.balance,
+        user: {
+          id: user.id,
+          email: user.email,
+          nickname: user.nickname
+        }
+      });
+    } else {
+      return jsonResponse({
+        success: false,
+        error: result.message || '添加积分失败'
+      }, 400);
+    }
+  } catch (e) {
+    console.error('Grant points to user error:', e);
+    return errorResponse('添加积分失败: ' + e.message, 500);
+  }
 }
 
 // 给所有用户充值积分
@@ -1510,20 +1576,45 @@ async function grantPointsToAllUsers(request, env) {
   }
 }
 
-// 列出所有用户
+// 列出所有用户（包含积分信息）
 async function listUsers(env) {
   try {
     const users = [];
     const list = await env.USERS_KV.list({ prefix: 'user:' });
-    
+    const db = env.DB;
+
     for (const key of list.keys) {
       const userData = await env.USERS_KV.get(key.name);
       if (userData) {
         const user = JSON.parse(userData);
         const { passwordHash: _, ...safeUser } = user;
+
+        // 如果有 D1 数据库，查询积分信息
+        if (db) {
+          try {
+            const wallet = await db.prepare('SELECT points_balance FROM user_wallets WHERE user_id = ?')
+              .bind(user.id)
+              .first();
+
+            safeUser.points_balance = wallet?.points_balance || 0;
+          } catch (dbError) {
+            console.error('Query wallet error:', dbError);
+            safeUser.points_balance = 0;
+          }
+        } else {
+          safeUser.points_balance = 0;
+        }
+
         users.push(safeUser);
       }
     }
+
+    // 按最后登录时间排序（如果有）
+    users.sort((a, b) => {
+      const aTime = a.lastLoginAt || a.createdAt;
+      const bTime = b.lastLoginAt || b.createdAt;
+      return new Date(bTime) - new Date(aTime);
+    });
 
     return jsonResponse({
       users,

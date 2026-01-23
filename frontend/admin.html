@@ -760,6 +760,159 @@
         max-width: 100%;
       }
     }
+
+    /* Tab Navigation */
+    .tab-navigation {
+      display: flex;
+      gap: 0.5rem;
+      padding: 1rem 2rem;
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border-default);
+    }
+
+    .tab-btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: var(--radius-md);
+      transition: all var(--duration-normal) var(--ease-out);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tab-btn:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .tab-btn.active {
+      background: var(--gradient-primary);
+      color: white;
+    }
+
+    /* Tab Content */
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .tab-content.hidden {
+      display: none;
+    }
+
+    /* Table Styles */
+    .table-container {
+      background: var(--bg-elevated);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-default);
+      overflow: hidden;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .data-table thead {
+      background: var(--bg-muted);
+      border-bottom: 1px solid var(--border-default);
+    }
+
+    .data-table th {
+      padding: 1rem;
+      text-align: left;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .data-table tbody tr {
+      border-bottom: 1px solid var(--border-default);
+      transition: background var(--duration-fast) var(--ease-out);
+    }
+
+    .data-table tbody tr:hover {
+      background: var(--bg-hover);
+    }
+
+    .data-table tbody tr:last-child {
+      border-bottom: none;
+    }
+
+    .data-table td {
+      padding: 1rem;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
+
+    .data-table .text-center {
+      text-align: center;
+    }
+
+    .data-table .user-id {
+      font-family: 'Space Grotesk', monospace;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .data-table .user-email {
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .data-table .user-nickname {
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+    }
+
+    .data-table .points-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem 0.75rem;
+      background: rgba(139, 92, 246, 0.1);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      border-radius: var(--radius-sm);
+      color: var(--primary);
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+
+    .data-table .plan-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem 0.75rem;
+      background: var(--bg-muted);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .data-table .time-text {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-sm {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.75rem;
+    }
   </style>
 </head>
 <body>
@@ -780,53 +933,112 @@
   <!-- Admin Dashboard -->
   <div id="adminDashboard" class="hidden">
     <header class="header">
-      <h1><i class="ph ph-palette"></i> Dream Photo 模板管理</h1>
+      <h1><i class="ph ph-palette"></i> Dream Photo 管理后台</h1>
       <div class="header-actions">
         <a href="index.html" class="btn btn-secondary btn-sm"><i class="ph ph-arrow-left"></i> 返回主站</a>
         <button id="logoutBtn" class="btn btn-secondary btn-sm">退出登录</button>
       </div>
     </header>
 
+    <!-- Tab Navigation -->
+    <div class="tab-navigation">
+      <button class="tab-btn active" data-tab="templates">
+        <i class="ph ph-palette"></i> 模板管理
+      </button>
+      <button class="tab-btn" data-tab="users">
+        <i class="ph ph-users"></i> 用户管理
+      </button>
+    </div>
+
     <main class="main-content">
-      <!-- Stats -->
-      <div class="stats-bar">
-        <div class="stat-item">
-          <div class="stat-value" id="totalTemplates">0</div>
-          <div class="stat-label">总模板数</div>
+      <!-- Templates Tab -->
+      <div id="templatesTab" class="tab-content active">
+        <!-- Stats -->
+        <div class="stats-bar">
+          <div class="stat-item">
+            <div class="stat-value" id="totalTemplates">0</div>
+            <div class="stat-label">总模板数</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="activeTemplates">0</div>
+            <div class="stat-label">已启用</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="portraitCount">0</div>
+            <div class="stat-label">人像类</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="creativeCount">0</div>
+            <div class="stat-label">创意类</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="sceneCount">0</div>
+            <div class="stat-label">场景类</div>
+          </div>
         </div>
-        <div class="stat-item">
-          <div class="stat-value" id="activeTemplates">0</div>
-          <div class="stat-label">已启用</div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <button id="addTemplateBtn" class="btn btn-primary">
+              <i class="ph ph-plus"></i> 添加模板
+            </button>
+            <button id="refreshBtn" class="btn btn-secondary">
+              <i class="ph ph-arrows-clockwise"></i> 刷新列表
+            </button>
+          </div>
         </div>
-        <div class="stat-item">
-          <div class="stat-value" id="portraitCount">0</div>
-          <div class="stat-label">人像类</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value" id="creativeCount">0</div>
-          <div class="stat-label">创意类</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-value" id="sceneCount">0</div>
-          <div class="stat-label">场景类</div>
+
+        <!-- Templates Grid -->
+        <div id="templatesGrid" class="templates-grid">
+          <div class="loading">加载中</div>
         </div>
       </div>
 
-      <!-- Toolbar -->
-      <div class="toolbar">
-        <div class="toolbar-left">
-          <button id="addTemplateBtn" class="btn btn-primary">
-            <i class="ph ph-plus"></i> 添加模板
-          </button>
-          <button id="refreshBtn" class="btn btn-secondary">
-            <i class="ph ph-arrows-clockwise"></i> 刷新列表
-          </button>
+      <!-- Users Tab -->
+      <div id="usersTab" class="tab-content hidden">
+        <!-- User Stats -->
+        <div class="stats-bar">
+          <div class="stat-item">
+            <div class="stat-value" id="totalUsers">0</div>
+            <div class="stat-label">总用户数</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" id="totalPoints">0</div>
+            <div class="stat-label">总积分</div>
+          </div>
         </div>
-      </div>
 
-      <!-- Templates Grid -->
-      <div id="templatesGrid" class="templates-grid">
-        <div class="loading">加载中</div>
+        <!-- Toolbar -->
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <button id="refreshUsersBtn" class="btn btn-secondary">
+              <i class="ph ph-arrows-clockwise"></i> 刷新用户列表
+            </button>
+          </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>用户 ID</th>
+                <th>邮箱/昵称</th>
+                <th>积分余额</th>
+                <th>权限等级</th>
+                <th>注册时间</th>
+                <th>最后登录</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr>
+                <td colspan="7" class="text-center">加载中...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </main>
   </div>
@@ -920,6 +1132,34 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal()">取消</button>
         <button class="btn btn-primary" onclick="saveTemplate()">保存模板</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grant Points Modal -->
+  <div id="grantPointsModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>添加积分</h3>
+        <button class="modal-close" onclick="closeGrantPointsModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="selectedUserInfo" style="margin-bottom: 1rem; padding: 1rem; background: var(--bg-muted); border-radius: var(--radius-md);"></div>
+        <form id="grantPointsForm">
+          <input type="hidden" id="grantUserId">
+          <div class="form-group">
+            <label>积分数量 *</label>
+            <input type="number" id="pointsAmount" min="1" placeholder="输入要添加的积分数量" required>
+          </div>
+          <div class="form-group">
+            <label>备注</label>
+            <input type="text" id="pointsReason" placeholder="例如: 活动奖励、补偿等">
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="closeGrantPointsModal()">取消</button>
+            <button type="submit" class="btn btn-primary">确认添加</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -1338,6 +1578,198 @@
         clearImagePreview();
       }
     }
+
+    // =========================================
+    // Tab Navigation
+    // =========================================
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const tabName = btn.dataset.tab;
+
+        // Update tab buttons
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Update tab content
+        document.querySelectorAll('.tab-content').forEach(content => {
+          content.classList.remove('active');
+          content.classList.add('hidden');
+        });
+
+        const targetTab = document.getElementById(`${tabName}Tab`);
+        if (targetTab) {
+          targetTab.classList.remove('hidden');
+          targetTab.classList.add('active');
+        }
+
+        // Load data for the tab
+        if (tabName === 'users') {
+          loadUsers();
+        }
+      });
+    });
+
+    // =========================================
+    // User Management Functions
+    // =========================================
+    let users = [];
+
+    // Load users
+    async function loadUsers() {
+      const tableBody = document.getElementById('usersTableBody');
+      tableBody.innerHTML = '<tr><td colspan="7" class="text-center">加载中...</td></tr>';
+
+      try {
+        const response = await fetch(`${API_ENDPOINT}/api/admin/users`, {
+          headers: {
+            'x-admin-key': adminKey
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to load users');
+        }
+
+        const data = await response.json();
+        users = data.users || [];
+        updateUserStats();
+        renderUsers();
+      } catch (error) {
+        tableBody.innerHTML = `<tr><td colspan="7" class="text-center" style="color: var(--danger);">加载失败: ${error.message}</td></tr>`;
+        showToast('加载用户列表失败', 'error');
+      }
+    }
+
+    // Update user stats
+    function updateUserStats() {
+      document.getElementById('totalUsers').textContent = users.length;
+      const totalPoints = users.reduce((sum, user) => sum + (user.points_balance || 0), 0);
+      document.getElementById('totalPoints').textContent = totalPoints.toLocaleString();
+    }
+
+    // Render users table
+    function renderUsers() {
+      const tableBody = document.getElementById('usersTableBody');
+
+      if (users.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center">暂无用户</td></tr>';
+        return;
+      }
+
+      tableBody.innerHTML = users.map(user => {
+        const createdAt = formatDate(user.createdAt);
+        const lastLoginAt = user.lastLoginAt ? formatDate(user.lastLoginAt) : '从未登录';
+        const planNames = {
+          'FREE': '免费版',
+          'PERSONAL': '个人版',
+          'FAMILY': '家庭版'
+        };
+
+        return `
+          <tr>
+            <td><span class="user-id">${user.id.substring(0, 8)}...</span></td>
+            <td>
+              <div class="user-email">${user.email}</div>
+              ${user.nickname ? `<div class="user-nickname">${user.nickname}</div>` : ''}
+            </td>
+            <td><span class="points-badge"><i class="ph ph-coins"></i> ${(user.points_balance || 0).toLocaleString()}</span></td>
+            <td><span class="plan-badge">${planNames[user.plan] || user.plan}</span></td>
+            <td><span class="time-text">${createdAt}</span></td>
+            <td><span class="time-text">${lastLoginAt}</span></td>
+            <td>
+              <div class="action-buttons">
+                <button class="btn btn-primary btn-sm" onclick="openGrantPointsModal('${user.id}')">
+                  <i class="ph ph-plus"></i> 添加积分
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Format date
+    function formatDate(dateString) {
+      if (!dateString) return '-';
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return '刚刚';
+      if (diffMins < 60) return `${diffMins}分钟前`;
+      if (diffHours < 24) return `${diffHours}小时前`;
+      if (diffDays < 30) return `${diffDays}天前`;
+
+      return date.toLocaleDateString('zh-CN');
+    }
+
+    // Refresh users button
+    document.getElementById('refreshUsersBtn').addEventListener('click', loadUsers);
+
+    // Open grant points modal
+    window.openGrantPointsModal = function(userId) {
+      const user = users.find(u => u.id === userId);
+      if (!user) {
+        showToast('用户不存在', 'error');
+        return;
+      }
+
+      document.getElementById('grantUserId').value = userId;
+      document.getElementById('selectedUserInfo').innerHTML = `
+        <div><strong>用户：</strong>${user.email}</div>
+        <div><strong>昵称：</strong>${user.nickname || '-'}</div>
+        <div><strong>当前积分：</strong>${(user.points_balance || 0).toLocaleString()}</div>
+      `;
+      document.getElementById('pointsAmount').value = '';
+      document.getElementById('pointsReason').value = '';
+
+      document.getElementById('grantPointsModal').classList.add('active');
+    };
+
+    // Close grant points modal
+    window.closeGrantPointsModal = function() {
+      document.getElementById('grantPointsModal').classList.remove('active');
+    };
+
+    // Grant points form submit
+    document.getElementById('grantPointsForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const userId = document.getElementById('grantUserId').value;
+      const amount = parseInt(document.getElementById('pointsAmount').value);
+      const reason = document.getElementById('pointsReason').value || 'admin_grant';
+
+      if (!amount || amount <= 0) {
+        showToast('请输入有效的积分数量', 'error');
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_ENDPOINT}/api/admin/users/${userId}/grant-points`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-admin-key': adminKey
+          },
+          body: JSON.stringify({ amount, reason })
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to grant points');
+        }
+
+        const result = await response.json();
+        showToast(result.message || '积分添加成功', 'success');
+        closeGrantPointsModal();
+        loadUsers(); // Refresh user list
+      } catch (error) {
+        showToast('添加积分失败: ' + error.message, 'error');
+      }
+    });
   </script>
 </body>
 </html>
