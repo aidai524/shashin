@@ -1933,9 +1933,11 @@ async function getTaskStatus(env, user, taskId) {
 // 处理任务（调用 Gemini API）
 async function processTask(env, task) {
   try {
-    console.log('🔍 [DEBUG] 开始处理任务:', JSON.stringify(task, null, 2));
-    console.log('🔍 [DEBUG] task.templateId:', task.templateId);
-    console.log('🔍 [DEBUG] templateId type:', typeof task.templateId);
+    console.log('🔍 [DEBUG] 开始处理任务');
+    console.log('🔍 [DEBUG] 完整任务对象:', JSON.stringify(task));
+    console.log('🔍 [DEBUG] task.templateId 值:', String(task.templateId));
+    console.log('🔍 [DEBUG] task.templateId 类型:', typeof task.templateId);
+    console.log('🔍 [DEBUG] task 对象的所有键:', Object.keys(task));
 
     // 更新任务状态为 processing
     task.status = 'processing';
