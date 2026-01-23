@@ -71,6 +71,11 @@
       min-height: 100vh;
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
+      /* 确保文本可以选择 */
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
     }
 
     /* 背景效果 */
@@ -238,6 +243,13 @@
       font-size: 0.9rem;
       font-family: inherit;
       transition: all var(--duration-fast);
+      /* 确保表单元素可以选择和编辑 */
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
+      -webkit-user-modify: read-write-plaintext-only;
+      user-modify: read-write;
     }
 
     .form-group input:focus,
@@ -571,7 +583,7 @@
       width: 24px;
       height: 24px;
       border: 3px solid var(--border-subtle);
-      border-top-color: var(--accent-rose);
+      border-top-color: var(--primary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin-left: 0.75rem;
@@ -698,7 +710,12 @@
 
     /* Selection */
     ::selection {
-      background: var(--accent-rose);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    ::-moz-selection {
+      background: var(--primary);
       color: #fff;
     }
 
@@ -852,6 +869,11 @@
       padding: 1rem;
       color: var(--text-secondary);
       font-size: 0.875rem;
+      /* 允许选择表格中的文本 */
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
     }
 
     .data-table .text-center {
