@@ -1755,6 +1755,11 @@ export default {
       return await handleAuthAPI(request, env, pathname);
     }
 
+    // 临时充值端点（仅用于管理员操作）
+    if (pathname === "/api/admin/recharge-by-email" && request.method === "POST") {
+      return await handleRechargeByEmail(request, env);
+    }
+
     // 历史记录 API
     if (pathname.startsWith("/api/history")) {
       return await handleHistoryAPI(request, env, pathname);
@@ -1904,5 +1909,92 @@ async function handleGenerate(request, env) {
   } catch (e) {
     console.error('Generate error:', e);
     return errorResponse('生成失败: ' + e.message, 500);
+  }
+}
+
+// =========================================
+// 临时充值功能（按邮箱充值）
+// =========================================
+async function handleRechargeByEmail(request, env) {
+  try {
+    // 验证管理员权限
+    if (!isAdmin(request, env)) {
+      return errorResponse('Unauthorized - Admin access required', 401);
+    }
+
+    const body = await request.json();
+    const { email, amount } = body;
+
+    if (!email || !amount) {
+      return errorResponse('Missing required fields: email, amount', 400);
+    }
+
+    if (amount <= 0) {
+      return errorResponse('Amount must be positive', 400);
+    }
+
+    console.log(`[Recharge] Processing recharge for ${email}: ${amount} points`);
+
+    // 1. 从 KV 获取用户 ID
+    const userId = await env.USERS_KV.get(`email:${email.toLowerCase()}`);
+
+    if (!userId) {
+      return jsonResponse({
+        success: false,
+        error: 'user_not_found',
+        message: `邮箱 ${email} 尚未注册`,
+        hint: '请先让用户登录一次以创建账户'
+      }, 404);
+    }
+
+    // 2. 获取或创建钱包
+    let wallet = await env.DB.prepare(
+      'SELECT * FROM user_wallets WHERE user_id = ?'
+    ).bind(userId).first();
+
+    if (!wallet) {
+      await env.DB.prepare(
+        'INSERT INTO user_wallets (user_id, points_balance) VALUES (?, 0)'
+      ).bind(userId).run();
+      wallet = { points_balance: 0 };
+    }
+
+    const currentBalance = wallet.points_balance || 0;
+    const newBalance = currentBalance + amount;
+    const now = new Date().toISOString();
+
+    // 3. 更新积分余额
+    await env.DB.prepare(
+      'UPDATE user_wallets SET points_balance = ?, updated_at = ? WHERE user_id = ?'
+    ).bind(newBalance, now, userId).run();
+
+    // 4. 记录积分流水
+    const idempotencyKey = `admin_recharge:${userId}:${Date.now()}`;
+    await env.DB.prepare(`
+      INSERT INTO points_ledger (user_id, delta, balance_after, reason, ref_type, ref_id, idempotency_key, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(userId, amount, newBalance, 'admin_recharge', 'admin', 'manual', idempotencyKey, now).run();
+
+    console.log(`[Recharge] Success: ${email} ${currentBalance} -> ${newBalance}`);
+
+    return jsonResponse({
+      success: true,
+      message: '充值成功',
+      user: {
+        email: email,
+        userId: userId
+      },
+      transaction: {
+        amount: amount,
+        previous_balance: currentBalance,
+        new_balance: newBalance,
+        reason: 'admin_recharge',
+        timestamp: now
+      }
+    });
+
+  } catch (e) {
+    console.error('Recharge error:', e);
+    return errorResponse('充值失败: ' + e.message, 500);
   }
 }

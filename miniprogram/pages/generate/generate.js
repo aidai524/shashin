@@ -35,8 +35,7 @@ Page({
       { value: '2K', label: '高清', desc: '2K' },
       { value: '4K', label: '超清', desc: '4K' }
     ],
-    generating: false,
-    generatedImages: []
+    generating: false
   },
 
   onLoad(options) {
@@ -127,210 +126,57 @@ Page({
     })
   },
 
-  // 获取模板和角色信息
-  getTemplateAndCharacter() {
-    return Promise.all([
-      // 获取模板
-      new Promise((resolve) => {
-        if (this.data.template) {
-          resolve(this.data.template)
-        } else {
-          request({
-            url: `/api/templates/${this.data.templateId}`,
-            method: 'GET'
-          }).then(res => resolve(res))
-        }
-      }),
-      // 获取角色
-      new Promise((resolve) => {
-        if (!this.data.selectedCharacter) {
-          resolve(null)
-          return
-        }
-        request({
-          url: `/api/characters`,
-          method: 'GET'
-        }).then(res => {
-          const character = res.characters.find(c => c.id === this.data.selectedCharacter.id)
-          resolve(character || null)
-        })
-      })
-    ]).then(([template, character]) => ({ template, character }))
-  },
-
   // 开始生成
   handleGenerate() {
     if (this.data.generating) return
 
     wx.showLoading({
-      title: '生成中...',
+      title: '创建任务中...',
       mask: true
     })
 
     this.setData({ generating: true })
 
-    // 根据质量和数量决定模型和API调用次数
-    const isPremium = this.data.quality === 'premium'
-    const model = isPremium ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image'
-    const count = this.data.count
-
-    // 获取模板和角色信息
-    this.getTemplateAndCharacter().then(({ template, character }) => {
-      // 构建所有生成请求
-      const requests = []
-
-      for (let i = 0; i < count; i++) {
-        // 构建 Prompt
-        let prompt = template.prompt
-        if (character) {
-          prompt = `Subject is a specific person: ${character.name}. ${character.description || ''}. ${template.prompt}`
-        }
-        prompt += `. Aspect ratio ${this.data.ratio}. High quality, detailed.`
-
-        // 构建请求体
-        const requestBody = {
-          contents: [{
-            parts: [{ text: prompt }]
-          }]
-        }
-
-        // 如果有角色图片，添加到请求中
-        if (character && character.photos && character.photos.length > 0) {
-          const photo = character.photos[0]
-          const base64Data = photo.originalData ? photo.originalData.replace(/^data:image\/\w+;base64,/, '') : photo.data.replace(/^data:image\/\w+;base64,/, '')
-
-          requestBody.contents[0].parts.push({
-            inlineData: {
-              mimeType: "image/jpeg",
-              data: base64Data
-            }
-          })
-        }
-
-        // 添加生成配置
-        requestBody.generationConfig = {
-          responseModalities: ["IMAGE"],
-          imageConfig: {
-            aspectRatio: this.data.ratio
-          }
-        }
-
-        requests.push(
-          request({
-            url: `/v1beta/models/${model}:generateContent`,
-            method: 'POST',
-            data: requestBody
-          })
-        )
-      }
-
-      // 并发执行所有请求
-      Promise.all(requests).then(responses => {
-        wx.hideLoading()
-
-        const allImages = []
-
-        // 收集所有响应中的图片
-        responses.forEach((res, index) => {
-          console.log(`Response ${index + 1}:`, res)
-
-          if (res.candidates && res.candidates[0]?.content?.parts) {
-            const parts = res.candidates[0].content.parts
-
-            for (const part of parts) {
-              if (part.inlineData) {
-                allImages.push({
-                  mimeType: part.inlineData.mimeType || 'image/png',
-                  data: part.inlineData.data
-                })
-              }
-            }
-          }
-        })
-
-        console.log(`Total images generated: ${allImages.length}`)
-
-        if (allImages.length > 0) {
-          this.saveToHistory(allImages)
-        } else {
-          wx.showModal({
-            title: '生成失败',
-            content: '模型未返回图片数据',
-            showCancel: false
-          })
-          this.setData({ generating: false })
-        }
-      }).catch(e => {
-        wx.hideLoading()
-        this.setData({ generating: false })
-        console.error('生成失败:', e)
-        wx.showModal({
-          title: '生成失败',
-          content: e.error || '生成失败，请重试',
-          showCancel: false
-        })
-      })
-    })
-  },
-
-  // 保存到历史
-  saveToHistory(images) {
-    const record = {
-      id: Date.now(),
+    // 构建任务请求数据
+    const taskData = {
       templateId: this.data.templateId,
-      templateName: this.data.template?.name?.zh || this.data.template?.name || '未知模板',
       characterId: this.data.selectedCharacter?.id || null,
       ratio: this.data.ratio,
-      createdAt: new Date().toISOString(),
-      thumbnails: images.map(img => ({
-        mimeType: img.mimeType,
-        base64: `data:${img.mimeType};base64,${img.data}`
-      })),
-      originalImages: images
+      quality: this.data.quality,
+      count: this.data.count,
+      resolution: this.data.resolution
     }
 
+    // 创建异步任务
     request({
-      url: '/api/history',
+      url: '/api/tasks',
       method: 'POST',
-      data: {
-        record,
-        originalImages: images.map(img => ({
-          base64: img.data,
-          mimeType: img.mimeType
-        }))
-      }
-    }).then(() => {
-      this.setData({ generatedImages: images })
+      data: taskData
+    }).then(res => {
+      wx.hideLoading()
+
+      // 提示任务创建成功
       wx.showToast({
-        title: '生成成功',
-        icon: 'success'
+        title: '任务已创建',
+        icon: 'success',
+        duration: 1500
       })
-      // 跳转到历史页面
+
+      // 跳转到任务列表页面
       setTimeout(() => {
-        wx.switchTab({
-          url: '/pages/history/history'
+        wx.redirectTo({
+          url: '/pages/tasks/tasks'
         })
       }, 1500)
     }).catch(e => {
-      console.error('保存历史失败:', e)
-      // 即使保存失败也显示图片
-      this.setData({ generatedImages: images })
-      wx.showToast({
-        title: '生成成功',
-        icon: 'success'
+      wx.hideLoading()
+      this.setData({ generating: false })
+      console.error('创建任务失败:', e)
+      wx.showModal({
+        title: '创建任务失败',
+        content: e.error || '创建任务失败，请重试',
+        showCancel: false
       })
-    })
-  },
-
-  // 预览生成的图片
-  previewImage(e) {
-    const { index } = e.currentTarget.dataset
-    const urls = this.data.generatedImages.map(img =>
-      `data:${img.mimeType};base64,${img.data}`
-    )
-    wx.previewImage({
-      current: urls[index],
-      urls: urls
     })
   }
 })

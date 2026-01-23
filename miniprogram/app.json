@@ -6,7 +6,8 @@
     "pages/profile/profile",
     "pages/generate/generate",
     "pages/characters/characters",
-    "pages/characters/edit"
+    "pages/characters/edit",
+    "pages/tasks/tasks"
   ],
   "window": {
     "navigationBarTextStyle": "black",

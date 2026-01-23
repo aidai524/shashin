@@ -1523,6 +1523,36 @@ async function deleteCharacterPhoto(env, user, characterId, photoId) {
 }
 
 // =========================================
+// 任务管理 API
+// =========================================
+
+async function handleTasksAPI(request, env, ctx, pathname, method) {
+  // 获取用户信息（需要认证）
+  const user = await getUserFromRequest(request, env);
+  if (!user) {
+    return errorResponse('请先登录', 401);
+  }
+
+  // POST /api/tasks - 创建生成任务
+  if (pathname === '/api/tasks' && method === 'POST') {
+    return await createGenerationTask(request, env, user, ctx);
+  }
+
+  // GET /api/tasks - 获取用户的任务列表
+  if (pathname === '/api/tasks' && method === 'GET') {
+    return await getUserTasks(env, user);
+  }
+
+  // GET /api/tasks/:id - 获取单个任务状态
+  const taskMatch = pathname.match(/^\/api\/tasks\/([^\/]+)$/);
+  if (taskMatch && method === 'GET') {
+    return await getTaskStatus(env, user, taskMatch[1]);
+  }
+
+  return errorResponse('Not found', 404);
+}
+
+// =========================================
 // 历史记录 API
 // =========================================
 
@@ -1776,6 +1806,303 @@ async function clearUserHistory(env, user) {
 }
 
 // =========================================
+// 任务管理函数
+// =========================================
+
+// 创建生成任务
+async function createGenerationTask(request, env, user, ctx) {
+  try {
+    const body = await request.json();
+    const { templateId, characterId, ratio, quality, count, resolution } = body;
+
+    // 生成任务 ID
+    const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // 确定使用的模型
+    const isPremium = quality === 'premium';
+    const model = isPremium ? 'gemini-3-pro-image-preview' : 'gemini-2.5-flash-image';
+
+    // 创建任务对象
+    const task = {
+      id: taskId,
+      userId: user.id,
+      templateId,
+      characterId: characterId || null,
+      ratio: ratio || '1:1',
+      quality,
+      model,
+      count: count || 1,
+      resolution: resolution || '4K',
+      status: 'pending', // pending, processing, completed, failed
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      result: null,
+      error: null
+    };
+
+    // 保存任务到 KV
+    await env.TASKS_KV.put(`task:${taskId}`, JSON.stringify(task));
+
+    // 将任务 ID 添加到用户的任务列表
+    const userTasksKey = `user_tasks:${user.id}`;
+    const userTasksJson = await env.TASKS_KV.get(userTasksKey);
+    const userTasks = userTasksJson ? JSON.parse(userTasksJson) : [];
+    userTasks.unshift(taskId); // 添加到开头
+    await env.TASKS_KV.put(userTasksKey, JSON.stringify(userTasks.slice(0, 100))); // 只保留最近100个任务
+
+    // 使用 ctx.waitUntil 异步处理任务（不阻塞响应）
+    if (ctx) {
+      ctx.waitUntil((async () => {
+        try {
+          await processTask(env, task);
+        } catch (e) {
+          console.error('Async task processing error:', e);
+        }
+      })());
+    }
+
+    // 立即返回任务 ID，不等待处理
+    return jsonResponse({
+      taskId,
+      status: 'pending',
+      message: '任务已创建，正在处理中'
+    }, 201);
+  } catch (e) {
+    console.error('Create task error:', e);
+    return errorResponse('Failed to create task: ' + e.message, 500);
+  }
+}
+
+// 获取用户的任务列表
+async function getUserTasks(env, user) {
+  try {
+    const userTasksKey = `user_tasks:${user.id}`;
+    const userTasksJson = await env.TASKS_KV.get(userTasksKey);
+
+    if (!userTasksJson) {
+      return jsonResponse({ tasks: [] });
+    }
+
+    const taskIds = JSON.parse(userTasksJson);
+
+    // 获取每个任务的详情
+    const tasks = [];
+    for (const taskId of taskIds) {
+      const taskJson = await env.TASKS_KV.get(`task:${taskId}`);
+      if (taskJson) {
+        const task = JSON.parse(taskJson);
+        // 只返回未完成或最近完成的任务（24小时内）
+        const taskTime = new Date(task.createdAt);
+        const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        if (task.status !== 'completed' || taskTime > dayAgo) {
+          tasks.push(task);
+        }
+      }
+    }
+
+    return jsonResponse({ tasks });
+  } catch (e) {
+    console.error('Get user tasks error:', e);
+    return errorResponse('Failed to get tasks', 500);
+  }
+}
+
+// 获取单个任务状态
+async function getTaskStatus(env, user, taskId) {
+  try {
+    const taskJson = await env.TASKS_KV.get(`task:${taskId}`);
+
+    if (!taskJson) {
+      return errorResponse('Task not found', 404);
+    }
+
+    const task = JSON.parse(taskJson);
+
+    // 验证任务是否属于当前用户
+    if (task.userId !== user.id) {
+      return errorResponse('Unauthorized', 403);
+    }
+
+    return jsonResponse(task);
+  } catch (e) {
+    console.error('Get task status error:', e);
+    return errorResponse('Failed to get task status', 500);
+  }
+}
+
+// 处理任务（调用 Gemini API）
+async function processTask(env, task) {
+  try {
+    console.log('🔍 [DEBUG] 开始处理任务:', JSON.stringify(task, null, 2));
+    console.log('🔍 [DEBUG] task.templateId:', task.templateId);
+    console.log('🔍 [DEBUG] templateId type:', typeof task.templateId);
+
+    // 更新任务状态为 processing
+    task.status = 'processing';
+    task.updatedAt = new Date().toISOString();
+    await env.TASKS_KV.put(`task:${task.id}`, JSON.stringify(task));
+
+    // 获取模板信息
+    const templateKey = `template:${task.templateId}`;
+    console.log('🔍 [DEBUG] 正在从 KV 获取模板, key:', templateKey);
+    const templateJson = await env.TEMPLATES_KV.get(templateKey);
+    console.log('🔍 [DEBUG] 模板 JSON:', templateJson ? '找到了' : '未找到');
+
+    if (!templateJson) {
+      console.error('❌ [ERROR] 模板未找到! templateKey:', templateKey);
+      console.error('❌ [ERROR] task.templateId:', task.templateId);
+      throw new Error('Template not found');
+    }
+    const template = JSON.parse(templateJson);
+    console.log('🔍 [DEBUG] 解析后的模板:', JSON.stringify(template, null, 2));
+
+    // 获取角色信息（如果有）
+    let character = null;
+    if (task.characterId) {
+      const charactersJson = await env.CHARACTERS_KV.get(`user:${task.userId}:characters`);
+      if (charactersJson) {
+        const characters = JSON.parse(charactersJson);
+        character = characters.find(c => c.id === task.characterId);
+      }
+    }
+
+    // 构建 Prompt
+    let prompt = template.prompt;
+    if (character) {
+      prompt = `Subject is a specific person: ${character.name}. ${character.description || ''}. ${template.prompt}`;
+    }
+    prompt += `. Aspect ratio ${task.ratio}. High quality, detailed.`;
+
+    // 构建请求体
+    const requestBody = {
+      contents: [{
+        parts: [{ text: prompt }]
+      }],
+      generationConfig: {
+        responseModalities: ["IMAGE"],
+        imageConfig: {
+          aspectRatio: task.ratio
+        }
+      }
+    };
+
+    // 如果有角色图片，添加到请求中
+    if (character && character.photos && character.photos.length > 0) {
+      const photo = character.photos[0];
+      const base64Data = photo.originalData
+        ? photo.originalData.replace(/^data:image\/\w+;base64,/, '')
+        : photo.data.replace(/^data:image\/\w+;base64,/, '');
+
+      requestBody.contents[0].parts.push({
+        inlineData: {
+          mimeType: "image/jpeg",
+          data: base64Data
+        }
+      });
+    }
+
+    // 调用 Gemini API
+    const response = await fetch(`${GEMINI_API_BASE}/v1beta/models/${task.model}:generateContent?key=${env.GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Gemini API error: ${response.status} ${errorText}`);
+    }
+
+    const result = await response.json();
+
+    // 提取生成的图片
+    const images = [];
+    if (result.candidates && result.candidates[0]?.content?.parts) {
+      const parts = result.candidates[0].content.parts;
+      for (const part of parts) {
+        if (part.inlineData) {
+          images.push({
+            mimeType: part.inlineData.mimeType || 'image/png',
+            data: part.inlineData.data
+          });
+        }
+      }
+    }
+
+    if (images.length === 0) {
+      throw new Error('No images generated');
+    }
+
+    // 保存到历史记录
+    const record = {
+      id: Date.now(),
+      templateId: task.templateId,
+      templateName: template.name?.zh || template.name || '未知模板',
+      characterId: task.characterId || null,
+      ratio: task.ratio,
+      createdAt: new Date().toISOString(),
+      thumbnails: images.map(img => ({
+        mimeType: img.mimeType,
+        base64: `data:${img.mimeType};base64,${img.data}`
+      })),
+      originalImages: images
+    };
+
+    // 暂时直接保存到历史记录（不保存到R2，使用base64）
+    // TODO: 优化图片存储，将大图片保存到R2
+    const historyKey = `user:${task.userId}:history`;
+    const historyJson = await env.HISTORY_KV.get(historyKey);
+    const history = historyJson ? JSON.parse(historyJson) : [];
+    history.unshift(record);
+    await env.HISTORY_KV.put(historyKey, JSON.stringify(history.slice(0, 200)));
+
+    // 更新任务状态为 completed
+    task.status = 'completed';
+    task.result = {
+      recordId: record.id,
+      imageCount: images.length
+    };
+    task.updatedAt = new Date().toISOString();
+    await env.TASKS_KV.put(`task:${task.id}`, JSON.stringify(task));
+
+    return { success: true, task };
+  } catch (e) {
+    console.error('Process task error:', e);
+
+    // 更新任务状态为 failed
+    task.status = 'failed';
+    task.error = e.message;
+    task.updatedAt = new Date().toISOString();
+    await env.TASKS_KV.put(`task:${task.id}`, JSON.stringify(task));
+
+    throw e;
+  }
+}
+
+// 处理所有待处理的任务（Cron Trigger 调用）
+async function processPendingTasks(env) {
+  try {
+    console.log('Checking for pending tasks...');
+
+    // 由于 KV 没有直接的列表功能，我们需要维护一个 pending 任务列表
+    // 这里使用一个简单的方法：查找最近创建的任务
+    // 在生产环境中，建议使用 Durable Objects 或 Cloudflare Queues
+
+    // 临时方案：从全局任务列表中获取（如果有）
+    // 这里简化处理，只处理在 scheduled event 中的逻辑
+
+    // TODO: 实现更可靠的任务队列机制
+    // 目前使用简化方案：当任务创建时，我们不等待，而是让前端轮询
+
+    console.log('Pending task check completed');
+    return { processed: 0 };
+  } catch (e) {
+    console.error('Process pending tasks error:', e);
+    return { error: e.message };
+  }
+}
+
+// =========================================
 // 主入口
 // =========================================
 
@@ -1835,6 +2162,11 @@ export default {
     const imageMatch = pathname.match(/^\/api\/images\/(.+)$/);
     if (imageMatch) {
       return await getImage(env, imageMatch[1]);
+    }
+
+    // 任务管理 API
+    if (pathname.startsWith("/api/tasks")) {
+      return await handleTasksAPI(request, env, ctx, pathname, method);
     }
 
     // // POST /api/generate - 生成图片（代理 Gemini）

@@ -1,0 +1,211 @@
+/* pages/tasks/tasks.wxss */
+.page {
+  min-height: 100vh;
+  background-color: #F6F7F9;
+  padding-bottom: 32rpx;
+}
+
+/* 页面标题 */
+.header {
+  padding: 48rpx 32rpx 24rpx;
+  background-color: #FFFFFF;
+}
+
+.title {
+  display: block;
+  font-size: 48rpx;
+  font-weight: 700;
+  color: #111111;
+  margin-bottom: 8rpx;
+}
+
+.subtitle {
+  display: block;
+  font-size: 28rpx;
+  color: #999999;
+}
+
+/* 任务列表 */
+.task-list {
+  padding: 0 32rpx;
+}
+
+.task-card {
+  background-color: #FFFFFF;
+  border-radius: 24rpx;
+  padding: 24rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.05);
+}
+
+/* 任务头部 */
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.task-status {
+  display: flex;
+  align-items: center;
+  padding: 8rpx 16rpx;
+  border-radius: 20rpx;
+  font-size: 24rpx;
+}
+
+.status-pending {
+  background-color: #FFF3E0;
+  color: #F57C00;
+}
+
+.status-processing {
+  background-color: #E3F2FD;
+  color: #1976D2;
+}
+
+.status-completed {
+  background-color: #E8F5E9;
+  color: #388E3C;
+}
+
+.status-failed {
+  background-color: #FFEBEE;
+  color: #D32F2F;
+}
+
+.status-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  margin-right: 8rpx;
+}
+
+.status-pending .status-dot {
+  background-color: #F57C00;
+}
+
+.status-processing .status-dot {
+  background-color: #1976D2;
+}
+
+.status-completed .status-dot {
+  background-color: #388E3C;
+}
+
+.status-failed .status-dot {
+  background-color: #D32F2F;
+}
+
+.task-time {
+  font-size: 24rpx;
+  color: #999999;
+}
+
+/* 任务信息 */
+.task-info {
+  margin-bottom: 12rpx;
+}
+
+.task-template {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 500;
+  color: #111111;
+  margin-bottom: 8rpx;
+}
+
+.task-meta {
+  display: flex;
+  gap: 12rpx;
+}
+
+.meta-item {
+  font-size: 24rpx;
+  color: #666666;
+  padding: 4rpx 12rpx;
+  background-color: #F6F7F9;
+  border-radius: 8rpx;
+}
+
+/* 进度条 */
+.progress-bar {
+  height: 4rpx;
+  background-color: #E0E0E0;
+  border-radius: 2rpx;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #1976D2;
+  animation: progress 2s ease-in-out infinite;
+}
+
+@keyframes progress {
+  0% {
+    width: 0%;
+  }
+  50% {
+    width: 60%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+/* 错误信息 */
+.error-message {
+  margin-top: 12rpx;
+  padding: 12rpx;
+  background-color: #FFEBEE;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  color: #D32F2F;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 32rpx;
+}
+
+.empty-icon {
+  font-size: 96rpx;
+  margin-bottom: 24rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #999999;
+  margin-bottom: 32rpx;
+}
+
+.empty-btn {
+  width: 240rpx;
+  height: 80rpx;
+  background-color: #111111;
+  color: #FFFFFF;
+  font-size: 28rpx;
+  border-radius: 40rpx;
+  border: none;
+}
+
+.empty-btn::after {
+  border: none;
+}
+
+/* 加载状态 */
+.loading-state {
+  display: flex;
+  justify-content: center;
+  padding: 60rpx;
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: #999999;
+}

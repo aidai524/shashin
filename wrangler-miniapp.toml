@@ -27,6 +27,10 @@ id = "ab353bdfd25145fdaa8e2fb375182da9"
 binding = "HISTORY_KV"
 id = "79e18d0705cb4736a83e4aa044b99cd5"
 
+[[kv_namespaces]]
+binding = "TASKS_KV"
+id = "f44eae04bfa044e28cf5ff43fa00a383"
+
 # R2 存储绑定（与主 Worker 共享）
 [[r2_buckets]]
 bucket_name = "gemini-images"

@@ -1,0 +1,61 @@
+<!--pages/tasks/tasks.wxml-->
+<view class="page">
+  <!-- 页面标题 -->
+  <view class="header">
+    <text class="title">生成任务</text>
+    <text class="subtitle">查看您的图片生成进度</text>
+  </view>
+
+  <!-- 任务列表 -->
+  <view class="task-list">
+    <view
+      wx:for="{{tasks}}"
+      wx:key="id"
+      class="task-card"
+      bindtap="handleTaskTap"
+      data-id="{{item.id}}"
+      data-record-id="{{item.result.recordId}}"
+    >
+      <!-- 任务头部 -->
+      <view class="task-header">
+        <view class="task-status status-{{item.status}}">
+          <text class="status-dot"></text>
+          <text class="status-text">{{statusText[item.status]}}</text>
+        </view>
+        <text class="task-time">{{item.createdAt}}</text>
+      </view>
+
+      <!-- 任务信息 -->
+      <view class="task-info">
+        <text class="task-template">{{item.templateName}}</text>
+        <view class="task-meta">
+          <text class="meta-item">{{qualityText[item.quality]}}</text>
+          <text class="meta-item">{{item.ratio}}</text>
+          <text class="meta-item">{{item.count}}张</text>
+        </view>
+      </view>
+
+      <!-- 进度条（仅处理中显示） -->
+      <view wx:if="{{item.status === 'processing'}}" class="progress-bar">
+        <view class="progress-fill"></view>
+      </view>
+
+      <!-- 错误信息 -->
+      <view wx:if="{{item.status === 'failed'}}" class="error-message">
+        <text>⚠️ {{item.error || '生成失败，请重试'}}</text>
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view wx:if="{{tasks.length === 0 && !loading}}" class="empty-state">
+      <text class="empty-icon">📋</text>
+      <text class="empty-text">暂无生成任务</text>
+      <button class="empty-btn" bindtap="gotoCreate">开始创作</button>
+    </view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view wx:if="{{loading}}" class="loading-state">
+    <text class="loading-text">加载中...</text>
+  </view>
+</view>
