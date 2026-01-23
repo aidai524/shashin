@@ -2227,6 +2227,12 @@ async function handleCharactersAPI(request, env, pathname) {
     return await deleteCharacterPhoto(env, user, deletePhotoMatch[1], deletePhotoMatch[2]);
   }
 
+  // GET /api/characters/:id/photos/:photoId - 获取照片数据
+  const getPhotoMatch = pathname.match(/^\/api\/characters\/([^\/]+)\/photos\/([^\/]+)$/);
+  if (getPhotoMatch && method === 'GET') {
+    return await getCharacterPhoto(env, user, getPhotoMatch[1], getPhotoMatch[2]);
+  }
+
   return errorResponse('Not found', 404);
 }
 
@@ -2376,52 +2382,73 @@ async function addCharacterPhoto(request, env, user, characterId) {
   try {
     const body = await request.json();
     const { photoData, originalData, mimeType, description, thumbnailSize, originalSize } = body;
-    
+
     if (!photoData) {
       return errorResponse('照片数据不能为空');
     }
-    
+
     const charactersJson = await env.CHARACTERS_KV.get(`user:${user.id}:characters`);
     const characters = charactersJson ? JSON.parse(charactersJson) : [];
-    
+
     const index = characters.findIndex(c => c.id === characterId);
     if (index === -1) {
       return errorResponse('角色不存在', 404);
     }
-    
+
     // 检查照片数量限制
     const plan = USER_PLANS[user.plan] || USER_PLANS.FREE;
     if (characters[index].photos.length >= plan.maxPhotosPerCharacter) {
       return errorResponse(`${plan.name}每个角色最多上传 ${plan.maxPhotosPerCharacter} 张照片`);
     }
-    
-    // 添加照片（支持双版本）
+
+    const photoId = crypto.randomUUID();
+    const ext = mimeType?.split('/')[1] || 'jpg';
+    const timestamp = Date.now();
+
+    // 存储缩略图到R2
+    const thumbnailKey = `characters/${user.id}/${characterId}/${photoId}_thumb.${ext}`;
+    const thumbnailBuffer = base64ToArrayBuffer(photoData);
+    await env.IMAGES_BUCKET.put(thumbnailKey, thumbnailBuffer, {
+      httpMetadata: { contentType: mimeType || 'image/jpeg' }
+    });
+
+    // 存储原图到R2（如果有）
+    let originalKey = null;
+    if (originalData && originalData !== photoData) {
+      originalKey = `characters/${user.id}/${characterId}/${photoId}_original.${ext}`;
+      const originalBuffer = base64ToArrayBuffer(originalData);
+      await env.IMAGES_BUCKET.put(originalKey, originalBuffer, {
+        httpMetadata: { contentType: mimeType || 'image/jpeg' }
+      });
+    }
+
+    // 在KV中只存储照片元数据和R2 key引用（不存储base64数据）
     const photo = {
-      id: crypto.randomUUID(),
-      data: photoData,                    // 缩略图 Base64（预览用）
-      originalData: originalData || photoData,  // 原图 Base64（下载用，如果没有则使用缩略图）
+      id: photoId,
+      thumbnailKey: thumbnailKey,      // R2中的缩略图key
+      originalKey: originalKey,         // R2中的原图key（如果有）
       mimeType: mimeType || 'image/jpeg',
       description: description || '',
-      thumbnailSize: thumbnailSize || 0,  // 缩略图大小
-      originalSize: originalSize || 0,    // 原图大小
+      thumbnailSize: thumbnailSize || thumbnailBuffer.byteLength,
+      originalSize: originalSize || (originalKey ? originalBuffer.byteLength : thumbnailBuffer.byteLength),
       createdAt: new Date().toISOString()
     };
-    
+
     characters[index].photos.push(photo);
     characters[index].updatedAt = new Date().toISOString();
-    
+
     await env.CHARACTERS_KV.put(`user:${user.id}:characters`, JSON.stringify(characters));
-    
-    // 返回时不包含完整的 base64 数据
-    const photoResponse = { 
-      ...photo, 
-      data: undefined, 
-      originalData: undefined,
+
+    // 返回时不包含完整数据
+    const photoResponse = {
+      ...photo,
+      thumbnailKey: undefined,
+      originalKey: undefined,
       hasData: true,
-      hasThumbnail: !!photoData,
-      hasOriginal: !!originalData
+      hasThumbnail: !!thumbnailKey,
+      hasOriginal: !!originalKey
     };
-    
+
     return jsonResponse({
       success: true,
       message: '照片上传成功',
@@ -2433,27 +2460,57 @@ async function addCharacterPhoto(request, env, user, characterId) {
   }
 }
 
+// Base64转ArrayBuffer辅助函数
+function base64ToArrayBuffer(base64) {
+  const cleanBase64 = base64.includes(',') ? base64.split(',')[1] : base64;
+  const binaryString = atob(cleanBase64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes.buffer;
+}
+
 // 删除角色的照片
 async function deleteCharacterPhoto(env, user, characterId, photoId) {
   try {
     const charactersJson = await env.CHARACTERS_KV.get(`user:${user.id}:characters`);
     const characters = charactersJson ? JSON.parse(charactersJson) : [];
-    
+
     const charIndex = characters.findIndex(c => c.id === characterId);
     if (charIndex === -1) {
       return errorResponse('角色不存在', 404);
     }
-    
+
     const photoIndex = characters[charIndex].photos.findIndex(p => p.id === photoId);
     if (photoIndex === -1) {
       return errorResponse('照片不存在', 404);
     }
-    
+
+    const photo = characters[charIndex].photos[photoIndex];
+
+    // 如果照片存储在R2中，删除R2文件
+    if (photo.thumbnailKey) {
+      try {
+        await env.IMAGES_BUCKET.delete(photo.thumbnailKey);
+      } catch (e) {
+        console.error('Failed to delete thumbnail from R2:', e);
+      }
+    }
+
+    if (photo.originalKey) {
+      try {
+        await env.IMAGES_BUCKET.delete(photo.originalKey);
+      } catch (e) {
+        console.error('Failed to delete original from R2:', e);
+      }
+    }
+
     characters[charIndex].photos.splice(photoIndex, 1);
     characters[charIndex].updatedAt = new Date().toISOString();
-    
+
     await env.CHARACTERS_KV.put(`user:${user.id}:characters`, JSON.stringify(characters));
-    
+
     return jsonResponse({
       success: true,
       message: '照片已删除'
@@ -2461,6 +2518,63 @@ async function deleteCharacterPhoto(env, user, characterId, photoId) {
   } catch (e) {
     console.error('Delete photo error:', e);
     return errorResponse('删除照片失败: ' + e.message, 500);
+  }
+}
+
+// 获取角色照片数据
+async function getCharacterPhoto(env, user, characterId, photoId) {
+  try {
+    const charactersJson = await env.CHARACTERS_KV.get(`user:${user.id}:characters`);
+    const characters = charactersJson ? JSON.parse(charactersJson) : [];
+
+    const charIndex = characters.findIndex(c => c.id === characterId);
+    if (charIndex === -1) {
+      return errorResponse('角色不存在', 404);
+    }
+
+    const photo = characters[charIndex].photos.find(p => p.id === photoId);
+    if (!photo) {
+      return errorResponse('照片不存在', 404);
+    }
+
+    // 如果照片存储在R2中（新格式）
+    if (photo.thumbnailKey || photo.originalKey) {
+      const key = photo.originalKey || photo.thumbnailKey;
+      const object = await env.IMAGES_BUCKET.get(key);
+
+      if (!object) {
+        return errorResponse('照片文件不存在', 404);
+      }
+
+      const headers = new Headers();
+      headers.set('Content-Type', object.httpMetadata?.contentType || 'image/jpeg');
+      headers.set('Cache-Control', 'private, max-age=31536000');
+      headers.set('Access-Control-Allow-Origin', '*');
+
+      return new Response(object.body, { headers });
+    }
+
+    // 向后兼容：如果照片仍在KV中（旧格式），返回base64数据
+    if (photo.data) {
+      const base64Data = photo.data.includes(',') ? photo.data.split(',')[1] : photo.data;
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      const headers = new Headers();
+      headers.set('Content-Type', photo.mimeType || 'image/jpeg');
+      headers.set('Cache-Control', 'private, max-age=31536000');
+      headers.set('Access-Control-Allow-Origin', '*');
+
+      return new Response(bytes.buffer, { headers });
+    }
+
+    return errorResponse('照片数据不可用', 404);
+  } catch (e) {
+    console.error('Get photo error:', e);
+    return errorResponse('获取照片失败: ' + e.message, 500);
   }
 }
 
